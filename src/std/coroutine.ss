@@ -7,9 +7,11 @@ package: std
         :std/sugar)
 (export coroutine coroutine? continue yield coroutine-stop!)
 
+;; Internal coroutine state
 (defstruct cort (mx cv state val)
   final: #t)
 
+;; Start a coroutine by applying proc to args.
 (def (coroutine proc . args)
   (let* ((cort (make-cort (make-mutex 'coroutine)
                           (make-condition-variable 'coroutine)
