@@ -96,6 +96,8 @@ END-C
   "___return ((sqlite3_stmt**)malloc (sizeof (sqlite3_stmt*)));")
 (define-c-lambda sqlite3_stmt_ptr (sqlite3_stmt**) sqlite3_stmt*
   "___return (*___arg1);")
+(define-c-lambda sqlite3_errmsg (int) UTF-8-string
+  "___return ((char*)sqlite3_errmsg (___arg1));")
 (define-c-lambda sqlite3_errstr (int) UTF-8-string
   "___return ((char*)sqlite3_errstr (___arg1));")
 (define-c-lambda sqlite3_open (sqlite3** char-string int) int
