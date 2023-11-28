@@ -1,6 +1,6 @@
 (declare (block) (standard-bindings) (extended-bindings))
 (begin
-  (define gerbil/expander/module::timestamp 1697117331)
+  (define gerbil/expander/module::timestamp 1701173300)
   (begin
     (declare (not safe))
     (define gx#module-import::t
@@ -236,7 +236,9 @@
               (##vector-set! _self17184_ '10 '#f)
               (##vector-set! _self17184_ '11 '#f))
             (error '"struct-instance-init!: too many arguments for struct"
-                   _self17184_))))
+                   _self17184_
+                   '11
+                   (##vector-length _self17184_)))))
     (bind-method! gx#module-context::t ':init! gx#module-context:::init! '#f)
     (define gx#prelude-context:::init!__%
       (lambda (_self17028_ _ctx17029_ _root17030_)
@@ -280,7 +282,9 @@
                       (##vector-set! _self17028_ '7 _in17043_)
                       (##vector-set! _self17028_ '8 _e17044_))
                     (error '"struct-instance-init!: too many arguments for struct"
-                           _self17028_))
+                           _self17028_
+                           '8
+                           (##vector-length _self17028_)))
                 (for-each
                  (lambda (_g1704517047_)
                    (gx#core-bind-weak-import!__% _g1704517047_ _self17028_))
@@ -296,7 +300,9 @@
                     (##vector-set! _self17028_ '7 '())
                     (##vector-set! _self17028_ '8 '#f))
                   (error '"struct-instance-init!: too many arguments for struct"
-                         _self17028_))))))
+                         _self17028_
+                         '8
+                         (##vector-length _self17028_)))))))
     (define gx#prelude-context:::init!__0
       (lambda (_self17053_ _ctx17054_)
         (let ((_root17056_ '#f))
@@ -333,7 +339,9 @@
                '3
                (fx- (gx#current-expander-phi) '1)))
             (error '"struct-instance-init!: too many arguments for struct"
-                   _self16902_))))
+                   _self16902_
+                   '3
+                   (##vector-length _self16902_)))))
     (define gx#import-expander:::init! gx#import-export-expander-init!)
     (bind-method! gx#import-expander::t ':init! gx#import-expander:::init! '#f)
     (define gx#export-expander:::init! gx#import-export-expander-init!)
@@ -1784,7 +1792,10 @@
           (let* ((_e1514115151_ _stx15138_)
                  (_E1514315155_
                   (lambda ()
-                    (gx#raise-syntax-error '#f '"Bad syntax" _e1514115151_)))
+                    (gx#raise-syntax-error
+                     '#f
+                     '"Bad syntax; invalid syntax-case clause"
+                     _e1514115151_)))
                  (_E1514215187_
                   (lambda ()
                     (if (gx#stx-pair? _e1514115151_)
@@ -2214,7 +2225,10 @@
           (let* ((_e1475114758_ _stx14743_)
                  (_E1475314762_
                   (lambda ()
-                    (gx#raise-syntax-error '#f '"Bad syntax" _e1475114758_)))
+                    (gx#raise-syntax-error
+                     '#f
+                     '"Bad syntax; invalid syntax-case clause"
+                     _e1475114758_)))
                  (_E1475214777_
                   (lambda ()
                     (if (gx#stx-pair? _e1475114758_)
@@ -2334,7 +2348,7 @@
                             (lambda ()
                               (gx#raise-syntax-error
                                '#f
-                               '"Bad syntax"
+                               '"Bad syntax; invalid syntax-case clause"
                                _e1468314690_)))
                            (_E1468414708_
                             (lambda ()
@@ -2363,7 +2377,7 @@
                             (lambda ()
                               (gx#raise-syntax-error
                                '#f
-                               '"Bad syntax"
+                               '"Bad syntax; invalid syntax-case clause"
                                _e1465014657_)))
                            (_E1465114675_
                             (lambda ()
@@ -2391,7 +2405,7 @@
                             (lambda ()
                               (gx#raise-syntax-error
                                '#f
-                               '"Bad syntax"
+                               '"Bad syntax; invalid syntax-case clause"
                                _e1448914506_)))
                            (_E1449114620_
                             (lambda ()
@@ -2451,7 +2465,7 @@
                                  (lambda ()
                                    (gx#raise-syntax-error
                                     '#f
-                                    '"Bad syntax"
+                                    '"Bad syntax; invalid syntax-case clause"
                                     _e1454214558_)))
                                 (_E1454314616_
                                  (lambda ()
@@ -2746,7 +2760,10 @@
         (let* ((_e1433914346_ _spath14337_)
                (_E1434114350_
                 (lambda ()
-                  (gx#raise-syntax-error '#f '"Bad syntax" _e1433914346_)))
+                  (gx#raise-syntax-error
+                   '#f
+                   '"Bad syntax; invalid syntax-case clause"
+                   _e1433914346_)))
                (_E1434014405_
                 (lambda ()
                   (if (gx#stx-pair? _e1433914346_)
@@ -3502,7 +3519,10 @@
         (let* ((_e1381113818_ _stx13810_)
                (_E1381313822_
                 (lambda ()
-                  (gx#raise-syntax-error '#f '"Bad syntax" _e1381113818_)))
+                  (gx#raise-syntax-error
+                   '#f
+                   '"Bad syntax; invalid syntax-case clause"
+                   _e1381113818_)))
                (_E1381213836_
                 (lambda ()
                   (if (gx#stx-pair? _e1381113818_)

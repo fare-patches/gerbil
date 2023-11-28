@@ -6,7 +6,10 @@
               (lambda (_g6978069789_)
                 (let ()
                   (declare (not safe))
-                  (gx#raise-syntax-error '#f '"Bad syntax" _g6978069789_))))
+                  (gx#raise-syntax-error
+                   '#f
+                   '"Bad syntax; invalid match target"
+                   _g6978069789_))))
              (_g6977869835_
               (lambda (_g6978069797_)
                 (if (let () (declare (not safe)) (gx#stx-pair? _g6978069797_))
@@ -88,7 +91,10 @@
               (lambda (_g6984469853_)
                 (let ()
                   (declare (not safe))
-                  (gx#raise-syntax-error '#f '"Bad syntax" _g6984469853_))))
+                  (gx#raise-syntax-error
+                   '#f
+                   '"Bad syntax; invalid match target"
+                   _g6984469853_))))
              (_g6984269898_
               (lambda (_g6984469861_)
                 (if (let () (declare (not safe)) (gx#stx-pair? _g6984469861_))
