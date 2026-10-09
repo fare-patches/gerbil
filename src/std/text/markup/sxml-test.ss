@@ -63,6 +63,44 @@
       (check-output (write-sxml '(p "foo <bar> & baz") port: (current-output-port) xml?: #f)
                     "<p>foo &lt;bar&gt; &amp; baz</p>"))
 
+    (test-case "attribute symbols preserve the same literal names as strings"
+      (for-each
+       (lambda ((name : :string)) => :void
+         (for-each
+          (lambda ((xml? : :boolean)) => :void
+            (check-output
+             (write-sxml-attribute [name "v"] port: (current-output-port) xml?: xml?)
+             (string-append name "=\"v\""))
+            (check-output
+             (write-sxml-attribute [(string->symbol name) "v"] port: (current-output-port) xml?: xml?)
+             (string-append name "=\"v\"")))
+          [#f #t]))
+       ["123" "a:" "data-Custom"]))
+
+    (test-case "attribute values retain escaping and boolean policies"
+      (check-output
+       (write-sxml-attribute '(title "<&>\"'") port: (current-output-port))
+       "title=\"&lt;&amp;&gt;&quot;'\"")
+      (check-output
+       (write-sxml-attribute '(title "<&>\"'") port: (current-output-port) quote-char: #\')
+       "title='&lt;&amp;&gt;\"&apos;'")
+      (check-output
+       (write-sxml-attribute '(disabled) port: (current-output-port) xml?: #f)
+       "disabled")
+      (check-output
+       (write-sxml-attribute 'disabled port: (current-output-port) xml?: #f)
+       "disabled")
+      (check-output
+       (write-sxml-attribute '(disabled #t) port: (current-output-port) xml?: #f)
+       "disabled=\"#t\"")
+      (check-output
+       (write-sxml-attribute '(disabled #f) port: (current-output-port) xml?: #f)
+       "")
+      (check-output
+       (write-sxml-attribute #f port: (current-output-port) xml?: #f)
+       "")
+      (check-exception (write-sxml-attribute '(disabled) xml?: #t) error?))
+
     (test-case "sxml-inf node inspection"
       (check (sxml-e '(p "text")) => 'p)
       (check (sxml-e "string-node") => '*TEXT*)

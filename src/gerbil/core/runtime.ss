@@ -343,6 +343,7 @@ package: gerbil/core
     ;; procedures and globals provided by Gambit
 
     ;; globals
+    char-set:punctuation
     default-random-source
 
     ;; macros

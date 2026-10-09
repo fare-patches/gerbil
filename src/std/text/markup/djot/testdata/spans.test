@@ -1,0 +1,37 @@
+```
+This is a [test of
+*color*]{.blue}.
+.
+<p>This is a <span class="blue">test of
+<strong>color</strong></span>.</p>
+```
+
+```
+not a [span] {#id}.
+.
+<p>not a [span] .</p>
+```
+
+```
+[nested [span]{.blue}]{#ident}
+.
+<p><span id="ident">nested <span class="blue">span</span></span></p>
+```
+
+```
+[not a span]{#a<b}
+.
+<p>[not a span]{#a&lt;b}</p>
+```
+
+```
+[*not* a span]{#a<b}
+.
+<p>[<strong>not</strong> a span]{#a&lt;b}</p>
+```
+
+```
+[not a span]{#a
+.
+<p>[not a span]{#a</p>
+```

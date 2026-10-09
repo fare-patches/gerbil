@@ -102,16 +102,15 @@
 
 ; ** Attributes
 
-(def (write-sxml-attribute
-      attr
-      port: (port (current-sxml-output-port))
-      xml?: (xml? (current-sxml-output-xml?))
-      quote-char: (quote-char #\"))
+(def (write-sxml-attribute (attr : :t)
+                           port: (port :~ output-port? := (current-sxml-output-port))
+                           xml?: (xml? : :t := (current-sxml-output-xml?))
+                           quote-char: (quote-char : :char := #\")) => :void
 
-  (def (write-name n)
+  (def (write-name (n : :t)) => :void
     (match n
-    ((? symbol?) (write n port))
-    ((? string?) (write-string n port))))
+      ((? symbol?) (write-string (symbol->string n) port))
+      ((? string?) (write-string n port))))
   (match attr
     ((cons name val)
      (when (and (null? val) xml?)
