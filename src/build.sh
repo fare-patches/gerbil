@@ -297,8 +297,10 @@ build_tools () {
   feedback_low "Building gerbil tools"
   (cd tools && gxi ./build.ss) || die
   for tool in tools/gx*.ss; do
-      toolname=$(basename $tool .ss)
-      (cd "${GERBIL_BUILD_PREFIX}/bin" && ln -sf gerbil $toolname)
+      # Test modules are run by gxtest, not installed as commands.
+      case "${tool}" in *-test.ss) continue ;; esac
+      toolname=$(basename "${tool}" .ss)
+      (cd "${GERBIL_BUILD_PREFIX}/bin" && ln -sf gerbil "${toolname}")
   done
 }
 

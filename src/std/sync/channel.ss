@@ -28,7 +28,8 @@
     (set! self.limit limit)))
 
 (def (channel-put (ch : Channel) val (timeo #f))
-  (let (timeo (timeout->abs-timeout timeo))
+  ;; mutex-unlock! reads a real number as seconds from now, so the deadline is a time.
+  (let (timeo (timeout->abs-timeout timeo value: seconds->time))
     (let loop ()
       (mutex-lock! ch.mx)
       (cond
@@ -76,7 +77,7 @@
 
 (defrule (__channel-front chan timeo default front)
   (using (ch chan :- Channel)
-    (let (timeo (timeout->abs-timeout timeo))
+    (let (timeo (timeout->abs-timeout timeo value: seconds->time))
       (let loop ()
         (mutex-lock! ch.mx)
         (cond

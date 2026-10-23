@@ -65,6 +65,14 @@
 
 (def channel-test
   (test-suite  "test :std/misc/channel"
+    (test-case "test timeouts of a full put and an empty get"
+      (def ch (make-channel 1))
+      (check (channel-put ch 'a) => #t)
+      ;; A deadline read as seconds from now would wait for decades: fail, not hang.
+      (let (worker (spawn-thread
+                    (lambda ()
+                      [(channel-put ch 'b 0.2) (channel-get ch) (channel-get ch 0.2 'empty)])))
+        (check (thread-join! worker 10 'timeout) => [#f 'a 'empty])))
     (test-case "test concurrent buffering"
       (def ch (make-channel 10))
       (let ((rd (spawn channel-reader ch 100))

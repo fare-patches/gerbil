@@ -1124,8 +1124,8 @@
       (string-append "git@" base ":" repo ".git"))
     (string-append "https://" pkg ".git")))
 
-(def (path-normalize* path)
-  (let* ((path (path-normalize (current-directory)))
+(def (path-normalize* (path : :string)) => :string
+  (let* ((path (path-normalize path))
          (last (fx1- (string-length path))))
     (if (eqv? (string-ref path last) #\/)
       (substring path 0 last)

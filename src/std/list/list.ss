@@ -13,7 +13,8 @@
       (let (next (proc hd))
         (loop tl (cons next result))))
       (else
-       (foldl (lambda (next r) (foldl cons r next)) rest result)))))
+       ;; RESULT holds the results last first; prepend each in turn.
+       (foldl append rest result)))))
 
 (defalias unique delete-duplicates)
 (defalias unique! delete-duplicates!)

@@ -116,7 +116,7 @@
         (else (lp rest result))))
       (else result))))
 
-(def (order-modules all-modules)
+(def (order-modules (all-modules : :list)) => :list
   (def visited-modules
     (make-hash-table-eq))
 
@@ -155,7 +155,9 @@
              (lp rest r))))
           (else r)))))
 
-  (def (find-deps modctx)
+  (def (find-deps (modctx : module-context)) => :list
+    ;; Keep traversal completion separate from the caller's final module order.
+    (def completed (make-hash-table-eq))
     (let lp ((rest [modctx]) (deps []))
       (match rest
         ([hd . rest]
@@ -164,20 +166,25 @@
            (let ((id (expander-context-id hd))
                  (imports (module-context-import hd)))
              (cond
-              ((or (hash-get visited-modules id) (module-exclude? hd))
+              ((or (hash-get visited-modules id) (module-exclude? hd)
+                   (hash-get completed hd))
                (lp rest deps))
               ((core-context-prelude hd)
                => (lambda (pre)
                     (let (deps (lp (cons pre imports) deps))
+                      (hash-put! completed hd #t)
                       (lp rest (cons hd deps)))))
               (else
                (let (deps (lp imports deps))
+                 (hash-put! completed hd #t)
                  (lp rest (cons hd deps)))))))
           ((prelude-context? hd)
            (let (id (expander-context-id hd))
-             (if (or (hash-get visited-modules id) (module-exclude? hd))
+             (if (or (hash-get visited-modules id) (module-exclude? hd)
+                     (hash-get completed hd))
                (lp rest deps)
                (let (deps (lp (prelude-context-import hd) deps))
+                 (hash-put! completed hd #t)
                  (lp rest (cons hd deps))))))
           ((module-import? hd)
            (if (fxzero? (module-import-phi hd))

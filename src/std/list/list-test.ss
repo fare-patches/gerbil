@@ -231,4 +231,8 @@
       (check-exception (first-and-only '()) true)
       (check-exception (first-and-only #f) true)
       (check-exception (first-and-only '(a b)) true))
+    (test-case "append-map keeps the order of each result"
+      (check (append-map (lambda (x) [x (* 10 x)]) [1 2 3]) => [1 10 2 20 3 30])
+      (check (append-map (lambda (x) []) [1 2]) => [])
+      (check (append-map list []) => []))
     ))
