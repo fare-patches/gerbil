@@ -94,7 +94,7 @@ package_out_of_tree() {
 }
 
 readonly gerbil_targets=""
-readonly default_gambit_tag=0d67c5fbee88d26c32addaed8aea8c154695941e
+readonly default_gambit_tag=b3ff304f1bf49e58ead5f848dc81b3e0d4c75228
 readonly default_gambit_config="--enable-targets=${gerbil_targets} --enable-single-host --enable-dynamic-clib --enable-default-runtime-options=tE8,f8,-8 --enable-trust-c-tco"
 prefix="/opt/gerbil"
 readonly cflags_opt="-foptimize-sibling-calls"
