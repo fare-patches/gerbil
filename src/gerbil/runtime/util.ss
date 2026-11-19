@@ -142,6 +142,16 @@ namespace: #f
    (cut rename-file src dest replace?))
   (void))
 
+;; Flush the current output and error ports, ignoring errors (e.g. ENOSPC on /dev/full):
+;; a failure to flush one port doesn't prevent flushing the other.
+;; Call it before `exit`: Gambit's exit doesn't unwind, and only flushes the console ports,
+;; so output to any other current port (e.g. a parameterized file port) is otherwise lost.
+(def (force-current-outputs)
+  => :void
+  (with-exception-catcher void (cut force-output (current-output-port)))
+  (with-exception-catcher void (cut force-output (current-error-port)))
+  (void))
+
 (def absent-obj
   (##absent-object))
 
