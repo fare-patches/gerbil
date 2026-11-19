@@ -283,6 +283,215 @@ namespace: gxc
                        props)))
           (else runtime-props))))
 
+;; Compilation owns its private siblings until synchronous completion or handoff
+;; to make. Jobs inherit the owner's parameters, but never publish individually.
+(def current-compile-attempt (make-parameter #f))
+(def current-compile-defer (make-parameter #f))
+(def current-compile-temporary-prefix
+  (make-parameter (lambda () (string-append "gxtmp" (number->string (##os-getpid)) "."))))
+
+(defstruct compile-attempt (primary generation prefix paths dirs jobs mx state))
+(defstruct compile-output (logical private kind))
+
+;; flock is attached to the open directory, not to a replaceable output inode.
+;; Never block the Scheme scheduler in flock, or leak the lock across exec.
+(extern namespace: #f gxc-try-lock-directory gxc-close-directory-lock)
+(begin-foreign
+  (c-declare "
+#include <sys/file.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+static int gxc_try_lock_directory(const char *path) {
+  int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+  if (fd < 0) return -(errno + 2);
+  if (flock(fd, LOCK_EX | LOCK_NB) == 0) return fd;
+  int e = errno;
+  close(fd);
+  return (e == EWOULDBLOCK || e == EINTR) ? -1 : -(e + 2);
+}")
+  (define gxc-try-lock-directory (c-lambda (nonnull-UTF-8-string) int "gxc_try_lock_directory"))
+  (define gxc-close-directory-lock (c-lambda (int) void "(void)close(___arg1);")))
+
+(def (call-with-publication-lock dir thunk)
+  (let retry ()
+    (let (fd (gxc-try-lock-directory dir))
+      (cond
+       ((>= fd 0) (unwind-protect (thunk) (gxc-close-directory-lock fd)))
+       ((= fd -1) (thread-sleep! .01) (retry))
+       (else (error "Cannot lock compiler output directory" dir (- -2 fd)))))))
+
+(def (compile-path-info path)
+  (with-catch
+   (lambda (e) (if (no-such-file-or-directory-exception? e) #f (raise e)))
+   (cut file-info path #f)))
+
+(def (compile-generation primary)
+  (def (stamp path)
+    (alet (fi (compile-path-info path))
+      [(file-info-device fi) (file-info-inode fi) (file-info-size fi)
+       (time->seconds (file-info-last-change-time fi))
+       (time->seconds (file-info-last-modification-time fi))]))
+  [(stamp primary) (stamp (string-append primary ".new"))])
+
+(def (compile-next-object logical-scm)
+  (let (root (string-append (path-strip-extension logical-scm) ".o"))
+    (let loop ((n 1))
+      (let (path (string-append root (number->string n)))
+        (if (file-exists? path) (loop (1+ n)) path)))))
+
+(def (compile-create-parent! dir)
+  (let retry ()
+    (with-catch
+     (lambda (e) (if (file-exists-exception? e) (retry) (raise e)))
+     (cut create-directory* dir))))
+
+(def (new-compile-attempt primary)
+  (let* ((base ((current-compile-temporary-prefix)))
+         (primary (path-expand primary))
+         (dir (path-directory primary)))
+    (unless (and (string? base) (positive? (string-length base))
+                 (not (string-index base #\/)) (not (string-index base #\\))
+                 (not (string-index base (integer->char 0))))
+      (error "Invalid compiler temporary prefix" base))
+    (compile-create-parent! dir)
+    (let* ((generation (compile-generation primary))
+           ;; mkdir is the exclusive reservation. A time/serial component avoids
+           ;; recycling a released name on retry; mkdir handles live collisions.
+           (seed (string-append base (number->string (##os-getpid)) "."
+                   (number->string (inexact->exact (floor (* 1000000 (time->seconds (current-time))))))
+                   "." (symbol->string (gensym 'a))))
+           (reservation (create-temporary-directory [path: (path-expand seed dir) permissions: #o700]))
+           (dirs (make-hash-table)))
+      (hash-put! dirs dir reservation)
+      (make-compile-attempt primary generation
+        (string-append (path-strip-directory reservation) ".")
+        (make-hash-table) dirs [] (make-mutex) 'open))))
+
+(def (compile-stage-path logical (kind 'ordinary))
+  (let* ((a (current-compile-attempt))
+         (logical (path-expand logical)))
+    (unless (and a (memq kind '(ordinary version temporary)))
+      (error "Invalid compiler staging request" logical kind))
+    (with-lock (compile-attempt-mx a)
+      (lambda ()
+        (unless (eq? 'open (compile-attempt-state a))
+          (error "Compiler attempt already settled" logical))
+        (cond
+         ((hash-get (compile-attempt-paths a) logical) => compile-output-private)
+         (else
+          (let* ((dir (path-directory logical))
+                 (prefix (compile-attempt-prefix a))
+                 (private (path-expand (string-append prefix (path-strip-directory logical)) dir)))
+            ;; Two primaries can stage into the same static directory. Reserve
+            ;; the prefix there too before allowing either producer to write.
+            (unless (hash-get (compile-attempt-dirs a) dir)
+              (compile-create-parent! dir)
+              (let (reservation (path-expand (substring prefix 0 (1- (string-length prefix))) dir))
+                (create-directory [path: reservation permissions: #o700])
+                (hash-put! (compile-attempt-dirs a) dir reservation)))
+            (when (compile-path-info private)
+              (error "Compiler staging path is occupied" private))
+            (hash-put! (compile-attempt-paths a) logical (make-compile-output logical private kind))
+            private)))))))
+
+(def (compile-attempt-add-job! thunk name)
+  (let (a (current-compile-attempt))
+    (set! (compile-attempt-jobs a)
+      (cons (make-compile-job thunk name) (compile-attempt-jobs a)))))
+
+;; Join even after a failed sibling (or a failed thread-start!). No cleanup
+;; may race a writer. A raised #f must still count as failure.
+(def (compile-attempt-run-jobs! a)
+  (let ((started []) (failure #f))
+    (def (failed e) (unless failure (set! failure (list e))))
+    (for-each (lambda (job)
+                (unless failure
+                  (with-catch failed
+                    (lambda () (thread-start! job) (set! started (cons job started))))))
+              (reverse (compile-attempt-jobs a)))
+    (for-each (lambda (job) (with-catch failed (cut join! job))) (reverse! started))
+    (when failure (raise (car failure)))))
+
+(def (compile-cleanup! a)
+  (hash-for-each (lambda (_ entry)
+                   (let (path (compile-output-private entry))
+                     (when (compile-path-info path) (delete-file path))))
+                 (compile-attempt-paths a))
+  (hash-for-each (lambda (_ dir) (delete-directory dir)) (compile-attempt-dirs a)))
+
+(def (compile-attempt-abort! a)
+  (with-lock (compile-attempt-mx a)
+    (lambda ()
+      (when (eq? 'open (compile-attempt-state a))
+        (set! (compile-attempt-state a) 'aborted)
+        (compile-cleanup! a)))))
+
+(def (compile-attempt-publish! a)
+  (def primary (compile-attempt-primary a))
+  (def dir (path-directory primary))
+  (def marker (string-append primary ".new"))
+  (def paths (compile-attempt-paths a))
+  (def (publish entry)
+    (rename-file (compile-output-private entry) (compile-output-logical entry)
+                 (not (eq? 'version (compile-output-kind entry)))))
+  (let (last (hash-get paths primary))
+    (unless (and last (memq (compile-output-kind last) '(ordinary version)))
+      (error "Missing staged primary" primary))
+    (call-with-publication-lock dir
+      (lambda ()
+        (unless (equal? (compile-attempt-generation a) (compile-generation primary))
+          (error "Concurrent publication changed compiler output" primary))
+        (hash-for-each
+         (lambda (logical entry)
+           (unless (eq? 'temporary (compile-output-kind entry))
+             (unless (eq? 'regular (file-info-type (file-info (compile-output-private entry) #f)))
+               (error "Expected a staged regular file" logical))
+             (when (and (eq? 'version (compile-output-kind entry)) (compile-path-info logical))
+               (error "Compiler object version is occupied" logical))))
+         paths)
+        ;; Replace even an inherited marker with a new generation. Once this
+        ;; rename succeeds, only a *successful* publication removes the marker.
+        (let (staged-marker (path-expand "incomplete" (hash-ref (compile-attempt-dirs a) dir)))
+          (unwind-protect
+            (begin
+              (call-with-output-file staged-marker void)
+              (rename-file staged-marker marker #t))
+            (when (compile-path-info staged-marker) (delete-file staged-marker))))
+        (for-each
+         (lambda (kind)
+           (hash-for-each
+            (lambda (_ entry)
+              (when (and (eq? kind (compile-output-kind entry)) (not (eq? entry last)))
+                (publish entry)))
+            paths))
+         '(version ordinary))
+        (publish last)
+        (when (string-suffix? ".ssi" primary)
+          (let (legacy (string-append primary ".old"))
+            (when (compile-path-info legacy) (delete-file legacy))))
+        (delete-file marker)))))
+
+(def (compile-attempt-commit! a)
+  (with-lock (compile-attempt-mx a)
+    (lambda ()
+      (unless (eq? 'open (compile-attempt-state a))
+        (error "Compiler attempt already settled" (compile-attempt-primary a)))
+      (unwind-protect
+        (begin (compile-attempt-publish! a) (set! (compile-attempt-state a) 'committed))
+        (when (eq? 'open (compile-attempt-state a)) (set! (compile-attempt-state a) 'aborted))
+        (compile-cleanup! a)))))
+
+(def (call-with-compile-attempt primary thunk)
+  (let ((a (new-compile-attempt primary)) (transferred? #f))
+    (unwind-protect
+      (parameterize ((current-compile-attempt a))
+        (begin0 (thunk)
+          (cond
+           ((current-compile-defer) => (lambda (defer) (defer a) (set! transferred? #t)))
+           (else (compile-attempt-run-jobs! a) (compile-attempt-commit! a)))))
+      (unless transferred? (compile-attempt-abort! a)))))
+
 ;; parallel build support
 (def __compile-jobs [])
 (def __available-cores
