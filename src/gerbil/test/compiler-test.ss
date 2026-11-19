@@ -300,6 +300,8 @@
       (must-compile-and-execute "compiler-test-support/mutable-binding-type-2.ss"))
     (test-case "mutable bindings with fixpoint sticky type"
       (must-compile-and-execute "compiler-test-support/mutable-binding-type-3.ss"))
+    (test-case "typed keyword + rest arguments, compiled"
+      (must-compile-and-execute "compiler-test-support/typed-keyword-rest.ss"))
     (test-case "#!key keyword table, compiled"
       ;; Miscompiled keyword table construction makes the calls loop forever.
       (must-compile-and-execute "compiler-test-support/key-table-call.ss" timeout: 30))))

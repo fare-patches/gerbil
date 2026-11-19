@@ -1276,36 +1276,48 @@ package: gerbil/core
         [head tail]))
 
     (def (signature-arguments-out signature)
-      (let loop ((rest signature) (result []))
+      ;; A keyword value escaped to a positional slot (via #!key or #!rest at
+      ;; the call site) must not be re-interpreted as a keyword when the
+      ;; checked lambda forwards its arguments to the unchecked keyword
+      ;; lambda. Emit the keyword arguments first, then a #!rest escape, then
+      ;; the positionals (and the rest tail last); #!rest makes the callee
+      ;; treat everything after it as positional.
+      (def (finish positionals keywords)
+        (if (null? keywords)
+          positionals
+          (append (reverse! keywords)
+                  (cons #!rest positionals))))
+      (let loop ((rest signature) (positionals []) (keywords []))
         (syntax-case rest ()
           ((id . rest)
            (identifier? #'id)
-           (loop #'rest  (cons #'id result)))
+           (loop #'rest (cons #'id positionals) keywords))
           (((id _) . rest)
            (identifier? #'id)
-           (loop #'rest  (cons #'id result)))
+           (loop #'rest (cons #'id positionals) keywords))
           (((id default . contract) . rest)
            (and (identifier? #'id)
                 (signature-contract? #'contract))
-           (loop #'rest  (cons #'id result)))
+           (loop #'rest (cons #'id positionals) keywords))
           (((id . contract) . rest)
            (and (identifier? #'id)
                 (signature-contract? #'contract))
-           (loop #'rest  (cons #'id result)))
+           (loop #'rest (cons #'id positionals) keywords))
           ((kw id . rest)
            (and (stx-keyword? #'kw) (identifier? #'id))
-           (loop #'rest  (cons* #'id #'kw result)))
+           (loop #'rest positionals (cons* #'id #'kw keywords)))
           ((kw (id default) . rest)
            (and (stx-keyword? #'kw) (identifier? #'id))
-           (loop #'rest  (cons* #'id #'kw result)))
+           (loop #'rest positionals (cons* #'id #'kw keywords)))
           ((kw (id . contract) . rest)
            (and (stx-keyword? #'kw)
                 (identifier? #'id)
                 (signature-contract? #'contract))
-           (loop #'rest (cons* #'id #'kw result)))
+           (loop #'rest positionals (cons* #'id #'kw keywords)))
           (id (identifier? #'id)
-              (foldl cons [#'id] result))
-          (_ (reverse! result)))))
+              (finish (foldl cons [#'id] positionals) keywords))
+          (_
+           (finish (reverse! positionals) keywords)))))
 
     (def (signature-has-keywords? signature)
       (let loop ((rest signature))
@@ -2231,82 +2243,93 @@ package: gerbil/core
          (def (implode-tail bindings rest)
            (implode (pack-tail bindings rest)))
 
-         (def (implode-keywords-tail bindings fullfilled rest)
+         ;; Split the call arguments the way runtime keyword-dispatch does
+         ;; (src/gerbil/runtime/control.ss): keywords may appear anywhere
+         ;; among the positional arguments, #!key escapes the next argument
+         ;; as a positional, and #!rest ends keyword processing.
+         ;; Returns the positional arguments in call order and an alist of
+         ;; the supplied (key . arg) keyword arguments.
+         ;; Unknown and duplicate keywords would fail in keyword-dispatch at
+         ;; runtime, so they are reported statically instead.
+         ;; Without keywords in the signature the procedure is a plain lambda,
+         ;; and keyword objects are just positional values.
+         (def (split-arguments args)
+           (if (null? keywords)
+             (values args [])
+             (let loop ((rest args) (positionals []) (supplied []))
+               (match rest
+                 ([first . rest]
+                  (cond
+                   ((stx-keyword? first)
+                    (let (key (stx-e first))
+                      (cond
+                       ((not (pgetq key keywords))
+                        (raise-syntax-error #f "unexpected keyword" stx first))
+                       ((assq key supplied)
+                        (raise-syntax-error #f "duplicate keyword" stx first))
+                       (else
+                        (match rest
+                          ([arg . rest]
+                           (loop rest positionals (cons (cons key arg) supplied)))
+                          (else
+                           (raise-syntax-error #f "missing value for keyword argument" stx first)))))))
+                   ((eq? (stx-e first) #!key)
+                    (match rest
+                      ([arg . rest]
+                       (loop rest (cons arg positionals) supplied))
+                      (else
+                       (raise-syntax-error #f "missing value for #!key escape" stx first))))
+                   ((eq? (stx-e first) #!rest)
+                    (values (foldl cons rest positionals) supplied))
+                   (else
+                    (loop rest (cons first positionals) supplied))))
+                 (else
+                  (values (reverse! positionals) supplied))))))
+
+         ;; Bind positionals to required then optional arguments, in
+         ;; signature order; returns the bindings and the leftover positionals.
+         (def (bind-positionals positionals)
+           (let loop ((required-rest required) (args positionals) (bindings []))
+             (match required-rest
+               ([id . required-rest]
+                (match args
+                  ([arg . args]
+                   (loop required-rest args (cons [id arg] bindings)))
+                  (else
+                   (raise-syntax-error #f "missing required argument" stx id))))
+               (else
+                (let loop ((optional-rest optional) (args args) (bindings bindings))
+                  (match optional-rest
+                    ([next . optional-rest]
+                     (match args
+                       ([arg . args]
+                        (loop optional-rest args (cons [(car next) arg] bindings)))
+                       (else
+                        ;; next is already the [id default] binding
+                        (loop optional-rest [] (cons next bindings)))))
+                    (else
+                     (values bindings args))))))))
+
+         ;; Bind keywords in signature order, after the positionals, so that
+         ;; defaults see the same variables as in the runtime keyword lambda.
+         (def (bind-keywords bindings supplied)
            (let loop ((keywords-rest keywords) (bindings bindings))
              (match keywords-rest
                ([key spec . keywords-rest]
-                (if (memq key fullfilled)
-                  (loop keywords-rest bindings)
-                  (if (stx-list? spec)
-                    (loop keywords-rest (cons spec bindings))
-                    (raise-syntax-error #f "missing value for required keyword" stx key))))
-               (else
-                (implode-tail bindings rest)))))
+                (cond
+                 ((assq key supplied)
+                  => (lambda (key+arg)
+                       (let (id (if (stx-list? spec) (stx-car spec) spec))
+                         (loop keywords-rest (cons [id (cdr key+arg)] bindings)))))
+                 ((stx-list? spec)
+                  (loop keywords-rest (cons spec bindings)))
+                 (else
+                  (raise-syntax-error #f "missing value for required keyword" stx key))))
+               (else bindings))))
 
-         (def (implode-keywords bindings args-rest)
-           (let loop ((args-rest args-rest)
-                      (fullfilled [])
-                      (bindings bindings))
-             (match args-rest
-               ([first . rest]
-                (if (stx-keyword? first)
-                  (let (key (stx-e first))
-                    (cond
-                     ((memq key fullfilled)
-                      (raise-syntax-error #f "duplicate keyword" stx first))
-                     ((pgetq key keywords)
-                      => (lambda (spec)
-                           (match rest
-                             ([arg . args-rest]
-                              (let* ((id (if (stx-list? spec) (stx-car spec) spec))
-                                     (bindings (cons [id arg] bindings)))
-                                (loop args-rest (cons key fullfilled) bindings)))
-                             (else
-                              (raise-syntax-error #f "missing value for keyword argument" stx first)))))
-                     (else
-                      (raise-syntax-error #f "unexpected keyword" stx first))))
-                  ;; no more keyword call args
-                  (implode-keywords-tail bindings fullfilled args-rest)))
-               (else
-                ;; no more call args
-                (implode-keywords-tail bindings fullfilled [])))))
-
-         ;; process positionals first
-         (let loop ((required-rest required)
-                    (args-rest    #'(arg ...))
-                    (bindings    []))
-           (match required-rest
-             ([id . required-rest]
-              (match args-rest
-                ([arg . args-rest]
-                 (if (and (stx-keyword? arg) (not (null? keywords)))
-                   (raise-syntax-error #f "keyword argument instead of positional argument" stx arg id)
-                   (let (bindings (cons [id arg] bindings))
-                     (loop required-rest args-rest bindings))))
-                (else
-                 (raise-syntax-error #f "missing required argument" stx id))))
-             (else
-              ;; no more required arguments, process optionals
-              (let loop ((args-rest args-rest) (optional-rest optional) (bindings bindings))
-                (match optional-rest
-                  ;; we have more optionals
-                  ([next . rest]
-                   (match args-rest
-                     ([arg . args-rest*]
-                      (if (stx-keyword? arg)
-                        ;; keyword arguments start
-                        (let (bindings (fold cons bindings optional-rest))
-                          (implode-keywords bindings args-rest))
-                        ;; an optional argument
-                        (let (bindings (cons [(car next) arg] bindings))
-                          (loop args-rest* rest bindings))))
-                     (else
-                      ;; no more call arguments
-                      (let (bindings (fold cons bindings optional-rest))
-                        (implode-keywords bindings [])))))
-                  ;; we don't expect any more optionals, process keywords
-                  (else
-                   (implode-keywords bindings args-rest)))))))))))
+         (let ((values positionals supplied) (split-arguments #'(arg ...)))
+           (let ((values bindings tail-args) (bind-positionals positionals))
+             (implode-tail (bind-keywords bindings supplied) tail-args)))))))
 
   (defsyntax-case definterface-extension-method (=>)
     ((_ Interface (method self . signature) => return body ...)
