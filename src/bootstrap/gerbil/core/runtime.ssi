@@ -322,6 +322,7 @@ namespace: gerbil/core/runtime
           GambitRuntime
           (%#begin (%#export #t)
                    (%#extern
+                    (char-set:punctuation char-set:punctuation)
                     (default-random-source default-random-source)
                     (time time)
                     (->char-set ->char-set)
@@ -1530,6 +1531,7 @@ namespace: gerbil/core/runtime
                     (file-newer? file-newer?)
                     (create-directory* create-directory*)
                     (move-file move-file)
+                    (force-current-outputs force-current-outputs)
                     (absent-obj absent-obj)
                     (absent-value absent-value)
                     (true true)

@@ -3,39 +3,39 @@
   (define |gerbil/core/contract~ClassMeta[1]#meta-object-methods!|
     (lambda (_%meta63351%_)
       (let ((_%$e63354%_
-             (let ((__obj107178 _%meta63351%_))
+             (let ((__obj107239 _%meta63351%_))
                (if (let ()
                      (declare (not safe))
                      (##structure-direct-instance-of?
-                      __obj107178
+                      __obj107239
                       'gerbil/core#meta-object::t))
                    (let ()
                      (declare (not safe))
-                     (##unchecked-structure-ref __obj107178 '1 '#f '#f))
+                     (##unchecked-structure-ref __obj107239 '1 '#f '#f))
                    (class-slot-ref
                     gerbil/core/mop~MOP-2#meta-object::t
-                    __obj107178
+                    __obj107239
                     'methods)))))
         (if _%$e63354%_
             _%$e63354%_
             (let ((_%tab63360%_ (make-hash-table-eq)))
-              (let ((__obj107179 _%meta63351%_))
+              (let ((__obj107240 _%meta63351%_))
                 (if (let ()
                       (declare (not safe))
                       (##structure-direct-instance-of?
-                       __obj107179
+                       __obj107240
                        'gerbil/core#meta-object::t))
                     (let ()
                       (declare (not safe))
                       (##unchecked-structure-set!
-                       __obj107179
+                       __obj107240
                        _%tab63360%_
                        '1
                        '#f
                        '#f))
                     (class-slot-set!
                      gerbil/core/mop~MOP-2#meta-object::t
-                     __obj107179
+                     __obj107240
                      'methods
                      _%tab63360%_)))
               _%tab63360%_)))))
@@ -95,28 +95,28 @@
                                                        (##cdr _%$%e6338063434%_))))
                                                 (if (gx#stx-pair/null?
                                                      _%$%tl6338263441%_)
-                                                    (let ((_g107403_
+                                                    (let ((_g107464_
                                                            (gx#syntax-split-splice
                                                             _%$%tl6338263441%_
                                                             '0)))
                                                       (begin
-                                                        (let ((_g107404_
+                                                        (let ((_g107465_
                                                                (let ()
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          (declare (not safe))
-                         (if (##values? _g107403_)
-                             (##values-length _g107403_)
+                         (if (##values? _g107464_)
+                             (##values-length _g107464_)
                              1))))
-                  (if (not (let () (declare (not safe)) (##fx= _g107404_ 2)))
-                      (error "Context expects 2 values" _g107404_)))
+                  (if (not (let () (declare (not safe)) (##fx= _g107465_ 2)))
+                      (error "Context expects 2 values" _g107465_)))
                 (let ((_%$%target6338363444%_
                        (let ()
                          (declare (not safe))
-                         (##values-ref _g107403_ 0)))
+                         (##values-ref _g107464_ 0)))
                       (_%$%tl6338563447%_
                        (let ()
                          (declare (not safe))
-                         (##values-ref _g107403_ 1))))
+                         (##values-ref _g107464_ 1))))
                   (if (gx#stx-null? _%$%tl6338563447%_)
                       (letrec ((_%$%loop6338663450%_
                                 (lambda (_%$%hd6338463454%_
@@ -260,28 +260,28 @@
                                                        (##cdr _%$%e6353363599%_))))
                                                 (if (gx#stx-pair/null?
                                                      _%$%tl6353563606%_)
-                                                    (let ((_g107405_
+                                                    (let ((_g107466_
                                                            (gx#syntax-split-splice
                                                             _%$%tl6353563606%_
                                                             '0)))
                                                       (begin
-                                                        (let ((_g107406_
+                                                        (let ((_g107467_
                                                                (let ()
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          (declare (not safe))
-                         (if (##values? _g107405_)
-                             (##values-length _g107405_)
+                         (if (##values? _g107466_)
+                             (##values-length _g107466_)
                              1))))
-                  (if (not (let () (declare (not safe)) (##fx= _g107406_ 2)))
-                      (error "Context expects 2 values" _g107406_)))
+                  (if (not (let () (declare (not safe)) (##fx= _g107467_ 2)))
+                      (error "Context expects 2 values" _g107467_)))
                 (let ((_%$%target6353663609%_
                        (let ()
                          (declare (not safe))
-                         (##values-ref _g107405_ 0)))
+                         (##values-ref _g107466_ 0)))
                       (_%$%tl6353863612%_
                        (let ()
                          (declare (not safe))
-                         (##values-ref _g107405_ 1))))
+                         (##values-ref _g107466_ 1))))
                   (if (gx#stx-null? _%$%tl6353863612%_)
                       (letrec ((_%$%loop6353963615%_
                                 (lambda (_%$%hd6353763619%_
@@ -317,28 +317,28 @@
                                                        (##cdr _%$%e6354563637%_))))
                                                 (if (gx#stx-pair/null?
                                                      _%$%tl6354763644%_)
-                                                    (let ((_g107407_
+                                                    (let ((_g107468_
                                                            (gx#syntax-split-splice
                                                             _%$%tl6354763644%_
                                                             '0)))
                                                       (begin
-                                                        (let ((_g107408_
+                                                        (let ((_g107469_
                                                                (let ()
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          (declare (not safe))
-                         (if (##values? _g107407_)
-                             (##values-length _g107407_)
+                         (if (##values? _g107468_)
+                             (##values-length _g107468_)
                              1))))
-                  (if (not (let () (declare (not safe)) (##fx= _g107408_ 2)))
-                      (error "Context expects 2 values" _g107408_)))
+                  (if (not (let () (declare (not safe)) (##fx= _g107469_ 2)))
+                      (error "Context expects 2 values" _g107469_)))
                 (let ((_%$%target6354863647%_
                        (let ()
                          (declare (not safe))
-                         (##values-ref _g107407_ 0)))
+                         (##values-ref _g107468_ 0)))
                       (_%$%tl6355063650%_
                        (let ()
                          (declare (not safe))
-                         (##values-ref _g107407_ 1))))
+                         (##values-ref _g107468_ 1))))
                   (if (gx#stx-null? _%$%tl6355063650%_)
                       (letrec ((_%$%loop6355163653%_
                                 (lambda (_%$%hd6354963657%_

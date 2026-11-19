@@ -50,6 +50,7 @@ namespace: #f
                             move-file
                             macro:
                             @move-file)))
+         (%#define-runtime force-current-outputs force-current-outputs)
          (%#define-runtime absent-obj absent-obj)
          (%#define-runtime absent-value absent-value)
          (%#define-runtime true true)

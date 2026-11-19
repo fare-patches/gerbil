@@ -594,7 +594,8 @@ package: gerbil
  ;; char-set-any
  ;; char-set-complement
  ;; char-set-complement!
- ;; char-set-contains?
+ ;; Keep Gambit's checked entry point: character sets have no system class yet.
+ (char-set-contains? (t::t char::t) boolean::t effect: (pure))
  ;; char-set-copy
  ;; char-set-count
  ;; char-set-cursor
