@@ -1,14 +1,10 @@
 ;;; -*- Gerbil -*-
-;;; (C) vyzo at hackzen.org
-;;; XML interface
-
-(import :std/build-config
-        :std/text/markup/sxml/sxpath
-        :std/text/markup/sxml/sxml-inf
-        :std/text/markup/sxml/ssax
-        :std/text/markup/sxml/xml)
-(export (import:
-          :std/text/markup/sxml/ssax
-          :std/text/markup/sxml/sxpath
-          :std/text/markup/sxml/sxml-inf
-          :std/text/markup/sxml/xml))
+;;; © Gerbil contributors
+;;; Typed XML: node types and checked constructors, the reader and the
+;;; writer. See xml.md.
+(import ./xml/types
+        ./xml/reader
+        ./xml/writer)
+(export (import: ./xml/types)
+        (import: ./xml/reader)
+        (import: ./xml/writer))

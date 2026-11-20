@@ -278,6 +278,42 @@
         (lambda (client (bucket : S3Bucket)) (bucket.get "key"))
         (lambda (client (bucket : S3Bucket)) (bucket.copy-to! "test/source" "dest"))]))
 
+    (test-case "responses in both S3 namespaces, non-ASCII keys and error codes"
+      (for-each
+       (lambda (uri)
+         (with-s3-response
+          (s3-test-response
+           (string-append "<ListAllMyBucketsResult xmlns='" uri "'><Buckets>"
+                          "<Bucket><Name>one</Name></Bucket><Bucket><Name>two</Name></Bucket>"
+                          "</Buckets></ListAllMyBucketsResult>"))
+          (lambda ((client : S3Client) bucket)
+            (check (length (client.list-buckets)) => 2)))
+         (with-s3-response
+          (s3-test-response
+           (string-append "<?xml version='1.0' encoding='UTF-8'?>"
+                          "<ListBucketResult xmlns='" uri "'>"
+                          "<Contents><Key>λ/日本語/😀</Key></Contents>"
+                          "<Contents><Key>a &amp; b</Key></Contents></ListBucketResult>"))
+          (lambda (client (bucket : S3Bucket))
+            (check (bucket.list-objects) => ["λ/日本語/😀" "a & b"])))
+         (with-s3-response
+          (s3-test-response
+           (string-append "<Error xmlns='" uri "'><Code>AccessDenied</Code></Error>"))
+          (lambda (client (bucket : S3Bucket))
+            (check-exception (bucket.copy-to! "test/source" "dest")
+                             (lambda (e)
+                               (and (s3-client-error? e)
+                                    (equal? (cadr (error-irritants e)) "AccessDenied")))))))
+       ["http://s3.amazonaws.com/doc/2006-03-01/"
+        "http://doc.s3.amazonaws.com/2006-03-01"])
+      (with-s3-response
+       (s3-test-response "<Error><Message>no code</Message></Error>")
+       (lambda (client (bucket : S3Bucket))
+         (check-exception (bucket.copy-to! "test/source" "dest")
+                          (lambda (e)
+                            (and (s3-client-error? e)
+                                 (equal? (cadr (error-irritants e)) "Unknown")))))))
+
     (test-case "default and hostname endpoints construct without requests"
       (check (S3Client? (s3-client access-key: "x" secret-key: "y")) => #t)
       (check (S3Client? (s3-client endpoint: "s3.amazonaws.com"

@@ -22,6 +22,8 @@
 :CUSTOM_ID: html-hyper-text-markup-language-module
 :END:
 
+*Deprecated:* kept as =:std/text/markup/sxml=; use the typed [[file:../../xml.md][=:std/text/markup/xml=]] and [[file:../../html.md][=:std/text/markup/html=]].
+
 HTML is a widely used Markup Language that, while very similar to [[./xml.md][XML]],
 differs enough to have its own specific libraries.
 
@@ -29,7 +31,7 @@ differs enough to have its own specific libraries.
 ::: tip To use the bindings from this module:
 
 #+begin_src scheme
-  (import :std/markup/html)
+  (import :std/text/markup/sxml)
 #+end_src
 
 :::

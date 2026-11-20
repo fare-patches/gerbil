@@ -29,17 +29,17 @@ Parses a string into an abstract syntax tree. With `source-locations: #t`, nodes
 
 Reads and parses a whole document using `:std/io`. Accepts strings, UTF-8 byte vectors, input ports, readers, buffered readers, `#t`/`'stdin`, or file-open argument lists. A string is content, not a pathname: use `(read-djot [path: "input.dj"])` to read a file. Caller-owned ports stay open.
 
-## djot->sxml
+## djot->html-fragment
 
 ```scheme
-(djot->sxml document) -> list
+(djot->html-fragment document) -> list
 ```
 
-Returns an SXML (S-expression XML) `(*TOP* ...)` document with unescaped text and symbol names for elements and attributes. Custom attribute spelling, case, and order are preserved. The result can be inspected or transformed with `:std/text/markup/sxml` before printing.
+Returns the document as a list of HTML nodes (`:std/text/markup/html`): elements, unescaped text, and `HTMLRaw` for raw HTML. Custom attribute spelling and order are preserved, with names in ASCII lower case, as HTML parsers read them; U+0000 in text and attribute values becomes U+FFFD. The list can be inspected or transformed, then written with `write-html` from `:std/text/markup/html`. Nodes may be shared between renderings; do not mutate them.
 
 ```scheme
-> (djot->sxml (string->djot "Hello."))
-(*TOP* (p (@) "Hello.") "\n")
+> (html->string (djot->html-fragment (string->djot "Hello.")))
+"<p>Hello.</p>\n"
 ```
 
 ## djot->html
@@ -48,7 +48,7 @@ Returns an SXML (S-expression XML) `(*TOP* ...)` document with unescaped text an
 (djot->html document) -> string
 ```
 
-Renders through the SXML printer in HTML mode without indentation. Non-HTML raw nodes are omitted; math retains its delimiters inside a classed span. Neither renderer modifies the document or emits source locations.
+Writes `djot->html-fragment` with `html->string`. Non-HTML raw nodes are omitted; math retains its delimiters inside a classed span. Neither renderer modifies the document or emits source locations.
 
 **HTML is not sanitized.** Text and attribute values are escaped, but raw HTML, arbitrary attributes, and URL schemes are allowed. Sanitize untrusted output before serving it.
 
@@ -58,7 +58,7 @@ Renders through the SXML printer in HTML mode without indentation. Non-HTML raw 
 (write-djot-html output document)
 ```
 
-Writes HTML to a `:std/io` output: a writer, buffered writer, port, pathname, file-open arguments, or `#t`/`'stdout`. With `#f` or `'string`, returns a string; with `'u8vector`, returns UTF-8 bytes. HTML is buffered before writing. Caller-owned ports stay open.
+Writes HTML to a `:std/io` output: a writer, buffered writer, port, pathname, file-open arguments, or `#t`/`'stdout`. With `#f` or `'string`, returns a string; with `'u8vector`, returns UTF-8 bytes. The whole document is rendered in memory before anything is written, so a rendering error writes nothing. Caller-owned ports stay open.
 
 ```scheme
 > (write-djot-html #f (read-djot "Hello."))
@@ -82,7 +82,7 @@ A document-level heading starts a section containing the heading and its body. F
 ("type" "module")
 ```
 
-`attributes` and `auto-attributes` are ordered lists of `djot-attribute`, separating explicit attributes from generated ones. Attribute names, reference keys, and footnote labels are strings; rendering converts element and attribute names to SXML symbols.
+`attributes` and `auto-attributes` are ordered lists of `djot-attribute`, separating explicit attributes from generated ones. Attribute names, reference keys, and footnote labels are strings; rendering writes attribute names in ASCII lower case, as HTML parsers read them, and rejects a name that is not an HTML attribute name with ContractViolation.
 
 Within one attribute specifier, `class=` replaces earlier classes and `.class` appends; stacked specifiers accumulate classes. Quoted values collapse runs of ASCII spaces and line endings but preserve tabs.
 

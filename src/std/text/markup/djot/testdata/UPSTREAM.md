@@ -4,7 +4,7 @@ The 25 `.test` files are unchanged copies from [djot.js 0.3.2, commit d93aff3956
 
 `conformance-test.ss` runs 296 HTML cases and six syntax-tree cases. The latter compare semantic projections; the position case converts inclusive upstream offsets to half-open ranges. That input is ASCII, so UTF-16 and Gerbil character offsets coincide.
 
-The only HTML expectation adjustment removes the slash before `>` from checkbox elements in `task_lists.test` cases starting at lines 1, 17, and 38. The SXML printer uses HTML void-element syntax. Fixture files are not altered.
+The only HTML expectation adjustment removes the slash before `>` from checkbox elements in `task_lists.test` cases starting at lines 1, 17, and 38. The HTML writer uses HTML void-element syntax. Fixture files are not altered.
 
 ## Running the tests
 

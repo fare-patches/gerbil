@@ -30,6 +30,7 @@
 (defrule (__mem-drain! output-buffer buf whi)
   (__mem-write! output-buffer buf 0 whi))
 
+;; Grows through the buffer cache, unlike bio-output-reserve! (./output).
 (defrule (__mem-write! output-buffer input start end)
   (using (mem output-buffer :- memory-output-buffer)
     (let* ((size        (u8vector-length mem.buf))

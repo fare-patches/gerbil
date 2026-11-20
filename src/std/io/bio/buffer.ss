@@ -2,7 +2,8 @@
 ;;; © vyzo
 ;;; internal buffer interfaces
 (import :std/interface
-        ../interface)
+        ../interface/base
+        ../interface/bio)
 (export #t)
 
 (defcall-interface-method Reader read

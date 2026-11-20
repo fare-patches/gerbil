@@ -33,6 +33,8 @@
 :CUSTOM_ID: sxml-s-expression-extensible-markup-language
 :END:
 
+*Deprecated:* kept as =:std/text/markup/sxml=; use the typed [[file:../xml.md][=:std/text/markup/xml=]] and [[file:../html.md][=:std/text/markup/html=]].
+
 This module adds utilities to work with XML and HTML. It has been
 inspired by Oleg's SXML package. See more detailed info about SXML can
 be found [[http://okmij.org/ftp/Scheme/xml.html][here]].
@@ -40,7 +42,7 @@ be found [[http://okmij.org/ftp/Scheme/xml.html][here]].
 ::: tip To use the bindings from this module:
 
 #+begin_src scheme
-(import :std/markup/sxml)
+(import :std/text/markup/sxml)
 #+end_src
 
 ::: 
@@ -64,7 +66,7 @@ There's a lot more detail in the [[https://okmij.org/ftp/Scheme/SXML.html][SMXL 
 simple =<select>= tag.
 
 #+begin_src scheme
-  > (import :std/markup/sxml)
+  > (import :std/text/markup/sxml)
   > (begin (write-sxml '(select (@ (name "Examiner"))
     (option (@ (value "1")) "Mr. Scruff") 
     (option (@ (value "2")) "Beetlejuice"))

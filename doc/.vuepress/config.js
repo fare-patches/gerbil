@@ -90,8 +90,7 @@ module.exports = {
 			  children: [
 			      "markup/sxml/",
 			      "markup/sxml/xml",
-			      "markup/sxml/html/",
-			      "markup/sxml/tal/"
+			      "markup/sxml/html/"
 			  ]
 		      },
 

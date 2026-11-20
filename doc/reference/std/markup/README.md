@@ -1,7 +1,5 @@
 # Markup Languages
 
-Gerbil supports many different markup languages using [SXML](README.md) for parsing, searching, manipulating and printing.
+The XML, HTML, TAL and Djot modules are documented beside their sources in `src/std/text/markup` (`xml.md`, `html.md`, `tal.md`, `djot.md`).
 
--   **[XML](sxml/xml.md) :** eXtensible Markup Language
--   **[HTML](sxml/html/README.md):** Hyper Text Markup Language
--   **[TAL](sxml/tal/README.md) :** Template Attribute Language
+-   **[SXML](sxml/README.md) :** the deprecated S-expression XML and HTML modules, `:std/text/markup/sxml`

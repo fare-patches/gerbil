@@ -20,13 +20,15 @@
 :CUSTOM_ID: xml-extensible-markup-language
 :END:
 
+*Deprecated:* kept as =:std/text/markup/sxml=; use the typed [[file:../xml.md][=:std/text/markup/xml=]] and [[file:../html.md][=:std/text/markup/html=]].
+
 The module provides XML parsing and printing procedures. It also
 exports the [[file:README.org][SXML]] procedures.
 
 ::: tip To use the bindings from this module:
 
 #+begin_src scheme
-(import :std/markup/xml)
+(import :std/text/markup/sxml)
 #+end_src
 
 :::
@@ -54,7 +56,7 @@ swapped. Signals an error on invalid /source/ value.
 ::: tip Examples
 
 #+begin_src scheme
-> (import :std/markup/xml)
+> (import :std/text/markup/sxml)
 > (read-xml "<foo><element id=\"1\">foobar</element><element id=\"2\">barbaz</element></foo>")
 (*TOP* (foo (element (@ (id "1")) "foobar") (element (@ (id "2")) "barbaz")))
 #+end_src

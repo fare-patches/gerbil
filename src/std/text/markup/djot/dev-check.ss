@@ -27,7 +27,7 @@
          (unless (and (string=? html (djot->html located))
                       (string=? html (djot->html plain))
                       (string=? html (djot->html located))
-                      (equal? (djot->sxml plain) (djot->sxml located))
+                      (equal? (write-djot-html 'u8vector located) (string->utf8 html))
                       (string=? plain-before (snapshot plain))
                       (string=? located-before (snapshot located)))
            (error "Djot rendering changed with locations, repetition or mutation"

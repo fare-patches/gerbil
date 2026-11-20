@@ -3,7 +3,10 @@
 (import (only-in :gerbil/core/runtime char-set:punctuation char-set-contains?)
         :std/test
         :std/io
-        :std/text/markup/sxml
+        (only-in :std/error contract-violation-error?)
+        :std/text/markup/xml/types
+        (only-in :std/text/markup/html/types HTMLRaw HTMLRaw?)
+        (only-in :std/text/markup/html/writer html->string)
         ./djot
         (only-in ./djot/inline parse-inlines make-source-slice)
         (only-in ./djot/attributes merge-attribute-groups new-attribute-parser
@@ -49,6 +52,59 @@
            (string? (error-trace exception))
            (> (string-length (error-trace exception)) 0)))
     (lambda () => :boolean (thunk) #f)))
+
+;;; An HTML node as an S-expression for structural checks: elements as
+;;; (tag (@ (name value) ...) child ...), text as a string, raw HTML as
+;;; (*raw* data).
+(def (node-sexp (node : :t)) => :t
+  (cond
+   ((XMLText? node)
+    (using (node :- XMLText) node.data))
+   ((HTMLRaw? node)
+    (using (node :- HTMLRaw) ['*raw* node.data]))
+   ((XMLElement? node)
+    (using (node :- XMLElement)
+      (cons (string->symbol node.name.local)
+            (cons (cons '@ (map attribute-sexp node.attributes))
+                  (map node-sexp node.children)))))
+   (else node)))
+
+(def (attribute-sexp (attribute : XMLAttribute)) => :list
+  [(string->symbol attribute.name.local) attribute.value])
+
+(def (fragment-sexp (document : djot-document)) => :list
+  (map node-sexp (djot->html-fragment document)))
+
+;;; The elements named tag in nodes and their descendants, in document order.
+(def (elements-named (tag   : :string)
+                     (nodes : :list)) => :list
+  (reverse
+   (let walk ((nodes nodes) (found []))
+     (foldl (lambda (node found)
+              (if (XMLElement? node)
+                (using (node :- XMLElement)
+                  (walk node.children
+                        (if (string=? node.name.local tag)
+                          (cons node found) found)))
+                found))
+            found nodes))))
+
+(def (element-sexps (tag      : :string)
+                    (document : djot-document)) => :list
+  (map node-sexp (elements-named tag (djot->html-fragment document))))
+
+;;; The attributes named name (any name when #f) of the elements named tag.
+(def (attribute-sexps (tag      : :string)
+                      (name     : :t)
+                      (document : djot-document)) => :list
+  (foldr (lambda ((element : XMLElement) found)
+           (append (filter-map (lambda ((attribute : XMLAttribute))
+                                 (and (or (not name)
+                                          (string=? name attribute.name.local))
+                                      (attribute-sexp attribute)))
+                               element.attributes)
+                   found))
+         [] (elements-named tag (djot->html-fragment document))))
 
 (def djot-inline-test
   (test-suite "Djot inlines"
@@ -459,7 +515,7 @@
                      (if (fxzero? remaining) node
                        (wrap (fx- remaining 1) (make-djot-emph [] [] #f [node])))))
              (document (make-djot-document [] [] #f [node] [] [] [])))
-        (check (resource-error-details? (lambda () (djot->sxml document))
+        (check (resource-error-details? (lambda () (djot->html-fragment document))
                                        "Djot rendering nesting limit exceeded") => #t)))
 
     (test-case "pure inline nesting is bounded without rejecting unmatched openers"
@@ -780,7 +836,7 @@
     (test-case "empty document"
       (check (djot-container-children (string->djot "")) => [])
       (check (djot->html (string->djot "")) => "")
-      (check (djot->sxml (string->djot "")) => '(*TOP*)))
+      (check (djot->html-fragment (string->djot "")) => []))
 
     (test-case "blank lines do not create paragraphs"
       (check (djot->html (string->djot " \t\r\n\n  \n")) => ""))
@@ -808,8 +864,28 @@
       (check (djot->html (string->djot "<tag> &amp; &"))
              => "<p>&lt;tag&gt; &amp;amp; &amp;</p>\n"))
 
-    (test-case "SXML carries text rather than preescaped HTML"
-      (check (djot->sxml (string->djot "<&>")) => '(*TOP* (p (@) "<&>") "\n")))
+    (test-case "HTML nodes carry text rather than preescaped HTML"
+      (check (fragment-sexp (string->djot "<&>")) => '((p (@) "<&>") "\n")))
+
+    (test-case "U+0000 in text and attribute values renders as U+FFFD"
+      (check (djot->html (string->djot "a\x0;b [x]{k=\"c\x0;d\"}"))
+             => "<p>a\xfffd;b <span k=\"c\xfffd;d\">x</span></p>\n")
+      (check (djot->html (string->djot "`a\x0;`{=html}")) => "<p>a\x0;</p>\n")
+      (for-each
+       (lambda ((k : :fixnum)) => :void
+         (let (text (string-append (make-string k #\a) "\x0;" (make-string (- 19 k) #\b)))
+           (check (djot->html (string->djot text))
+                  => (string-append "<p>" (make-string k #\a) "\xfffd;" (make-string (- 19 k) #\b)
+                                    "</p>\n"))))
+       [0 7 8 15 16 19]))
+
+    (test-case "constructed attribute names must be HTML attribute names"
+      (let (document (string->djot "x"))
+        (djot-node-attributes-set!
+         (car (djot-container-children (car (djot-container-children document))))
+         [(make-djot-attribute "a b" "v")])
+        (check-exception (djot->html document) contract-violation-error?)
+        (check-exception (write-djot-html 'string document) contract-violation-error?)))
 
     (test-case "semantic text and metadata"
       (let (document (string->djot "text"))
@@ -859,12 +935,12 @@
              (check (djot-source-range-end (djot-node-source document)) => 2)))
          path)))
 
-    (test-case "locations never enter SXML or HTML and rendering is repeatable"
+    (test-case "locations never enter HTML nodes or HTML and rendering is repeatable"
       (let* ((input "  one\r\n two\n\nthree")
              (plain (string->djot input))
              (located (string->djot input source-locations: #t))
              (before (djot-node-source (first-text located))))
-        (check (djot->sxml located) => (djot->sxml plain))
+        (check (fragment-sexp located) => (fragment-sexp plain))
         (check (djot->html located) => (djot->html plain))
         (check (djot->html located) => (djot->html located))
         (check (djot-node-source (first-text located)) => before)))
@@ -883,11 +959,32 @@
         (check (write-djot-html 'string document) => "<p>a &amp; b</p>\n")
         (check (write-djot-html 'u8vector document) => (string->utf8 "<p>a &amp; b</p>\n"))))
 
+    (test-case "byte port and buffered writer receive the same UTF-8 bytes"
+      (let* ((document (string->djot "a & é🙂 *b*"))
+             (expected (string->utf8 (djot->html document)))
+             (port (open-output-u8vector))
+             (writer (open-buffered-writer #f)))
+        (write-djot-html port document)
+        (write-djot-html writer document)
+        (check (get-output-u8vector port) => expected)
+        (check (get-memory-output-u8vector writer) => expected)))
+
     (test-case "output port remains open"
       (let (port (open-output-string))
         (write-djot-html port (string->djot "hello"))
         (display "tail" port)
         (check (get-output-string port) => "<p>hello</p>\ntail")))
+
+    (test-case "a rendering error writes nothing"
+      ;; the lone surrogate fails after more than a Writer chunk of output
+      (let ((document (string->djot (string-append (make-string 200000 #\a) "\n\nb"
+                                                   (string (##integer->char #xd800)))))
+            (port (open-output-u8vector))
+            (writer (open-buffered-writer #f)))
+        (check-exception (write-djot-html port document) contract-violation-error?)
+        (check-exception (write-djot-html writer document) contract-violation-error?)
+        (check (u8vector-length (get-output-u8vector port)) => 0)
+        (check (u8vector-length (get-memory-output-u8vector writer)) => 0)))
 
     (test-case "ordered string-keyed attributes and explicit override"
       (let* ((paragraph (make-djot-paragraph
@@ -945,7 +1042,7 @@
       (check (char-set-contains? char-set:punctuation (integer->char #x2014)) => #t)
       (check (char-set-contains? char-set:punctuation #\a) => #f)
       (check-exception (char-set-contains? #f #\!) type-exception?))
-    (test-case "Djot HTML uses shared SXML escaping for public ASTs"
+    (test-case "Djot HTML escapes public ASTs and keeps raw HTML"
       (let* ((payload "<&>\"'é🙂")
              (attributes [(make-djot-attribute "123" payload)
                           (make-djot-attribute "title" payload)])
@@ -958,21 +1055,16 @@
                              (make-djot-hard-break [] [] #f)])
                           (make-djot-thematic-break [] [] #f)
                           (make-djot-heading [] [] #f [(make-djot-text [] [] #f payload)] 7)]
-                         [] [] []))
-             (port (open-output-string)))
-        (write-sxml (cdr (djot->sxml document)) port: port xml?: #f indent: #f)
-        (check (djot->html document) => (get-output-string port))
+                         [] [] [])))
+        (check (djot->html document)
+               => "<p><span 123=\"&lt;&amp;&gt;&quot;'é🙂\" title=\"&lt;&amp;&gt;&quot;'é🙂\">&lt;&amp;&gt;\"'é🙂</span><img alt=\"&lt;&amp;&gt;&quot;'é🙂\" src=\"&lt;&amp;&gt;&quot;'é🙂\" 123=\"&lt;&amp;&gt;&quot;'é🙂\" title=\"&lt;&amp;&gt;&quot;'é🙂\"><b>raw</b><br>\n</p>\n<hr>\n<h7>&lt;&amp;&gt;\"'é🙂</h7>\n")
         (check (djot->html (make-djot-document [] [] #f
                             [(make-djot-paragraph [] [] #f
                                [(make-djot-text attributes [] #f payload)])] [] [] []))
                => "<p><span 123=\"&lt;&amp;&gt;&quot;'é🙂\" title=\"&lt;&amp;&gt;&quot;'é🙂\">&lt;&amp;&gt;\"'é🙂</span></p>\n")))
-    (test-case "Djot HTML preserves customized SXML tag policies"
-      (let ((document (string->djot "*x* & <tag>\n"))
-            (port (open-output-string)))
-        (parameterize ((current-html-void-tags '(p))
-                       (current-html-raw-tags '(strong)))
-          (write-sxml (cdr (djot->sxml document)) port: port xml?: #f indent: #f)
-          (check (djot->html document) => (get-output-string port)))))
+    (test-case "Djot HTML writes void elements without end tags and escapes text in every element"
+      (check (djot->html (string->djot "- [x] *x* & <tag>\\\nb ![i](s) `a<&`\n\n***\n\n<s>\n"))
+             => "<ul class=\"task-list\">\n<li>\n<input disabled=\"\" type=\"checkbox\" checked=\"\">\n<strong>x</strong> &amp; &lt;tag&gt;<br>\nb <img alt=\"i\" src=\"s\"> <code>a&lt;&amp;</code>\n</li>\n</ul>\n<hr>\n<p>&lt;s&gt;</p>\n"))
     (test-case "attribute index promotion preserves order replacement and classes"
       (check (attribute-values (first-inline
                "[x]{a=0 b=1 c=2 d=3 e=4 f=5 g=6 h=7 i=8 .one .two a=last}"))
@@ -1056,10 +1148,10 @@
          (let (input (string-append "|a|b|\n|---|" padding ":---:|\n|c|d|"))
            (check (djot->html (string->djot input))
              => "<table>\n<tr>\n<th>a</th>\n<th style=\"text-align: center;\">b</th>\n</tr>\n<tr>\n<td>c</td>\n<td style=\"text-align: center;\">d</td>\n</tr>\n</table>\n")
-           (check ((sxpath '(// th)) (djot->sxml (string->djot input source-locations: #t)))
+           (check (element-sexps "th" (string->djot input source-locations: #t))
              => '((th (@) "a") (th (@ (style "text-align: center;")) "b"))))
-         (check ((sxpath '(// th))
-                 (djot->sxml (string->djot (string-append "|a|b|\n|" padding "---|---|\n|c|d|"))))
+         (check (element-sexps "th"
+                 (string->djot (string-append "|a|b|\n|" padding "---|---|\n|c|d|")))
            => []))
        [" " "\t"]))
 
@@ -1069,7 +1161,7 @@
          (let* ((doc (string->djot (car example)))
                 (before (document-snapshot doc)))
            (check (djot->html doc) => (cadr example))
-           (check ((sxpath '(// p)) (djot->sxml doc)) => (caddr example))
+           (check (element-sexps "p" doc) => (caddr example))
            (check (document-snapshot doc) => before)))
        '(("[x][r]\n\n{href=override}\n[r]: /original"
           "<p><a href=\"override\">x</a></p>\n"
@@ -1098,7 +1190,7 @@
             (let* ((doc (string->djot (car example) source-locations: located?))
                    (before (document-snapshot doc)))
               (check (djot->html doc) => (cadr example))
-              (check ((sxpath '(// a)) (djot->sxml doc)) => (caddr example))
+              (check (element-sexps "a" doc) => (caddr example))
               (check (djot->html doc) => (cadr example))
               (check (document-snapshot doc) => before)))
           '(#f #t)))
@@ -1110,15 +1202,15 @@
           ((a (@ (href "mailto:me@example.org")) "me@example.org")))
          ("a[^n]{id=custom href=override role=custom ID=other HREF=other ROLE=other title=keep .custom} b[^n]{id=second href=override role=custom}\n\n[^n]: note"
           "<p>a<a id=\"fnref1\" href=\"#fn1\" role=\"doc-noteref\" title=\"keep\" class=\"custom\"><sup>1</sup></a> b<a href=\"#fn1\" role=\"doc-noteref\" id=\"second\"><sup>1</sup></a></p>\n<section role=\"doc-endnotes\">\n<hr>\n<ol>\n<li id=\"fn1\">\n<p>note<a href=\"#fnref1\" role=\"doc-backlink\">↩︎</a></p>\n</li>\n</ol>\n</section>\n"
-          ((a (@ (id "fnref1") (href "#fn1") (role "doc-noteref") (title "keep") (class "custom")) (sup "1"))
-           (a (@ (href "#fn1") (role "doc-noteref") (id "second")) (sup "1"))
+          ((a (@ (id "fnref1") (href "#fn1") (role "doc-noteref") (title "keep") (class "custom")) (sup (@) "1"))
+           (a (@ (href "#fn1") (role "doc-noteref") (id "second")) (sup (@) "1"))
            (a (@ (href "#fnref1") (role "doc-backlink")) "↩︎"))))))
 
     (test-case "HTML attribute names differing only by ASCII case keep the first value"
       (let* ((doc (string->djot "x{title=first TITLE=second}"))
              (before (document-snapshot doc)))
         (check (djot->html doc) => "<p><span title=\"first\">x</span></p>\n")
-        (check ((sxpath '(// span @ *)) (djot->sxml doc)) => '((title "first")))
+        (check (attribute-sexps "span" #f doc) => '((title "first")))
         (check (document-snapshot doc) => before)))
 
     (test-case "HTML attribute case folding preserves distinct non-ASCII constructed names"
@@ -1128,41 +1220,40 @@
           [(make-djot-attribute "Ä" "first") (make-djot-attribute "ä" "second")])
         (let (before (document-snapshot doc))
           (check (djot->html doc) => "<p><span Ä=\"first\" ä=\"second\">x</span></p>\n")
-          (check ((sxpath '(// span @ *)) (djot->sxml doc)) => '((Ä "first") (ä "second")))
+          (check (attribute-sexps "span" #f doc) => '((Ä "first") (ä "second")))
           (check (document-snapshot doc) => before))))
 
-    (test-case "arbitrary-level headings have canonical repeatable SXML tags"
+    (test-case "arbitrary-level headings have canonical repeatable HTML tags"
       (for-each
        (lambda ((level : :fixnum)) => :void
          (let* ((input (string-append (make-string level #\#) " high"))
                 (doc (string->djot input))
                 (before (document-snapshot doc))
-                (sxml (djot->sxml doc))
-                (tag (string->symbol (string-append "h" (number->string level)))))
-           (check (djot->sxml doc) => sxml)
-           (check (djot->sxml (string->djot input source-locations: #t)) => sxml)
-           (check ((sxpath ['// tag]) sxml) => [[tag ['@] "high"]])
+                (nodes (fragment-sexp doc))
+                (tag (string-append "h" (number->string level))))
+           (check (fragment-sexp doc) => nodes)
+           (check (fragment-sexp (string->djot input source-locations: #t)) => nodes)
+           (check (element-sexps tag doc) => [[(string->symbol tag) ['@] "high"]])
            (check (document-snapshot doc) => before)))
        [8 32]))
 
-    (test-case "SXML attributes support standard ID class and custom-name selectors"
+    (test-case "HTML element attributes keep ID class and custom names, in ASCII lower case"
       (let* ((input "{#example .note title=hello data-Custom=value}\ntext")
              (doc (string->djot input))
              (before (document-snapshot doc))
-             (sxml (djot->sxml doc))
-             (paragraph (car ((sxpath '(// p)) sxml))))
-        (check (sxml-attributes paragraph)
-          => '((id "example") (class "note") (title "hello") (data-Custom "value")))
-        (check (sxml-attribute-e paragraph 'id) => "example")
-        (check ((sxml-id? "example") paragraph) => #t)
-        (check ((sxml-class? "note") paragraph) => #t)
-        (check (sxml-attribute-e paragraph 'data-Custom) => "value")
-        (check ((sxpath '(// p @ id)) sxml) => '((id "example")))
-        (check ((sxpath '(// p @ data-Custom)) sxml) => '((data-Custom "value")))
-        (check (djot->sxml doc) => sxml)
-        (check (djot->sxml (string->djot input source-locations: #t)) => sxml)
+             (nodes (fragment-sexp doc))
+             (paragraph (car (elements-named "p" (djot->html-fragment doc)))))
+        (check (attribute-sexps "p" #f doc)
+          => '((id "example") (class "note") (title "hello") (data-custom "value")))
+        (check (xml-element-attribute-value paragraph "id") => "example")
+        (check (xml-element-attribute-value paragraph "class") => "note")
+        (check (xml-element-attribute-value paragraph "data-custom") => "value")
+        (check (attribute-sexps "p" "id" doc) => '((id "example")))
+        (check (attribute-sexps "p" "data-custom" doc) => '((data-custom "value")))
+        (check (fragment-sexp doc) => nodes)
+        (check (fragment-sexp (string->djot input source-locations: #t)) => nodes)
         (check (djot->html doc)
-          => "<p id=\"example\" class=\"note\" title=\"hello\" data-Custom=\"value\">text</p>\n")
+          => "<p id=\"example\" class=\"note\" title=\"hello\" data-custom=\"value\">text</p>\n")
         (check (attribute-values (car (djot-container-children doc)))
           => '(("id" "example") ("class" "note") ("title" "hello") ("data-Custom" "value")))
         (check (document-snapshot doc) => before)))
@@ -1175,15 +1266,15 @@
                 (located (string->djot input source-locations: #t))
                 (before (document-snapshot doc))
                 (located-before (document-snapshot located))
-                (sxml (djot->sxml doc))
+                (nodes (fragment-sexp doc))
                 (key (string->symbol name))
-                (span (car ((sxpath '(// span)) sxml)))
+                (span (car (elements-named "span" (djot->html-fragment doc))))
                 (html (string-append "<p><span " name "=\"v\">x</span></p>\n")))
-           (check (sxml-attributes span) => [[key "v"]])
-           (check (sxml-attribute-e span key) => "v")
-           (check ((sxpath ['// 'span '@ key]) sxml) => [[key "v"]])
-           (check (djot->sxml doc) => sxml)
-           (check (djot->sxml located) => sxml)
+           (check (attribute-sexps "span" #f doc) => [[key "v"]])
+           (check (xml-element-attribute-value span name) => "v")
+           (check (attribute-sexps "span" name doc) => [[key "v"]])
+           (check (fragment-sexp doc) => nodes)
+           (check (fragment-sexp located) => nodes)
            (check (djot->html doc) => html)
            (check (djot->html doc) => html)
            (check (djot->html located) => html)
@@ -1194,17 +1285,16 @@
            (check (document-snapshot located) => located-before)))
        ["123" "a:"]))
 
-    (test-case "direct task code and note SXML attributes use canonical names"
-      (let (sxml (djot->sxml
-                 (string->djot "- [x] task\n\n``` scheme\ncode\n```\n\na[^n]\n\n[^n]: note")))
-        (check ((sxpath '(// input @ *)) sxml) => '((disabled "") (type "checkbox") (checked "")))
-        (check ((sxpath '(// code @ class)) sxml) => '((class "language-scheme")))
-        (check ((sxpath '(// section @ role)) sxml) => '((role "doc-endnotes")))
-        (check ((sxpath '(// li @ id)) sxml) => '((id "fn1")))
-        (check ((sxpath '(// a @ href)) sxml) => '((href "#fn1") (href "#fnref1")))
-        (check ((sxpath '(// a @ role)) sxml) => '((role "doc-noteref") (role "doc-backlink")))))
+    (test-case "direct task code and note HTML attributes use canonical names"
+      (let (doc (string->djot "- [x] task\n\n``` scheme\ncode\n```\n\na[^n]\n\n[^n]: note"))
+        (check (attribute-sexps "input" #f doc) => '((disabled "") (type "checkbox") (checked "")))
+        (check (attribute-sexps "code" "class" doc) => '((class "language-scheme")))
+        (check (attribute-sexps "section" "role" doc) => '((role "doc-endnotes")))
+        (check (attribute-sexps "li" "id" doc) => '((id "fn1")))
+        (check (attribute-sexps "a" "href" doc) => '((href "#fn1") (href "#fnref1")))
+        (check (attribute-sexps "a" "role" doc) => '((role "doc-noteref") (role "doc-backlink")))))
 
-    (test-case "HTML agrees with SXML across nested mixed content and notes"
+    (test-case "HTML agrees with HTML nodes and writers across nested mixed content and notes"
       (for-each
        (lambda ((prefix : :string)) => :void
          (for-each
@@ -1216,13 +1306,12 @@
                   (let* ((document (string->djot (string-append prefix body notes)
                                      source-locations: located?))
                          (before (document-snapshot document))
-                         (sxml (djot->sxml document))
-                         (port (open-output-string)))
-                    (write-sxml (cdr sxml) port: port xml?: #f indent: #f)
-                    (let (expected (get-output-string port))
-                      (check (djot->html document) => expected)
-                      (check (djot->html document) => expected))
-                    (check (djot->sxml document) => sxml)
+                         (nodes (fragment-sexp document))
+                         (expected (html->string (djot->html-fragment document))))
+                    (check (djot->html document) => expected)
+                    (check (djot->html document) => expected)
+                    (check (write-djot-html 'u8vector document) => (string->utf8 expected))
+                    (check (fragment-sexp document) => nodes)
                     (check (document-snapshot document) => before)))
                 '(#f #t)))
              ["" "\n\na[^a] b[^a] [^missing]\n\n[^a]: para *one*\n\n    para two [^b]\n\n[^b]: nested [^a]\n\n[^unused]: [^c]\n\n[^c]: unused discovery\n"
@@ -1296,10 +1385,9 @@
       (for-each
        (lambda ((ending : :string)) => :void
          (let* ((input (string-append "> [é 🙂]{title=\"one" ending "> two\\" ending "> three\"}"))
-                (document (string->djot input source-locations: #t))
-                (port (open-output-string)))
-           (write-sxml (cdr (djot->sxml document)) port: port xml?: #f indent: #f)
-           (check (djot->html document) => (get-output-string port))
+                (document (string->djot input source-locations: #t)))
+           (check (djot->html document)
+                  => "<blockquote>\n<p><span title=\"one two\\ three\">é 🙂</span></p>\n</blockquote>\n")
            (check (djot->html document) => (djot->html (string->djot input)))))
        ["\n" "\r\n"]))
 
@@ -1366,7 +1454,7 @@
         (check [(djot-source-range-start source) (djot-source-range-end source)] => [2 6])
         (check (djot-source-range-end (djot-node-source doc)) => (string-length input))
         (check (djot->html doc) => (djot->html (string->djot input)))
-        (djot->sxml doc)
+        (djot->html-fragment doc)
         (string->djot input)
         (check (document-snapshot doc) => before)))
 
@@ -1379,14 +1467,13 @@
         (check (resource-error-details? (lambda () (string->djot excess))
                  "Djot nesting limit exceeded") => #t)))
 
-    (test-case "unknown headings preserve SXML structure and following output"
+    (test-case "unknown headings preserve HTML structure and following output"
       (let* ((document (string->djot "_before_\n\n# head\n\n_after_"))
              (section (cadr (djot-container-children document)))
-             (heading (car (djot-container-children section)))
-             (port (open-output-string)))
+             (heading (car (djot-container-children section))))
         (djot-heading-level-set! heading 9)
-        (write-sxml (cdr (djot->sxml document)) port: port xml?: #f indent: #f)
-        (check (djot->html document) => (get-output-string port))))
+        (check (djot->html document)
+               => "<p><em>before</em></p>\n<section id=\"head\">\n<h9>head</h9>\n<p><em>after</em></p>\n</section>\n")))
 
     (test-case "failed rendering does not write a partial document to the caller's port"
       (let* ((document (string->djot "good\n\nbad"))
@@ -1418,8 +1505,8 @@
                    (before (document-snapshot doc))
                    (expected "<p>text<a id=\"fnref1\" href=\"#fn1\" role=\"doc-noteref\"><sup>1</sup></a></p>\n<section role=\"doc-endnotes\">\n<hr>\n<ol>\n<li id=\"fn1\">\n<p>used<a href=\"#fnref1\" role=\"doc-backlink\">↩︎</a></p>\n</li>\n</ol>\n</section>\n"))
               (check (djot->html doc) => expected)
-              (check ((sxpath '(// li @ id)) (djot->sxml doc)) => '((id "fn1")))
-              (check ((sxpath '(// a @ href)) (djot->sxml doc))
+              (check (attribute-sexps "li" "id" doc) => '((id "fn1")))
+              (check (attribute-sexps "a" "href" doc)
                 => '((href "#fn1") (href "#fnref1")))
               (check (djot->html doc) => expected)
               (check (document-snapshot doc) => before)))
@@ -1443,29 +1530,28 @@
                   "<li id=\"fn3\">\n<p>nested<a id=\"fnref4\" href=\"#fn4\" role=\"doc-noteref\"><sup>4</sup></a><a href=\"#fnref3\" role=\"doc-backlink\">↩︎</a></p>\n</li>\n"
                   "<li id=\"fn4\">\n<p>leaf<a href=\"#fn1\" role=\"doc-noteref\"><sup>1</sup></a><a href=\"#fnref4\" role=\"doc-backlink\">↩︎</a></p>\n</li>\n"
                   "</ol>\n</section>\n"))
-                (sxml (djot->sxml doc)))
+                (nodes (fragment-sexp doc)))
            (check (djot->html doc) => expected)
-           (check ((sxpath '(// li @ id)) sxml)
+           (check (attribute-sexps "li" "id" doc)
              => '((id "fn1") (id "fn2") (id "fn3") (id "fn4")))
-           (check ((sxpath '(// a @ id)) sxml)
+           (check (attribute-sexps "a" "id" doc)
              => '((id "fnref1") (id "fnref2") (id "fnref3") (id "fnref4")))
-           (check ((sxpath '(// a @ href)) sxml)
+           (check (attribute-sexps "a" "href" doc)
              => '((href "#fn1") (href "#fn2") (href "#fn3") (href "#fnref1")
                   (href "#fnref2") (href "#fn4") (href "#fnref3") (href "#fn1") (href "#fnref4")))
-           (check (djot->sxml doc) => sxml)
+           (check (fragment-sexp doc) => nodes)
            (check (djot->html doc) => expected)
            (check (document-snapshot doc) => before)))
        '(#f #t)))
 
     (test-case "reachable undefined notes retain placeholder backlinks"
-      (let* ((doc (string->djot "text[^a]\n\n[^a]: missing[^undefined]"))
-             (sxml (djot->sxml doc)))
-        (check ((sxpath '(// li @ id)) sxml) => '((id "fn1") (id "fn2")))
-        (check ((sxpath '(// li)) sxml)
+      (let (doc (string->djot "text[^a]\n\n[^a]: missing[^undefined]"))
+        (check (attribute-sexps "li" "id" doc) => '((id "fn1") (id "fn2")))
+        (check (element-sexps "li" doc)
           => '((li (@ (id "fn1")) "\n"
-                (p (@) "missing" (a (@ (id "fnref2") (href "#fn2") (role "doc-noteref")) (sup "2"))
+                (p (@) "missing" (a (@ (id "fnref2") (href "#fn2") (role "doc-noteref")) (sup (@) "2"))
                    (a (@ (href "#fnref1") (role "doc-backlink")) "↩︎")) "\n")
-               (li (@ (id "fn2")) "\n" (p (a (@ (href "#fnref2") (role "doc-backlink")) "↩︎")) "\n")))))
+               (li (@ (id "fn2")) "\n" (p (@) (a (@ (href "#fnref2") (role "doc-backlink")) "↩︎")) "\n")))))
 
     (test-case "raw HTML alone bypasses ordinary escaping and rendering is intentionally unsanitized"
       (check (djot->html (string->djot "<b> &amp; `a<&` `ignored`{=latex} `<b>raw</b>`{=html}"))

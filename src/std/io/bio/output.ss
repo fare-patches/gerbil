@@ -1,7 +1,9 @@
 ;;; -*- Gerbil -*-
 ;;; © vyzo
 ;;; buffered output
-(import ../interface
+(import :std/error
+        ../interface/base
+        ../interface/bio
         ./types
         ./buffer
         ./cache
@@ -97,3 +99,40 @@
          (when exn (raise exn))))))
   ((_ output-buffer)
    (__bio-close-output __bio-output-buffer-close __bio-output-buffer-drain!)))
+
+;; Ensures room for n bytes at whi and returns the u8vector that holds
+;; [whi, whi + n), the buffer's buf; the caller writes the bytes there and
+;; advances whi. When the room is short, a buffer other than a memory buffer
+;; is drained first, which moves whi to 0 (a string port buffer keeps a
+;; partial UTF-8 sequence at [0, whi)), and the buffer then grows if it
+;; still lacks the room, keeping [0, whi); a memory buffer only grows, so it
+;; keeps all of its output. The vector and the range are valid until the
+;; next operation on the buffer (write, write-u8, flush, drain! or another
+;; reserve), which may replace buf or move its bytes. A request for a
+;; buffer past the fixnum range raises ContractViolation.
+;; A grown buffer is a new one, not one from the buffer cache: growing
+;; memory buffers through the cache took 7 times the page faults, 5 times
+;; the kernel cycles and 20% to 30% more cycles in all writing a large
+;; HTML document into memory (:std/text/markup's markup-benchmark.ss mode
+;; html-write-elements, SIZE 1000, ITERATIONS 300).
+(def (bio-output-reserve! (bio : basic-output-buffer)
+                          (n   :~ nonnegative-fixnum? :- :fixnum))
+  => :u8vector
+  (__check-buffer-open! bio-output-reserve! bio)
+  (when (fx> n (fx- (u8vector-length bio.buf) bio.whi))
+    (when (and (fx> bio.whi 0) (not (memory-output-buffer? bio)))
+      (__bio-output-buffer-drain! bio bio.buf bio.whi))
+    (let ((buf bio.buf)
+          (whi bio.whi))
+      (when (fx> n (fx- (u8vector-length buf) whi))
+        ;; generic arithmetic, so that the size cannot wrap
+        (let (size (max (+ whi n) (* 2 (u8vector-length buf))))
+          (unless (fixnum? size)
+            (raise-bad-argument bio-output-reserve! "buffer size" n))
+          (let (new-buf (make-u8vector size))
+            (subu8vector-move! buf 0 whi new-buf 0)
+            (when bio.cached?
+              (buffer-cache.put! buf))
+            (set! bio.buf new-buf)
+            (set! bio.cached? #f))))))
+  bio.buf)

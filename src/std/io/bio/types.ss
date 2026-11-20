@@ -1,7 +1,8 @@
 ;;; -*- Gerbil -*-
 ;;; © vyzo
 ;;; buffer types
-(import ../interface)
+(import ../interface/base
+        ../interface/bio)
 (export #t)
 
 (defstruct basic-buffer

@@ -8,9 +8,9 @@
         :std/interface
         :std/net/http/client
         :std/net/url
-        :std/text/markup/xml
         :std/time/date
         ./interface
+        ./response
         ./sigv4)
 (export s3-client
         s3-client-error?)
@@ -71,16 +71,9 @@
 
 (defmethod {list-buckets s3-client-impl}
   (lambda (self)
-    (let* ((request (s3-request/error self verb: 'GET))
-           (xml (s3-parse-xml request))
-           (buckets-node
-            (sxml-find xml (sxml-e? 's3:Buckets))))
-      (if buckets-node
-        (map (lambda (node)
-               (let (name (sxml-find node (sxml-e? 's3:Name) cadr))
-                 (make-client-bucket self name)))
-             (sxml-select* buckets-node (sxml-e? 's3:Bucket)))
-        [])))
+    (let (request (s3-request/error self verb: 'GET))
+      (map (lambda (name) (make-client-bucket self name))
+           (s3-bucket-names (s3-response-root (Request-content request))))))
   interface: S3Client)
 
 (defmethod {create-bucket! s3-client-impl}
@@ -127,10 +120,9 @@
 
 (defmethod {list-objects bucket}
   (lambda (self)
-    (let* ((request
-            (s3-request/error self.client verb: 'GET bucket: self.name))
-           (xml (s3-parse-xml request)))
-      (: (sxml-select xml (sxml-e? 's3:Key) cadr) :list)))
+    (let (request
+          (s3-request/error self.client verb: 'GET bucket: self.name))
+      (s3-object-keys (s3-response-root (Request-content request)))))
   interface: S3Bucket)
 
 (defmethod {get bucket}
@@ -198,13 +190,14 @@
              extra-headers: (list (cons "x-amz-copy-source" source))))
            (status (Request-status request))
            (status-line (Request-status-line request))
-           (xml (s3-parse-xml request))
-           (response-error (s3-response-error xml)))
+           (error-code
+            (s3-response-error-code
+             (s3-response-root (Request-content request)))))
       (cond
-       (response-error
+       (error-code
         (raise-s3-error bucket::copy-to!
                         "Unable to perform server-side copy"
-                        (s3-response-error-code response-error)
+                        error-code
                         status-line))
        ((or (fx< status 200) (fx>= status 300))
         (raise-s3-error bucket::copy-to! status-line status))
@@ -312,21 +305,6 @@
 
 (defrule (s3-request/error self args ...)
   (with-request-error (s3-request self args ...)))
-
-(def (s3-parse-xml (request : Request))
-  (read-xml
-   (Request-content request)
-   namespaces: '(("http://s3.amazonaws.com/doc/2006-03-01/" . "s3")
-                 ("http://doc.s3.amazonaws.com/2006-03-01" . "s3"))))
-
-(def (s3-response-error xml)
-  (or (sxml-find xml (sxml-e? 'Error))
-      (sxml-find xml (sxml-e? 's3:Error))))
-
-(def (s3-response-error-code xml)
-  (or (sxml-find xml (sxml-e? 'Code) cadr)
-      (sxml-find xml (sxml-e? 's3:Code) cadr)
-      "Unknown"))
 
 (def (with-request-error (request : Request))
   => Request

@@ -2,7 +2,8 @@
 ;;; © vyzo
 ;;; utility macros
 (import :std/error
-        ../interface
+        ../interface/base
+        ../interface/bio
         ./types)
 (export #t)
 

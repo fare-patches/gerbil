@@ -19,11 +19,11 @@
 
 (def (open-detachable-reader (reader : Reader))
   => Reader
-  (Reader (detachable-reader #f reader)))
+  (Reader (detachable-reader reader: reader)))
 
 (def (open-detachable-writer (writer : Writer))
   => Writer
-  (Writer (detachable-writer #f writer)))
+  (Writer (detachable-writer writer: writer)))
 
 (def (detachable-io-detach! (self : detachable-io))
   (unless self.detached?

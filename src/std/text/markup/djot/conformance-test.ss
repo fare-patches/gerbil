@@ -161,8 +161,8 @@
 (def (fixture-expected (fixture : djot-fixture)) => :t
   (if (fixture-option? fixture #\a)
     (ast-expectation fixture)
-    ;; Only these three cases use XML-style checkbox endings. The existing SXML
-    ;; HTML printer emits HTML void tags; no other expected bytes are adapted.
+    ;; Only these three cases use XML-style checkbox endings. The HTML writer
+    ;; emits HTML void tags; no other expected bytes are adapted.
     (if (and (string=? (djot-fixture-file fixture) "task_lists.test")
              (memv (djot-fixture-line fixture) '(1 17 38)))
       (string-subst

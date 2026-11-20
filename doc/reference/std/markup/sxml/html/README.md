@@ -1,11 +1,13 @@
 # HTML: Hyper Text Markup Language Module
 
+**Deprecated:** kept as `:std/text/markup/sxml`; use the typed `:std/text/markup/xml` and `:std/text/markup/html` (`src/std/text/markup/xml.md`, `html.md`).
+
 HTML is a widely used Markup Language that, while very similar to [XML](./xml.md), differs enough to have its own specific libraries.
 
 ::: tip To use the bindings from this module:
 
 ```scheme
-(import :std/markup/html)
+(import :std/text/markup/sxml)
 ```
 
 :::

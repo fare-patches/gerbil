@@ -1,69 +1,72 @@
+;;; -*- Gerbil -*-
+;;; © Gerbil contributors
+;;; :std/text/markup/html: the facade gives the HTML types, the reader and
+;;; the writer; trees are read with the XML node types' dotted access.
+;;; The modules have their own tests in html/.
+(import :std/test
+        :std/error
+        :std/text/markup/xml
+        :std/text/markup/html)
 (export html-test)
-
-(import :std/test :std/text/markup/html :std/text/markup/sxml)
 
 (def html-test
   (test-suite "test :std/text/markup/html"
-    (test-case "html->sxml parses simple HTML"
-      ; plain text content
-      (check (html->sxml "<p>Hello</p>") => '(*TOP* (p "Hello")))
-      ; nested elements
-      (check (html->sxml "<div><p>One</p><p>Two</p></div>")
-             => '(*TOP* (div (p "One") (p "Two"))))
-      ; void element produces empty element node
-      (check (html->sxml "<br>") => '(*TOP* (br)))
-      ; multiple top-level elements
-      (check (html->sxml "<p>a</p><p>b</p>") => '(*TOP* (p "a") (p "b"))))
+    (test-case "read, inspect and write a document"
+      (using (doc (read-html "<!DOCTYPE html><title>T</title><p class=x>a &amp; b<br>") :- HTMLDocument)
+        (using ((html (cadr doc.children) : XMLElement)
+                (body (cadr html.children) : XMLElement)
+                (p (car body.children) : XMLElement)
+                (doctype (html-document-doctype doc) :? HTMLDoctype))
+          (check (and doctype doctype.name) => "html")
+          (check (and doctype doctype.public-id) => #f)
+          (check p.name.local => "p")
+          (check p.name.uri => "")
+          (check (xml-element-attribute-value p "class") => "x")
+          (check (html->string doc)
+                 => "<!DOCTYPE html><html><head><title>T</title></head><body><p class=\"x\">a &amp; b<br></p></body></html>")
+          (check (html->u8vector p) => (string->utf8 "<p class=\"x\">a &amp; b<br></p>"))
+          (check (call-with-output-string "" (cut write-html p <>)) => "<p class=\"x\">a &amp; b<br></p>")))
+      (using (doctype (html-document-doctype (read-html "<p>x")) :? HTMLDoctype)
+        (check (and doctype doctype.name) => #f)))
 
-    (test-case "html->sxml preserves attributes"
-      (let (doc (html->sxml "<div id=\"main\"><p class=\"hi\">text</p></div>"))
-        (check (sxml-attribute-e (cadr doc) 'id) => "main")
-        (check (sxml-attribute-e (car (sxml-children (cadr doc))) 'class) => "hi")))
+    (test-case "the HTML node types share the XML root and stay distinct"
+      (let ((raw (make-html-raw "<b>"))
+            (doctype (make-html-doctype "html"))
+            (doc (make-html-document [])))
+        (check (andmap XML? [raw doctype doc]) => #t)
+        (check (map HTMLRaw? [raw doctype doc]) => [#t #f #f])
+        (check (map HTMLDoctype? [raw doctype doc]) => [#f #t #f])
+        (check (map HTMLDocument? [raw doctype doc]) => [#f #f #t])
+        (check (XMLDoctype? doctype) => #f)
+        (check (map html-node? [raw doctype doc]) => [#t #f #f])))
 
-    (test-case "sxml->html renders simple sxml"
-      (check (sxml->html '(p "Hello")) => "<p>Hello</p>")
-      (check (sxml->html '(div (p "One") (p "Two")))
-             => "<div><p>One</p><p>Two</p></div>")
-      ; void elements have no closing tag in HTML mode
-      (check (sxml->html '(br)) => "<br>")
-      (check (sxml->html '(img)) => "<img>"))
+    (test-case "names, attributes, doctypes and documents are not HTML children"
+      (let* ((name (make-xml-name "p"))
+             (attr (make-html-attribute "class" "x"))
+             (xml-doctype (make-xml-doctype "html"))
+             (doctype (make-html-doctype "html"))
+             (doc (make-html-document [])))
+        (for-each
+         (lambda (x)
+           (check-exception (make-html-element "p" [] [x]) contract-violation-error?)
+           (check-exception (html->string [x]) contract-violation-error?))
+         [name attr xml-doctype doctype doc])
+        ;; a fragment is a proper list
+        (check-exception (html->string (cons (make-xml-text "t") (make-xml-text "u")))
+                         contract-violation-error?)
+        (for-each
+         (lambda (x) (check-exception (make-html-document [x]) contract-violation-error?))
+         [name attr xml-doctype doc])))
 
-    (test-case "sxml->html renders attributes"
-      (check (sxml->html '(a (@ (href "http://example.com")) "link"))
-             => "<a href=\"http://example.com\">link</a>")
-      (check (sxml->html '(input (@ (type "text") (value "x"))))
-             => "<input type=\"text\" value=\"x\">"))
-
-    (test-case "sxml->html escapes special characters in text"
-      (check (sxml->html '(p "foo <bar> & baz")) => "<p>foo &lt;bar&gt; &amp; baz</p>"))
-
-    (test-case "html-escape escapes special chars"
-      (check (html-escape "<b>") => "&lt;b&gt;")
-      (check (html-escape "a & b") => "a &amp; b")
-      (check (html-escape "\"quoted\"") => "&quot;quoted&quot;")
-      (check (html-escape "no special chars") => "no special chars")
-      (check (html-escape "") => ""))
-
-    (test-case "html-strip removes all tags"
-      (check (html-strip "<p>Hello <b>world</b>!</p>") => "Hello world!")
-      (check (html-strip "<div><p>a</p><p>b</p></div>") => "ab")
-      (check (html-strip "no tags") => "no tags"))
-
-    (test-case "html void tag predicate"
-      (check (and (html-void-tag? 'br) #t) => #t)
-      (check (and (html-void-tag? 'img) #t) => #t)
-      (check (and (html-void-tag? 'input) #t) => #t)
-      (check (and (html-void-tag? 'hr) #t) => #t)
-      (check (and (html-void-tag? 'meta) #t) => #t)
-      (check (html-void-tag? 'div) => #f)
-      (check (html-void-tag? 'p) => #f)
-      (check (html-void-tag? 'span) => #f)
-      ; case-insensitive
-      (check (and (html-void-tag? 'BR) #t) => #t)
-      (check (and (html-void-tag? 'Img) #t) => #t))
-
-    (test-case "html raw tag predicate"
-      (check (and (html-raw-tag? 'script) #t) => #t)
-      (check (and (html-raw-tag? 'style) #t) => #t)
-      (check (html-raw-tag? 'div) => #f)
-      (check (html-raw-tag? 'p) => #f))))
+    (test-case "fragments, constructors and html-escape"
+      (check (html->string (read-html-fragment "<td>1<td>2" context: "tr")) => "<td>1</td><td>2</td>")
+      (check (html->string [(make-html-element "svg" [(make-html-attribute "viewBox" "0 0 1 1")]
+                                               [(make-html-raw "<g/>")]
+                                               namespace: svg-namespace-uri)
+                            (make-xml-text "<&")])
+             => "<svg viewBox=\"0 0 1 1\"><g/></svg>&lt;&amp;")
+      (check (html-escape "<a href='x'>&\"") => "&lt;a href=&#39;x&#39;&gt;&amp;&quot;")
+      (check-exception (make-html-element "svg" [] []) contract-violation-error?)
+      (check-exception (html->string (make-html-element "script" [] [(make-xml-text "</script>")]))
+                       contract-violation-error?)
+      (check-exception (read-html (u8vector #xff)) html-parse-error?))))

@@ -18,8 +18,9 @@
 ;;; gxc -O -exe -o /tmp/djot-benchmark src/std/text/markup/djot-benchmark.ss
 ;;; Use ./run.sh gxc instead of gxc in a local build environment.
 ;;; Usage: /tmp/djot-benchmark MODE FILE ITERATIONS (positive fixnum count).
-;;; Modes: parse = preloaded text to AST; render = pre-parsed AST to HTML via SXML;
-;;; full = preloaded text to HTML; read+parse = read whole file/decode/parse each time.
+;;; Modes: parse = preloaded text to AST; render = pre-parsed AST to HTML
+;;; via HTML nodes; full = preloaded text to HTML; read+parse = read whole
+;;; file/decode/parse each time.
 (def (main (mode       : :string)
            (path       : :string)
            (iterations : :string)) => :void
