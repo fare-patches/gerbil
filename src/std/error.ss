@@ -376,7 +376,8 @@
 (def (exit-with-error e)
   (def port (current-error-port))
   (defrules ignore-errors () ((_ body ...) (with-catch void (lambda () body ...))))
-  (ignore-errors (force-output port))
+  ;; Flush pending output first, so it precedes the error message.
+  (force-current-outputs)
   (ignore-errors (display-build-manifest (build-manifest) port))
   (ignore-errors (newline port))
   (ignore-errors (display-exception e port))
@@ -386,7 +387,8 @@
    (when (and (dump-stack-trace?) (StackTrace? e))
      (parameterize ((dump-stack-trace? #f))
        (display-exception e port))))
-  (ignore-errors (force-output port))
+  ;; exit doesn't unwind and only flushes the console ports.
+  (force-current-outputs)
   (exit 2))
 
 (def (call-with-exit-on-error thunk)

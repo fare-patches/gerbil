@@ -9,7 +9,6 @@
         read-all-as-u8vector
         read-file-lines
         read-password
-        force-current-outputs
         writeln
         output-contents
         call-with-output
@@ -113,10 +112,6 @@
    ((procedure? contents) (contents port))
    (else
     (raise-bad-argument output-contents "string, u8vector or procedure" contents))))
-
-(def (force-current-outputs)
-  (force-output (current-output-port))
-  (force-output (current-error-port)))
 
 (def (writeln x (port (current-output-port)))
   (write x port)

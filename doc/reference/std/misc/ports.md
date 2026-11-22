@@ -255,20 +255,6 @@ bar
 ```
 :::
 
-## force-current-outputs
-```scheme
-(force-current-outputs) -> (void)
-```
-
-Force the `current-output-port` and the `current-error-port`.
-Useful before you drop to a REPL, debugger or interactive prompt, or before you `exit` the program.
-
-::: tip Examples:
-```scheme
-(force-current-outputs)
-```
-:::
-
 ## writeln
 ```scheme
 (writeln object [port]) -> (void)

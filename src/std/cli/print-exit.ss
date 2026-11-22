@@ -5,15 +5,14 @@
 
 (import
   :std/error
-  :std/list/list
-  :std/misc/ports)
+  :std/list/list)
 
 (def value-printer (make-parameter write))
 
 (def (print-values . vs)
   (unless (equal? vs [(void)])
     (for-each (value-printer) vs))
-  (ignore-errors (force-current-outputs))
+  (force-current-outputs)
   (void))
 
 ;; Print resulting values, and exit with an according value.

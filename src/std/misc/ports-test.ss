@@ -65,17 +65,11 @@
          (check (file-exists? name) => #t)
          (check (read-file-string name) => test-data)
          (check (read-file-lines name) => test-lines))))
-    (test-case "force-current-outputs writeln"
+    (test-case "writeln"
       (call-with-temporary-file-name
        "ports-test"
        (lambda (name)
          (check (file-exists? name) => #f)
-         (let/cc return
-           (with-output-to-file name (lambda () (display "aa") (return))))
-         (check (read-file-string name) => "")
-         (let/cc return
-           (with-output-to-file name (lambda () (display "aa") (force-current-outputs) (return))))
-         (check (read-file-string name) => "aa")
          (let/cc return
            (with-output-to-file name (lambda () (writeln 'bb) (return))))
          (check (read-file-string name) => "bb\n")
