@@ -117,7 +117,6 @@
     "serde/binary"
     "serde/marshal"
     (gxc: "serde/unmarshal" ,@(include-gambit-sharp))
-    "serde/serde-test-support"
 
     "format/ascii"
     "format/format-string"

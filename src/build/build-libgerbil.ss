@@ -28,6 +28,8 @@
 (def stdlib-exclude
   '("gambit-sharp"                      ; _gambit#.scm wrapper
     "foreign-test-support"              ; test support module
+    "os/signal-test-support"            ; test support module (FFI; compiled, not linked)
+    "net/ssl/error-test-support"        ; test support module (FFI; compiled, not linked)
     ))
 
 (def gerbil-runtime

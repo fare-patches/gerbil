@@ -9,7 +9,7 @@
 	./deserialize
         ./marshal
         ./unmarshal
-        ./serde-test-support)
+        "./serde-test-support")
 (export binary-serde-test)
 
 (defsyntax-case check-marshal-unmarshal (?)

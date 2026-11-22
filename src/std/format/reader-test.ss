@@ -8,7 +8,7 @@
 	:std/log/compress
 	:std/serde/interface
 	:std/serde/deserialize
-        :std/serde/serde-test-support
+        "../serde/serde-test-support"
 	./api
 	./io
 	./reader)

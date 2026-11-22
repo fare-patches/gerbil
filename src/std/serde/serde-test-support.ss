@@ -1,6 +1,6 @@
 ;;; -*- Gerbil -*-
 ;;; © vyzo
-;;; reader test compiled support
+;;; serde test support; loaded from source by tests, not compiled into the stdlib
 (import :std/interface
 	./interface
         ./scan

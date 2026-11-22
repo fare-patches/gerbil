@@ -4,7 +4,7 @@
 (import :std/test
         :std/error
         :std/iter
-        :std/serde/serde-test-support
+        "../serde/serde-test-support.ss"
 	./api
 	./io)
 (export format-test printf-test)
