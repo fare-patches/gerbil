@@ -14,7 +14,8 @@
         compiler-syntax-test
         compiler-builtins-test)
 
-(def (must-compile-and-execute path (dependencies []) (inspect-source #f))
+(def (must-compile-and-execute path (dependencies []) (inspect-source #f)
+                                timeout: (timeout #f))
   (let ((output-dir (make-temporary-file-name "compiler.out"))
         (current-load-path (load-path)))
     (add-load-path! output-dir)
@@ -48,10 +49,25 @@
                   (resolve-identifier 'main))))
           (eval `(import ,modid))
           (when main-binding
-            ((eval (binding-id main-binding))))))
+            (call-with-timeout timeout (eval (binding-id main-binding))))))
       (set-load-path! current-load-path)
       (when (file-exists? output-dir)
         (delete-file-or-directory output-dir #t)))))
+
+;; Run thunk; with a timeout in seconds, run it in a thread and fail the check
+;; instead of hanging when it doesn't return in time (e.g. miscompiled code
+;; looping forever).
+(def (call-with-timeout timeout thunk)
+  (if timeout
+    (let* ((thread (spawn (lambda ()
+                            (with-catch (lambda (e) (cons 'raised e))
+                                        (lambda () (thunk) 'done)))))
+           (result (thread-join! thread timeout 'timeout)))
+      (cond
+       ((pair? result) (raise (cdr result)))
+       ((eq? result 'timeout) (thread-terminate! thread)))
+      (check result => 'done))
+    (thunk)))
 
 (def (must-not-compile path)
   (let (output-dir (make-temporary-file-name "compiler.out"))
@@ -283,7 +299,10 @@
     (test-case "mutable bindings with sticky type"
       (must-compile-and-execute "compiler-test-support/mutable-binding-type-2.ss"))
     (test-case "mutable bindings with fixpoint sticky type"
-      (must-compile-and-execute "compiler-test-support/mutable-binding-type-3.ss"))))
+      (must-compile-and-execute "compiler-test-support/mutable-binding-type-3.ss"))
+    (test-case "#!key keyword table, compiled"
+      ;; Miscompiled keyword table construction makes the calls loop forever.
+      (must-compile-and-execute "compiler-test-support/key-table-call.ss" timeout: 30))))
 
 (def compiler-syntax-test
   (test-suite "compiler syntactic features"
