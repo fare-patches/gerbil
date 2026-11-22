@@ -197,8 +197,7 @@
                 (reader.read-char-utf8)
                 (skip-line-comment reader)
                 (loop lst))
-               ((eq? next #\.)
-                (reader.read-char-utf8)
+               ((and (eq? next #\.) (consume-dotted-tail-marker! reader))
                 (cond
                  ((not allow-improper?)
                   (raise-parse-error parse-list "unexpected character; improper list not allowed" char: next anchor: anchor))
@@ -327,6 +326,21 @@
     (for (c (in-list '(#\" #\( #\) #\[ #\] #\{ #\} #\' #\` #\, #\; #\space #\tab #\newline)))
       (vector-set! rt (char->integer c) #t))
     rt))
+
+;; With the reader at a #\., consume it and return #t if it is a dotted-tail marker,
+;; i.e. followed by a delimiter (R7RS §7.1.2); otherwise leave the input as it was and
+;; return #f, the dot then starting a number (".1") or a symbol ("...").
+(def (consume-dotted-tail-marker! (reader : BufferedReader))
+  => :boolean
+  (reader.read-char-utf8)
+  (let (next (reader.peek-char-utf8))
+    (if (or (eof-object? next)
+            (char-whitespace? next)
+            (char-symbolic-delimiter? next))
+      #t
+      (begin
+        (reader.put-back (@char->int #\.))
+        #f))))
 
 (def (char-symbolic-delimiter? (char : :char))
   => :boolean

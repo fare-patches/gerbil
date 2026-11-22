@@ -149,6 +149,21 @@
 	(let (obj (read-object-from-string "#0=#{std/serde/serde-test-support#A::t b: #0#}" (reader-environment)))
 	  (check obj ? A?)
 	  (check (A-b obj) => obj))))
+    ;; A dot starts a dotted tail only when a delimiter follows it (R7RS §2.1, §7.1.2);
+    ;; otherwise it starts a number or symbol, which the writer emits e.g. for 0.1 as ".1".
+    (test-case "read leading-dot tokens"
+      (def (read-string str) (read-object-from-string str (reader-environment)))
+      (check-function read-string
+        ".1" => .1
+        "-.5" => -.5
+        "(.1)" => '(.1)
+        "(1 .1)" => '(1 .1)
+        "(1 . .1)" => '(1 . .1)
+        "(.1 . 2)" => '(.1 . 2)
+        "[.25 .5]" => '(.25 .5)
+        "(a ...)" => '(a ...)
+        "(... a)" => '(... a))
+      (check (A-b (read-string "#{std/serde/serde-test-support#A::t b: .5}")) => .5))
     (test-case "read interface instances"
       (let (obj (read-object-from-string "#{std/serde/serde-test-support#C::t object: #{std/serde/serde-test-support#A::t b: 1}}" (reader-environment)))
 	(check obj ? C?)
