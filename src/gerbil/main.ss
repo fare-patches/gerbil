@@ -201,22 +201,28 @@ package: gerbil
 (def (tool-main program-name args)
   (cond
    ((equal? program-name "gxi")
-    (apply gxi-main args))
+    ;; A script's main return value has never been its exit status.
+    (apply gxi-main args)
+    (void))
    ((equal? program-name "gxc")
-    (apply gxc-main args))
+    (apply gxc-main args)
+    (void))
    (else
     (let* ((tool-id (string->symbol (string-append ":gerbil/tools/" program-name)))
            (tool-module (import-module tool-id #f #t))
            (tool-main-id (find-runtime-symbol tool-module 'main))
            (tool-main (eval tool-main-id)))
+      ;; The tool's status, e.g. gxtest's 42 on failure; main exits with it.
       (apply tool-main args)))))
 
+;; Returns the status of the tool it dispatches to, if any, else (void).
 (def (bach-main program-name args)
   (match args
     ([hd . rest]
      (cond
       ((member hd '("-h" "--help"))
-       (print-usage! program-name))
+       (print-usage! program-name)
+       (void))
       ((equal? "help" hd)
        (match rest
          ([cmd]
@@ -225,32 +231,44 @@ package: gerbil
             => (lambda (help-cmd) (tool-main (cadr help-cmd) (cddr help-cmd))))
            (else
             (displayln "no help for topic " cmd)
-            (print-usage! program-name))))
+            (print-usage! program-name)
+            (void))))
          (else
-          (print-usage! program-name))))
+          (print-usage! program-name)
+          (void))))
       ((assoc hd builtin-tool-commands)
        => (lambda (cmd) (tool-main (cadr cmd) (append (cddr cmd) rest))))
       ((member hd '("-v" "--version" "version"))
-       (displayln (gerbil-system-version-string)))
+       (displayln (gerbil-system-version-string))
+       (void))
       (else
        ;; do gxi by default
-       (apply gxi-main hd rest))))
+       (apply gxi-main hd rest)
+       (void))))
     (else
-     (gxi-main))))
+     (gxi-main)
+     (void))))
 
 (def (main)
   (init!)
-  (unwind-protect
-    (let* ((cmdline      (command-line))
-           (program      (car cmdline))
-           (program-name (path-strip-directory program))
-           (args         (cdr cmdline)))
-      (if (string-prefix? "gx" program-name)
-        ;; a gerbil tool
-        (tool-main program-name args)
-        ;; our main -- process arguments and dispatch
-        (bach-main program-name args)))
-    (with-catch void (cut force-output (current-output-port)))
-    (with-catch void (cut force-output (current-error-port)))))
+  (let (status
+        (unwind-protect
+          (let* ((cmdline      (command-line))
+                 (program      (car cmdline))
+                 (program-name (path-strip-directory program))
+                 (args         (cdr cmdline)))
+            (if (string-prefix? "gx" program-name)
+              ;; a gerbil tool
+              (tool-main program-name args)
+              ;; our main -- process arguments and dispatch
+              (bach-main program-name args)))
+          (force-current-outputs)))
+    ;; Gambit's ##load-vm ignores the result of (##main), so a tool's main
+    ;; returning an exit status (e.g. gxtest's 42 on failure) would be lost
+    ;; and the process would exit 0. Exit explicitly with an exact fixnum
+    ;; status; any other result (void, etc.) keeps the normal exit 0.
+    ;; TODO: decide whether out-of-range fixnums should map to a failure code.
+    (when (and (fixnum? status) (fx<= 0 status 255))
+      (exit status))))
 
 (##main-set! main)
