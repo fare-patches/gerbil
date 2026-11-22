@@ -3,8 +3,7 @@
 ;;; "production  httpd executable
 (import :std/actor
         :std/actor-v18/registry
-        :std/cli/getopt
-        :std/sugar)
+        :std/cli/getopt)
 (export main)
 
 (def (main . args)

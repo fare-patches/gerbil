@@ -11,7 +11,6 @@
         :std/cli/getopt
         :std/format
         :std/sort
-        :std/sugar
         ./env)
 (export main)
 

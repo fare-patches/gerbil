@@ -2,7 +2,6 @@
         :std/actor
         :std/config
         :std/logger
-        :std/sugar
         :std/io
         :std/misc/shuffle
         :std/os/socket

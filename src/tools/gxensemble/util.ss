@@ -4,7 +4,6 @@
 (import :std/actor
         :std/actor-v18/server
         :std/misc/ports
-        :std/sugar
         :std/logger
         :std/iter)
 (export #t)

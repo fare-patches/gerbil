@@ -3,7 +3,6 @@
 ;;; Custom #lang prelude for a language with a custom surface syntax
 (import :gerbil/core
         (phi: +1
-              :std/sugar
               :std/parser/base
               :tutorial/lang/scuby-grammar))
 

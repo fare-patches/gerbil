@@ -5,7 +5,6 @@
         :std/actor
         :std/cli/getopt
         :std/misc/ports
-        :std/sugar
         ./proto)
 (export main)
 

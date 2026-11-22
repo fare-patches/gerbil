@@ -4,8 +4,7 @@
 (import :std/cli/getopt
         :std/logger
         :std/net/address
-        :std/io
-        :std/sugar)
+        :std/io)
 (export main)
 
 (deflogger tcp-proxy)

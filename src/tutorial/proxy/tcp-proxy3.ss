@@ -5,8 +5,7 @@
         :std/contract
         :std/io
         :std/logger
-        :std/net/address
-        :std/sugar)
+        :std/net/address)
 (export main)
 
 (deflogger tcp-proxy)

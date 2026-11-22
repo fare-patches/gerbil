@@ -5,7 +5,6 @@
         :std/iter
         :std/net/address
         :std/net/httpd
-        :std/sugar
         :std/text/json)
 (export main)
 

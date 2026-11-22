@@ -2,7 +2,6 @@
 ;;; © vyzo
 ;;; actor ensemble management tool
 (import :std/cli/getopt
-        :std/sugar
         :std/actor-v18/path
         ./env
         ./gxensemble/opt

@@ -1,5 +1,5 @@
 (import :std/test
-        :std/sugar
+        :std/error
         :std/source
         :std/iter
         :std/io

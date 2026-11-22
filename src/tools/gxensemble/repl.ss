@@ -6,7 +6,6 @@
         :std/actor
         :std/actor-v18/proto
         :std/iter
-        :std/sugar
         :std/error
         ./util)
 (export #t)

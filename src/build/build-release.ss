@@ -6,14 +6,13 @@
 (import
   (only-in :std/cli/getopt argument optional-argument option)
   (only-in :std/cli/multicall define-multicall-main define-entry-point set-default-entry-point!)
-  (only-in :std/error dump-stack-trace?)
+  (only-in :std/error dump-stack-trace? ignore-errors)
   (only-in :std/misc/list when/list)
   (only-in :std/misc/path path-absolute?)
   (only-in :std/misc/ports read-file-string read-all-as-lines)
   (only-in :std/misc/process run-process run-process/batch)
   (only-in :std/pregexp pregexp-match)
-  (only-in :std/srfi/1 second)
-  (only-in :std/sugar ignore-errors))
+  (only-in :std/srfi/1 second))
 
 (def platform "linux-x86-64")
 

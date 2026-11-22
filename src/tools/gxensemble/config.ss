@@ -3,7 +3,6 @@
 ;;; actor ensemble management tool
 (import :std/config
         :std/actor
-        :std/sugar
         ./util)
 (export #t)
 

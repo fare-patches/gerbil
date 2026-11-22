@@ -6,8 +6,7 @@
         :std/logger
         :std/os/error
         :std/os/fd
-        :std/os/socket
-        :std/sugar)
+        :std/os/socket)
 (export main)
 
 (deflogger tcp-proxy)

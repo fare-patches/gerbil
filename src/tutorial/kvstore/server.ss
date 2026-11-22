@@ -1,8 +1,7 @@
 ;;; -*- Gerbil -*-
 ;;; © vyzo
 ;;; kvstore server
-(import :std/sugar
-        :std/logger
+(import :std/logger
         :std/actor
         :std/text/zlib
         :clan/db/lmdb

@@ -3,7 +3,6 @@
 ;;; "production  httpd executable
 (import :std/actor
         :std/cli/getopt
-        :std/sugar
         ./server)
 (export main)
 
