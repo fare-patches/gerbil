@@ -28,7 +28,7 @@
         :std/hash/misc
         :std/iter
         :std/misc/process
-        :std/net/request
+        :std/net/http/client
         :std/string/misc
         :std/text/pregexp
         :std/text/template
@@ -919,26 +919,33 @@
                                  ": " (or (error-message exn) "(unknown error)"))
                   #f)
                 (cut http-get url)))
-       (if (and req (fx= (request-status req) 200))
+       (cond
+        ((not req)
+         ;; the failure was already reported by the handler above
+         result)
+        ((fx= (Request-status req) 200)
          (let (pkgs (with-catch
                      (lambda (exn)
                        (displayln/err "*** WARNING error retrieving packages from "
-                                      (request-url req)
+                                      (Request-url req)
                                       ": " (or (error-message exn) "(unknown error)"))
                        [])
-                     (lambda () (call-with-input-string (request-text req) read))))
-           (append result pkgs))
-         (begin
-           (displayln/err "error retrieving packages from " url
-                          ": " (request-status-text req))
-           result))))))
+                     (lambda () (call-with-input-string (utf8->string (Request-content req)) read))))
+           (append result pkgs)))
+        (else
+         (displayln/err "error retrieving packages from " url
+                        ": " (Request-status-line req))
+         (Request-close req)
+         result))))))
 
 (def (pkg-directory-list dir)
   (let* ((url (pkg-directory-url dir))
          (req (http-get url)))
-    (if (fx= (request-status req) 200)
-      (call-with-input-string (request-text req) read)
-      (error "error retrieving packages" url (request-status-text req)))))
+    (if (fx= (Request-status req) 200)
+      (call-with-input-string (utf8->string (Request-content req)) read)
+      (begin
+        (Request-close req)
+        (error "error retrieving packages" url (Request-status-line req))))))
 
 ;; package directory management
 (def (pkg-directory-manage dirs add? remove? global?)

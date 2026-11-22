@@ -5,7 +5,7 @@
         :std/test
         :std/io
         ;; :std/net/httpd
-        :std/net/request
+        :std/net/http/client
         :std/net/address
         :std/misc/process
         ./api)
@@ -146,16 +146,16 @@ END
   (test-suite "https client"
     (test-case  "https request: www.google.com"
       (let (req (http-get "https://www.google.com"))
-        (check (request-status req) => 200)
-        (request-close req)))
+        (check (Request-status req) => 200)
+        (Request-close req)))
     (cond-expand
       (enable-badssl-test
        (test-case "https request failure: badssl"
 	 (check-exception (http-get "https://expired.badssl.com") ssl-error?))))
     (test-case "https request insecure: www.google.com"
       (let (req (http-get "https://www.google.com" ssl-context: (insecure-client-ssl-context)))
-        (check (request-status req) => 200)
-        (request-close req)))))
+        (check (Request-status req) => 200)
+        (Request-close req)))))
 
 #;(def http-server-test
   (test-suite "https server"
@@ -169,6 +169,6 @@ END
                => (void))
         (let (req (http-get (string-append "https://" test-server-address)
                             ssl-context: (insecure-client-ssl-context))) ; self-signed cert
-          (check (request-status req) => 200)
-          (check (request-text req) => "hello, ssl")
-          (request-close req))))))
+          (check (Request-status req) => 200)
+          (check (utf8->string (Request-content req)) => "hello, ssl")
+          (Request-close req))))))

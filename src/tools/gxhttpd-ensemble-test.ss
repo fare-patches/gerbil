@@ -1,10 +1,10 @@
 (import :std/test
-        :std/sugar
+        :std/error
         :std/source
         :std/misc/process
         :std/misc/ports
         :std/os/signal
-        :std/net/request)
+        :std/net/http/client)
 (export gxhttpd-ensemble-test test-setup! test-cleanup!)
 
 (def supervisor-process #f)
@@ -62,21 +62,21 @@
   (test-suite "httpd ensemble"
     (test-case "/"
       (let (req (http-get "http://127.0.0.1:8080/"))
-        (check (request-status req) => 200)
-        (check (request-text req) => (read-file-string (path-expand "content/index.html" test-directory)))))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => (read-file-string (path-expand "content/index.html" test-directory)))))
     (test-case "/index.html"
       (let (req (http-get "http://127.0.0.1:8080/index.html"))
-        (check (request-status req) => 200)
-        (check (request-text req) => (read-file-string (path-expand "content/index.html" test-directory)))))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => (read-file-string (path-expand "content/index.html" test-directory)))))
     (test-case "/handler"
       (let (req (http-get "http://127.0.0.1:8080/handler"))
-        (check (request-status req) => 200)
-        (check (request-text req) => "hello! I am a dynamic handler and my state is initialized\n")))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => "hello! I am a dynamic handler and my state is initialized\n")))
     (test-case "/servlets/hello.ss"
       (let (req (http-get "http://127.0.0.1:8080/servlets/hello.ss"))
-        (check (request-status req) => 200)
-        (check (request-text req) => "hello! I am a servlet and my state is initialized\n")))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => "hello! I am a servlet and my state is initialized\n")))
     (test-case "/does-not-exist"
       (let (req (http-get "http://127.0.0.1:8080/does-not-exist"))
-        (check (request-status req) => 404)
-        (request-close req)))))
+        (check (Request-status req) => 404)
+        (Request-close req)))))
