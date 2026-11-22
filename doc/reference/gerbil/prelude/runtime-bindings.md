@@ -1413,6 +1413,7 @@ Procedures and objects provided by the Gerbil runtime.
     display*
     file-newer?
     create-directory*
+    force-current-outputs
     absent-obj
     absent-value
     true

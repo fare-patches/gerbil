@@ -89,6 +89,17 @@ Returns true if file *a* is newer than *b* by modification-time. Both files must
 Creates a directory pointed by *path* and its parents if they don't exist, like
 `mkdir -p`. Sets directory permissions to *perms*.
 
+### force-current-outputs
+``` scheme
+(force-current-outputs) -> void
+```
+
+Flushes the `current-output-port` then the `current-error-port`, ignoring any error
+while flushing either one (e.g. `ENOSPC` when writing to `/dev/full`).
+Call it before you `exit` the program: Gambit's `exit` doesn't unwind,
+and only flushes the console ports, so output buffered in any other current port is lost.
+Also useful before you drop to a REPL, debugger or interactive prompt.
+
 ### keyword-dispatch
 ``` scheme
 (keyword-dispatch kwt proc . args) -> any

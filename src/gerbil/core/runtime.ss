@@ -1433,6 +1433,7 @@ package: gerbil/core
     file-newer?
     create-directory*
     move-file
+    force-current-outputs
     absent-obj
     absent-value
     true
