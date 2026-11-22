@@ -5,7 +5,8 @@
         :std/io/bio/api
 	./interface
         ./scan
-	./scanner)
+	./scanner
+        ./util)
 (export #t)
 
 (defrules do-write ()
@@ -483,17 +484,33 @@
   (@serialize! writer v ctx
     (writer.serialize (force v) ctx)))
 
+;; a procedure is written by its global name; ProcedureBuilder in ./deserialize
+;; reads it back as the same global, subject to the allow-procedure: filter.
+;; When the output is meant to be read back, a procedure without a global name
+;; that denotes it (e.g. a closure) cannot be read back correctly, so writing it
+;; raises; otherwise it is written with its code name, if any, for display.
+;; TODO: serialize closures and other procedures without a global name, e.g. by
+;;   code name plus closed variables, with a code registry checked on read.
+;; TODO: other objects that cannot be read back correctly should raise too
+;;   when the output is meant to be read back, e.g. foreign objects.
+;; TODO: a procedure reachable only through a module-local (unexported) binding
+;;   is named by that global and readable today; decide whether to restrict
+;;   this to exported bindings.
 (defobject-writer :procedure (write-procedure writer proc ctx)
-  (@serialize! writer proc ctx
-    (do-write (wr 0)
-      (ctx.methods.write-object-begin writer ctx)
-      (writer.write-object-type procedure::t ctx)
-      (let (name (##procedure-name proc))
-	(if name
-	  (writer.write-field 'name name ctx)
-	  0))
-      (ctx.methods.write-object-end writer ctx)
-      wr)))
+  (let (name
+        (if (ctx.methods.readable-output?)
+          (or (procedure-global-name proc)
+              (runtime-contract-violation! write-procedure (procedure-global-name proc) proc))
+          (##procedure-name proc)))
+    (@serialize! writer proc ctx
+      (do-write (wr 0)
+        (ctx.methods.write-object-begin writer ctx)
+        (writer.write-object-type procedure::t ctx)
+        (if name
+          (writer.write-field 'name name ctx)
+          0)
+        (ctx.methods.write-object-end writer ctx)
+        wr))))
 
 (defobject-writer :foreign (write-foreign writer obj ctx)
   (@serialize! writer obj ctx

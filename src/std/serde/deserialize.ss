@@ -180,6 +180,9 @@
   (symbol-hash-table SymbolHashTableBuilder ())
   (string-hash-table StringHashTableBuilder ())
   (immediate-hash-table ImmediateHashTableBuilder ())
+
+  ;; procedures, by global name; see resolve-procedure!
+  (:procedure ProcedureBuilder ())
   ;; TODO builtin composite objects for binary deserialization
   )
 
@@ -257,6 +260,10 @@
 (defmethod {:init! ImmediateHashTableBuilder}
   EqvHashTableBuilder:::init!)
 
+(defmethod {:init! ProcedureBuilder}
+  (lambda (self klass anchor hint)
+    (set! self.anchor anchor)))
+
 (defmethod {finish! BasicBuilder}
   (lambda (self)
     (if self.object
@@ -268,6 +275,25 @@
   (if (Anchor? hint)
     (Anchor-resolve! hint ctx)
     hint))
+
+;; resolves a serialized procedure by its global name symbol, as written by
+;; ##procedure-name in ./serialize: the ctx.allow-procedure? filter must accept
+;; the name, then the global is loaded with load-procedure.
+;; Resolved procedures are cached in ctx.procedures, so the filter and lookup
+;; run once per name per context.
+(def (resolve-procedure! name (ctx : ReadContext))
+  => :procedure
+  (cond
+   ((not (symbol? name))
+    (raise-contract-violation resolve-procedure! symbol? name: name))
+   ((ctx.procedures.ref name #f)
+    => (lambda (proc) (:- proc :procedure)))
+   ((ctx.allow-procedure? name)
+    (let (proc (load-procedure name))
+      (ctx.procedures.set! name proc)
+      proc))
+   (else
+    (raise-contract-violation resolve-procedure! allow-procedure? name: name))))
 
 (implement ObjectBuilder
   (ClassBuilder
@@ -334,7 +360,20 @@
     HashTableBuilder::std/serde/interface::ObjectBuilder::push!))
   (GCHashTableBuilder
    (push!
-    HashTableBuilder::std/serde/interface::ObjectBuilder::push!)))
+    HashTableBuilder::std/serde/interface::ObjectBuilder::push!))
+  (ProcedureBuilder
+   (push!
+    (lambda (self val hint ctx)
+      (let (hint (resolve-hint! hint ctx))
+        (cond
+         ((not (or (eq? hint 'name)
+                   (eq? hint 'name:)
+                   (equal? hint "name")))
+          (runtime-contract-violation! ProcedureBuilder::push! (hint: name) hint))
+         (self.object
+          (runtime-contract-violation! ProcedureBuilder::push! (not self.object) hint))
+         (else
+          (set! self.object (resolve-procedure! (resolve-hint! val ctx) ctx)))))))))
 
 (defrule (do-vector-resolve vec ctx start
                             v-len v-ref v-set!)

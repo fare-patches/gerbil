@@ -220,4 +220,6 @@
               (set! wr (fx+ wr (writer.serialize k ctx)))
               (set! wr (fx+ wr (writer.serialize v ctx)))))
            wr)
-         wr)))))
+         wr))))
+  (readable-output?
+   (lambda (self) #t)))

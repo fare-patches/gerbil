@@ -17,6 +17,12 @@
    (max-elements     :- :fixnum))
   final: #t)
 
+;; allow-procedure: is called with the global name symbol of each procedure
+;; unmarshaled, e.g. std/log/compress#compress-gzip; when it returns true, the module
+;; is loaded and the procedure bound to the global is returned.
+;; The default denies all procedures; see resolve-procedure! in ./deserialize.
+;; The name is interned with intern-symbol:, so by default the symbol must already
+;; exist, i.e. the procedure's module is usually loaded already.
 (def (unmarshal-environment max-integer-bits: (max-integer-bits : :fixnum := 65536)
                             max-element:      (max-elements     : :fixnum := 65536)
                             allow-class:      (allow-class?     : :procedure := (lambda (x) #t))

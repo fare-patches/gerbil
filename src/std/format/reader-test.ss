@@ -5,6 +5,7 @@
         :std/error
         :std/iter
 	:std/interface
+	:std/log/compress
 	:std/serde/interface
 	:std/serde/deserialize
         :std/serde/serde-test-support
@@ -12,6 +13,15 @@
 	./io
 	./reader)
 (export reader-test reader-dag-test reader-default-test)
+
+;; a class and a procedure defined in this test module itself: the module is loaded
+;; from source by the expander, never registered with the runtime loader and never
+;; compiled, so reading them back must use the already-bound global rather than load-module.
+(defclass ReaderTestLocal (x)
+  transparent: #t)
+;; deserialized objects must be untainted explicitly
+(defobject-untaint ReaderTestLocal)
+(def (reader-test-local-proc x) x)
 
 (def reader-test
   (test-suite "read format written objects"
@@ -174,6 +184,80 @@
 	(check (hash-length obj) => 2)
 	(check (hash-ref obj 'a) => 1)
 	(check (hash-ref obj 'b) => 2)))
+    ;; A procedure is written as #{procedure name: <global-name>}; reading it resolves
+    ;; the global binding, after allow-procedure: accepts the name, passed as a symbol.
+    ;; Procedures equal? only when eq?, so => on procedures checks identity.
+    (test-case "read procedures"
+      (def (read-allowed str)
+        (read-object-from-string str (reader-environment allow-procedure: (lambda (name) #t))))
+      (def (round-trip obj) (read-allowed (format "%s" obj)))
+      (check-function round-trip
+        compress-gzip => compress-gzip
+        serde-test-proc => serde-test-proc
+        [compress-gzip serde-test-proc compress-gzip] => [compress-gzip serde-test-proc compress-gzip])
+      (check-function read-allowed
+        "#{procedure name: std/log/compress#compress-gzip}" => compress-gzip
+        "#{procedure name: std/serde/serde-test-support#serde-test-proc}" => serde-test-proc
+        "(#{procedure name: std/log/compress#compress-gzip} #{procedure name: std/log/compress#compress-gzip})"
+        => [compress-gzip compress-gzip]))
+    (test-case "read procedures inside objects"
+      (def (read-allowed str)
+        (read-object-from-string str (reader-environment allow-procedure: (lambda (name) #t))))
+      (let (obj (read-allowed "#{std/serde/serde-test-support#A::t b: #{procedure name: std/serde/serde-test-support#serde-test-proc}}"))
+        (check obj ? A?)
+        (check (A-b obj) => serde-test-proc))
+      (let (obj (read-allowed (format "%s" (A b: [serde-test-proc (A b: serde-test-proc)]))))
+        (check (car (A-b obj)) => serde-test-proc)
+        (check (A-b (cadr (A-b obj))) => serde-test-proc)))
+    ;; regression: load-class/load-procedure must not require the module to be
+    ;; known to the runtime loader when its globals are already bound
+    (test-case "read class defined in a module loaded from source"
+      (let (obj (read-object-from-string "#{std/format/reader-test#ReaderTestLocal::t x: 7}" (reader-environment)))
+        (check obj ? ReaderTestLocal?)
+        (check (ReaderTestLocal-x obj) => 7)))
+    (test-case "read procedure defined in a module loaded from source"
+      (check (read-object-from-string "#{procedure name: std/format/reader-test#reader-test-local-proc}"
+                                      (reader-environment allow-procedure: (lambda (name) #t)))
+             => reader-test-local-proc))
+    (test-case "read procedures filter receives the name symbol"
+      (def calls [])
+      (def (read-recording allow? str)
+        (read-object-from-string str
+          (reader-environment allow-procedure: (lambda (name) (set! calls (cons name calls)) allow?))))
+      (check-exception (read-recording #f "#{procedure name: std/log/compress#compress-gzip}")
+                       ContractViolation?)
+      (check calls => '(std/log/compress#compress-gzip))
+      (set! calls [])
+      (check (read-recording #t "#{procedure name: std/serde/serde-test-support#serde-test-proc}")
+             => serde-test-proc)
+      (check calls => '(std/serde/serde-test-support#serde-test-proc)))
+    (test-case "reject procedures"
+      ;; allow? #f reads in the default environment, which denies all procedures
+      (def (rejected? allow? str)
+        (def env (if allow? (reader-environment allow-procedure: allow?) (reader-environment)))
+        (with-catch ContractViolation? (lambda () (read-object-from-string str env) #f)))
+      (def (allow-all name) #t)
+      (check-function rejected?
+        #f "#{procedure name: std/log/compress#compress-gzip}" => #t
+        #f (format "%s" serde-test-proc) => #t
+        ;; allowed but unbound, bound to a non-procedure, or missing a name
+        allow-all "#{procedure name: std/log/compress#no-such-proc}" => #t
+        allow-all "#{procedure name: std/serde/serde-test-support#serde-test-value}" => #t
+        allow-all "#{procedure}" => #t))
+    ;; %s output is meant to be read back, so a procedure that cannot be read back
+    ;; (no global name, or a name that does not denote it) fails to write;
+    ;; %a and %q are not meant to be read back, and write it anyway.
+    (test-case "write procedures without a global name"
+      (def (make-inner n) (def (inner x) (+ x n)) inner)
+      (def (unwritable? obj)
+        (with-catch ContractViolation? (lambda () (format "%s" obj) #f)))
+      (check-function unwritable?
+        (lambda (x) x) => #t
+        (make-inner 1) => #t
+        [serde-test-proc (lambda (x) x)] => #t
+        serde-test-proc => #f)
+      (check (format "%a" (lambda (x) x)) => "#{procedure}")
+      (check (format "%q" (lambda (x) x)) => "#{procedure}"))
       ))
 
 (def reader-dag-test

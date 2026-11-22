@@ -140,7 +140,12 @@
   (write-hash-table (writer : BufferedWriter)
                     (ht     : HashTable)
                     (ctx    : WriteContext))
-  => :fixnum)
+  => :fixnum
+  ;; whether the output is meant to be read back; if so, writing an object
+  ;; that cannot be read back correctly raises, e.g. a procedure without
+  ;; a global name that denotes it.
+  (readable-output?)
+  => :boolean)
 
 ;; ObjectWriter represents machinery for serializing objects
 ;; with the serde algorithm

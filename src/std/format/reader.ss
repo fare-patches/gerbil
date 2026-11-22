@@ -14,6 +14,10 @@
 	./ioutil)
 (export #t)
 
+;; allow-procedure: is called with the global name symbol of each procedure read,
+;; e.g. std/log/compress#compress-gzip, from #{procedure name: ...}; when it returns
+;; true, the module is loaded and the procedure bound to the global is returned.
+;; The default denies all procedures; see resolve-procedure! in :std/serde/deserialize.
 (def (reader-environment opt:             (opt : ReaderOpt := (ReaderOpt))
                          allow-class:     (allow-class? : :procedure := (lambda (x) #t))
                          allow-procedure: (allow-procedure? : :procedure := (lambda (x) #f))

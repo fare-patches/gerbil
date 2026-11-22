@@ -337,4 +337,8 @@
        (writer.write-list (hash->list ht) ctx)
        (writer.write-rbrace)
        (writer.write-rbrace)
-       wr))))
+       wr)))
+  ;; only the write style (%s) is meant to be read back
+  (readable-output?
+   (lambda (self)
+     (fx= self.opt.style FORMAT-WRITE))))

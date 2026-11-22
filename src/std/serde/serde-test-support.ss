@@ -32,3 +32,7 @@
       (when self.x
 	(error "expected x to be #f"))
       (set! self.x 2)))))
+
+;; named global procedure and non-procedure value, for procedure deserialization tests
+(def (serde-test-proc x) x)
+(def serde-test-value 42)
