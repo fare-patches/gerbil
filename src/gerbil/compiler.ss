@@ -8,5 +8,6 @@ namespace: gxc
 (import "compiler/driver"
         "compiler/base")
 (export (import: "compiler/driver")
+        current-compile-temporary-prefix
         add-compile-job!
         execute-pending-compile-jobs!)
