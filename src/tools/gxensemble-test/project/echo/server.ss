@@ -43,9 +43,9 @@
    (using ((reader (open-buffered-reader (client.reader)) : BufferedReader)
            (writer (open-buffered-writer (client.writer)) : BufferedWriter))
      (let loop ()
-       (let (line (reader.read-line))
+       (let (line (reader.read-line-utf8))
          (unless (eof-object? line)
-           (writer.write-line line)
+           (writer.write-line-utf8 line)
            (writer.flush)
            (loop)))))
    (finally

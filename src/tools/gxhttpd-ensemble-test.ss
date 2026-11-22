@@ -5,7 +5,7 @@
         :std/misc/ports
         :std/os/signal
         :std/net/http/client)
-(export gxhttpd-ensemble-test test-setup! test-cleanup!)
+(export) ; v0.19-TODO: was gxhttpd-ensemble-test test-setup! test-cleanup!
 
 (def supervisor-process #f)
 (def current-gerbil-path #f)

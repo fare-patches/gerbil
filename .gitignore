@@ -20,6 +20,7 @@ doc/.vuepress/dist
 src/gerbil/runtime/version.ss
 src/gerbil/boot-gxi
 src/bootstrap/static
+src/tools/gxensemble-test/project/manifest.ss
 
 build-deps
 build-env.sh

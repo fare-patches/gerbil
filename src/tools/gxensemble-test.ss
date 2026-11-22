@@ -7,7 +7,7 @@
         :std/misc/ports
         :std/os/signal)
 
-(export gxensemble-simple-cmds-test gxensemble-echo-test test-setup! test-cleanup!)
+(export) ; v0.19-TODO: was gxensemble-simple-cmds-test gxensemble-echo-test test-setup! test-cleanup!
 
 (def supervisor-process #f)
 (def current-gerbil-path #f)
@@ -154,9 +154,9 @@
           (reader (open-buffered-reader (sock.reader)) : BufferedReader))
     (try
      (let (greeting "hello, ensemble server")
-       (writer.write-line greeting)
+       (writer.write-line-utf8 greeting)
        (writer.flush)
-       (check (reader.read-line) => greeting))
+       (check (reader.read-line-utf8) => greeting))
      (finally
       (ignore-errors
        (sock.close))))))
