@@ -2,6 +2,7 @@
 
 (import :std/assert
         :std/error
+        :std/sync/channel
         :std/struct/pqueue)
 
 ;; This parameter is purely for checking whether indeed concurrency was used.
@@ -44,9 +45,14 @@
       announce: announce on-success: on-success on-failure: on-failure
       deterministic-order: deterministic-order max-workers: (max-workers (max (##cpu-count) 1)))
   (defrule (postprocess item form) (with-catch (cut on-failure item <>) (lambda () (on-success item form))))
-  (def foreground-thread (current-thread))
   (def (fg-perform item) (announce item) (postprocess item (perform item)))
   (def serial? (< max-workers 2)) (def parallel? (not serial?))
+  ;; A private completion channel so that worker-notification messages are received
+  ;; here rather than from the caller's own mailbox. Otherwise, once a background
+  ;; worker exists, the scheduler would consume whatever message the caller was
+  ;; waiting in its thread-local mailbox, an unrelated symbol raising BUG and an
+  ;; unrelated list potentially masquerading as a completion.
+  (def done-ch (make-channel))
   (def workers 0) ;; number of currently active workers
   (let loop ()
     (def no-fg-item? (pqueue-empty? fg-queue))
@@ -63,7 +69,7 @@
                         deterministic-order))) ;; or it's blocked waiting for current batch
     (cond
      (;; If there are workers running, listen to them; wait if there's nothing better to do.
-      (and parallel? workers? (thread-receive (if wait? #f 0) #f))
+      (and parallel? workers? (if wait? (channel-get done-ch) (channel-try-get done-ch)))
       => (match <>
            ([worker item] ;; Some background process reports termination
             (set! workers (- workers 1))
@@ -78,7 +84,7 @@
         (spawn/name
          [worker: item]
          (lambda () (try (perform item)
-                    (finally (thread-send foreground-thread [(current-thread) item])))))
+                    (finally (channel-put done-ch [(current-thread) item])))))
         (when (< (max-actual-workers) workers) ;; measure actual level of parallelism reached
           (max-actual-workers workers)))
       (loop))
