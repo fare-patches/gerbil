@@ -1,9 +1,8 @@
 (export #t)
 
-(import :std/sugar
-        :std/assert
+(import :std/assert
         :std/error
-        ./pqueue)
+        :std/struct/pqueue)
 
 ;; This parameter is purely for checking whether indeed concurrency was used.
 ;; A more useful statistics would measure the total CPU time burned,

@@ -141,6 +141,7 @@
     "sync/completion"
     "sync/barrier"
     "sync/wg"
+    "sync/concurrent-plan"
 
     "make"
     "build-script"
