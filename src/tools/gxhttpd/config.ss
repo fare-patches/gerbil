@@ -24,8 +24,10 @@
    ;; a list of listen addresses with the same (textual) format
    ;; understood by new-server
    (listen : :list)
-   ;; the log options
-   (log : LogRotateOpt)
+   ;; the log options: a plist of LogRotateOpt keyword arguments, e.g. dir: "/var/log/httpd".
+   ;; Data only, so that the config file can be read back; procedure-valued options
+   ;; (compress: write: accept:) keep their defaults. See request-log-options.
+   (log : :list)
    ;; cache control
    (cache-ttl : :real)
    (cache-max-size : :fixnum)
@@ -121,10 +123,11 @@
 ;;     cfg))
 
 (def (save-config! cfg path)
+  (create-directory* (path-directory path))
   (call-with-file-writer path
     (lambda (writer)
       (using (buffered (open-buffered-writer writer) : BufferedWriter)
-        (write-object writer cfg)
+        (write-object buffered cfg)
         (buffered.flush)))))
 
 (def (write-config cfg)
@@ -137,11 +140,28 @@
     (cond (.?listen           => (cut Config-listen-set! cfg <>)))
     (cond (.?handlers         => (cut Config-handlers-set! cfg <>)))
     (cond (.?enable-servlets  => (cut Config-enable-servlets-set! cfg <>)))
-    (cond (.?log-dir          => (lambda (dir) (set! cfg.log.dir dir)))))
+    (cond (.?log-dir          => (lambda (dir) (set! cfg.log (plist-put cfg.log dir: dir))))))
   cfg)
 
+;; Replace or add KEY's value in the plist PLIST.
+(def (plist-put (plist : :list) key value)
+  => :list
+  (let loop ((rest plist) (acc []))
+    (match rest
+      ([k v . rest]
+       (if (eq? k key)
+         (foldl cons (cons* key value rest) acc)
+         (loop rest (cons* v k acc))))
+      ([] (foldl cons [key value] acc)))))
+
+;; The LogRotateOpt for the server's request log.
+(def (request-log-options (cfg : Config))
+  => LogRotateOpt
+  (apply make-LogRotateOpt cfg.log))
+
 (def (load-httpd-config path)
-  (: (call-with-file-reader path read-object)
+  (: (call-with-file-reader path
+       (lambda (reader) (read-object (open-buffered-reader reader))))
      Config))
 
 (def (load-default-server-config)
@@ -179,10 +199,9 @@
           handlers: []
           enable-servlets: #t
           listen: (default-httpd-listen)
-          log: (LogRotateOpt
-                name: "/net/httpd"
+          log: [name: "/net/httpd"
                 level: INFO
                 file: "request.log"
-                dir: (default-httpd-log-dir))
+                dir: (default-httpd-log-dir)]
           cache-ttl: 120.0
           cache-max-size: 16384))

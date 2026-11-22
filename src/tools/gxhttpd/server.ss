@@ -23,7 +23,7 @@
       (using (srv (new-http-server
                    (ServerConfig
                     mux: (new-mux cfg)
-                    log: (new-log-rotate-sink cfg.log)
+                    log: (new-log-rotate-sink (request-log-options cfg))
                     listen: cfg.listen))
                   : Server)
         (srv.start!)

@@ -56,7 +56,7 @@
 (def config-httpd-listen-option
   (option 'listen "--listen"
     value: string->object
-    default: '("0.0.0.0:8080")
+    default: '("inet4:0.0.0.0:8080")
     help: "specify the httpd server's listen addresses"))
 
 (def config-httpd-handlers-option

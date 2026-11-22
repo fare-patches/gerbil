@@ -1,11 +1,10 @@
-(import :std/test
-        :std/sugar
-        :std/source
-        :std/misc/process
+(import :std/error
         :std/misc/ports
+        :std/misc/process
+        :std/net/http/client
         :std/os/signal
-        :std/net/request
-        :gerbil/gambit)
+        :std/source
+        :std/test)
 (export gxhttpd-server-test test-setup! test-cleanup!)
 
 (def httpd-process #f)
@@ -21,7 +20,7 @@
   (invoke "gerbil" ["build"] directory: test-directory)
   (invoke "gerbil" ["httpd" "config"
                     "--root" "content"
-                    "--listen" (object->string '("127.0.0.1:8080"))
+                    "--listen" (object->string '("inet4:127.0.0.1:8080"))
                     "--handlers" (object->string '(("/handler" . :test/site/handler)))
                     "--enable-servlets"]
           directory: test-directory)
@@ -44,21 +43,21 @@
   (test-suite "httpd"
     (test-case "/"
       (let (req (http-get "http://127.0.0.1:8080/"))
-        (check (request-status req) => 200)
-        (check (request-text req) => (read-file-string (path-expand "content/index.html" test-directory)))))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => (read-file-string (path-expand "content/index.html" test-directory)))))
     (test-case "/index.html"
       (let (req (http-get "http://127.0.0.1:8080/index.html"))
-        (check (request-status req) => 200)
-        (check (request-text req) => (read-file-string (path-expand "content/index.html" test-directory)))))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => (read-file-string (path-expand "content/index.html" test-directory)))))
     (test-case "/handler"
       (let (req (http-get "http://127.0.0.1:8080/handler"))
-        (check (request-status req) => 200)
-        (check (request-text req) => "hello! I am a dynamic handler and my state is initialized\n")))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => "hello! I am a dynamic handler and my state is initialized\n")))
     (test-case "/servlets/hello.ss"
       (let (req (http-get "http://127.0.0.1:8080/servlets/hello.ss"))
-        (check (request-status req) => 200)
-        (check (request-text req) => "hello! I am a servlet and my state is initialized\n")))
+        (check (Request-status req) => 200)
+        (check (utf8->string (Request-content req)) => "hello! I am a servlet and my state is initialized\n")))
     (test-case "/does-not-exist"
       (let (req (http-get "http://127.0.0.1:8080/does-not-exist"))
-        (check (request-status req) => 404)
-        (request-close req)))))
+        (check (Request-status req) => 404)
+        (Request-close req)))))

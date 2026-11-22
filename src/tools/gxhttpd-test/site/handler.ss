@@ -1,12 +1,15 @@
-(import :std/net/httpd
+(import :std/net/http/server
         :std/format)
-(export handler-init! handle-request)
+(export handler-init! request-handler)
 
 (def state "not initialized")
 
 (def (handler-init! cfg)
   (set! state 'initialized))
 
-(def (handle-request req res)
-  (http-response-write res 200 '(("Content-Type" . "text/plain"))
-                       (format "hello! I am a dynamic handler and my state is ~a~n" state)))
+;; the server calls request-handler once, after handler-init!, to get the RequestHandler
+(def (request-handler)
+  (new-closure-handler
+   (lambda (req res)
+     (ResponseHandler-write! res OK '(("Content-Type" . "text/plain"))
+                             (string->utf8 (format "hello! I am a dynamic handler and my state is %a\n" state))))))
