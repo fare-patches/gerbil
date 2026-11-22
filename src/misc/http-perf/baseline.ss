@@ -1,7 +1,9 @@
 ;; -*- Gerbil -*-
 (import :std/cli/getopt
+        :std/error
         :std/io
-        :std/text/utf8)
+        :std/net/address
+        (only-in :std/os/socket SHUT_WR))
 (export main)
 
 (def content
@@ -13,27 +15,37 @@
     "HTTP/1.1 200 OK\r\n"
     "Connection: close\r\n"
     "Content-Length: " (number->string (string-length content)) "\r\n"
-    "Content: text/plain\r\n"
-    "\r\n")))
+    "Content-Type: text/plain\r\n"
+    "\r\n"
+    content)))
+
+;; send may write fewer bytes than requested; send the rest until all of data is written.
+(def (send-all cli (data : :u8vector))
+  (let loop ((start 0))
+    (when (fx< start (u8vector-length data))
+      (loop (fx+ start (StreamSocket-send cli data start))))))
+
+(def (handle-client cli)
+  (try
+   (let (buf (make-u8vector 65536))
+     (StreamSocket-recv cli buf)
+     (send-all cli response)
+     (StreamSocket-shutdown cli SHUT_WR))
+   (finally
+    (ignore-errors (StreamSocket-close cli)))))
 
 (def (run-server address)
-  (let ((sock (tcp-listen address)))
+  (let ((sock (tcp-listen (string->address address))))
     (let lp ()
       (let (cli (ServerSocket-accept sock))
-        (spawn
-         (lambda ()
-           (let (buf (make-u8vector 65536))
-             (StreamSocket-recv cli buf)
-             (StreamSocket-send cli response)
-             (StreamSocket-shutdown cli 'out)
-             (StreamSocket-close cli))))
+        (spawn handle-client cli)
         (lp)))))
 
 (def (main . args)
   (def gopt
     (getopt (option 'address "-a" "--address"
                     help: "server address"
-                    default: "127.0.0.1:8080")
+                    default: "inet4:127.0.0.1:8080")
             (optional-argument 'count help: "number of requests to serve"
                                default: #f
                                value: string->number)))
