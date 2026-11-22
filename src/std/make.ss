@@ -4,7 +4,8 @@
 ;;; build-spec: see documentation in doc/reference/make.md
 
 (import :gerbil/compiler
-        (only-in :gerbil/compiler/base pending-compile-jobs)
+        (prefix-in :gerbil/compiler/base compiler.)
+        (only-in :gerbil/compiler/optimize-base current-compile-optimizer-info make-optimizer-info)
         :gerbil/expander
         (only-in :std/error Error)
         :std/sync/completion
@@ -15,6 +16,15 @@
         :std/list/plist
         :std/string/path
         :std/iter)
+(cond-expand
+ ((defined compiler.current-compile-defer)
+  (import (only-in :gerbil/compiler/base
+                   current-compile-defer
+                   compile-attempt-jobs
+                   compile-attempt-commit!
+                   compile-attempt-abort!)))
+ (else
+  (import (only-in :gerbil/compiler/base pending-compile-jobs))))
 (export make
         make-clean
         shell-config
@@ -201,9 +211,11 @@ TODO:
   (def settings (apply make-settings rest))
   ;; A parallel gxc defers its gsc jobs; publishing their modules waits for them.
   (def pending (and (> (settings-parallelize settings) 1)
-                    (make-pending-modules (make-mutex 'pending-modules) (make-hash-table))))
+                    (make-pending-modules (make-mutex 'pending-modules) (make-hash-table) [])))
   (parameterize ((current-directory (settings-srcdir settings))
                  (current-expander-compiling? #t)
+                 ;; Workers share declarations for this build, including deferred producers.
+                 (current-compile-optimizer-info (and (settings-optimize settings) (make-optimizer-info)))
                  (current-pending-modules pending))
     (add-load-path! (settings-srcdir settings))
     (try
@@ -386,7 +398,7 @@ TODO:
     (let (workers (map (lambda (i) (spawn/name `(worker ,i) build-worker))
                        (iota build-worker-count)))
       ;; On failure, let the workers finish their current module before
-      ;; raising, so that nothing is written after the caller rolls back.
+      ;; raising, so that the caller can abort all registered attempts.
       (def (abort! e)
         (set! aborted? #t)
         (channel-close workch)
@@ -542,69 +554,99 @@ TODO:
   (match spec
     ((? string? modf) (ssi-transient-paths (library-path modf ".ssi" settings)))
     ([gxc: modf . _] (ssi-transient-paths (library-path modf ".ssi" settings)))
+    ([(or exe: static-exe: optimized-exe: optimized-static-exe:) modf . opts]
+     [(string-append (binary-path modf opts settings) ".new")
+      (ssi-transient-paths (library-path modf ".ssi" settings)) ...])
     (_ [])))
 
-;;; Publication of compiled modules.
-;; Freshness of a module is judged by its .ssi (see build?, build-dependent? and
-;; library-timestamp), yet gxc writes the .ssi before all the gsc jobs of the module
-;; ran, and before any of them in a parallel make, which defers them to its end.
-;; So the .ssi is held back as <ssi>.new and renamed into place only after every
-;; stage of the module succeeded; until then the previous .ssi waits as <ssi>.old,
-;; to be restored if the build fails. Either file existing marks the module as
-;; unfinished; the .new placeholder is created before gxc writes anything.
-;; TODO: gxc writes its .scm and .ssxi.ss in place; temporary names renamed on
-;; success would keep a crash or full disk from truncating them (a :gerbil/compiler
-;; change). They are harmless for freshness: the module stays unpublished.
+;; The compiler marks interrupted publication with .new; .old may remain
+;; from an older make. The compiler clears the markers on successful commit.
 (def (ssi-transient-paths ssi)
-  [(ssi-update-path ssi) (ssi-backup-path ssi)])
+  [(string-append ssi ".new") (string-append ssi ".old")])
 
-(def (ssi-update-path ssi)
-  (string-append ssi ".new"))
+;; Compatibility with compilers that write their interface before native jobs finish.
+(cond-expand
+ ((not (defined compiler.current-compile-defer))
+  (def (ssi-update-path ssi)
+    (string-append ssi ".new"))
 
-(def (ssi-backup-path ssi)
-  (string-append ssi ".old"))
+  (def (ssi-backup-path ssi)
+    (string-append ssi ".old"))
 
-(def (delete-file-if-exists path)
-  (when (file-exists? path)
-    (delete-file path)))
+  (def (delete-file-if-exists path)
+    (when (file-exists? path)
+      (delete-file path)))
 
-;; Sets the previous .ssi aside and marks the module unfinished.
-(def (ssi-update-begin! ssi)
-  (def update (ssi-update-path ssi))
-  (def backup (ssi-backup-path ssi))
-  (create-directory* (path-directory ssi))
-  (cond
-   ;; An interrupted build may have left an unpublished .ssi in place.
-   ((or (file-exists? update) (file-exists? backup))
-    (delete-file-if-exists ssi))
-   ((file-exists? ssi)
-    (rename-file ssi backup #t)))
-  (unless (file-exists? update)
-    (call-with-output-file update void)))
+  ;; Sets the previous .ssi aside and marks the module unfinished.
+  (def (ssi-update-begin! ssi)
+    (def update (ssi-update-path ssi))
+    (def backup (ssi-backup-path ssi))
+    (create-directory* (path-directory ssi))
+    (cond
+     ;; An interrupted build may have left an unpublished .ssi in place.
+     ((or (file-exists? update) (file-exists? backup))
+      (delete-file-if-exists ssi))
+     ((file-exists? ssi)
+      (rename-file ssi backup #t)))
+    (unless (file-exists? update)
+      (call-with-output-file update void)))
 
-;; Holds back the .ssi gxc just wrote.
-(def (ssi-update-stage! ssi)
-  (when (file-exists? ssi)
-    (rename-file ssi (ssi-update-path ssi) #t)))
+  ;; Holds back the .ssi gxc just wrote.
+  (def (ssi-update-stage! ssi)
+    (when (file-exists? ssi)
+      (rename-file ssi (ssi-update-path ssi) #t)))
 
-(def (ssi-update-publish! ssi)
-  (rename-file (ssi-update-path ssi) ssi #t)
-  (delete-file-if-exists (ssi-backup-path ssi)))
+  (def (ssi-update-publish! ssi)
+    (rename-file (ssi-update-path ssi) ssi #t)
+    (delete-file-if-exists (ssi-backup-path ssi)))
 
-(def (ssi-update-rollback! ssi)
-  (def backup (ssi-backup-path ssi))
-  (delete-file-if-exists ssi)
-  (when (file-exists? backup)
-    (rename-file backup ssi #t))
-  (delete-file-if-exists (ssi-update-path ssi)))
+  (def (ssi-update-rollback! ssi)
+    (def backup (ssi-backup-path ssi))
+    (delete-file-if-exists ssi)
+    (when (file-exists? backup)
+      (rename-file backup ssi #t))
+    (delete-file-if-exists (ssi-update-path ssi)))
 
-;; Modules of a parallel make that gxc compiled and whose gsc jobs are queued
-;; in :gerbil/compiler/base; records: library path without extension -> pending-module
-(defstruct pending-modules (mx records))
+  ;; The library path of the module that a deferred gsc job compiles a file of.
+  ;; The driver names jobs (compile-file <libdir>/<id>[~<section>].scm), and nested
+  ;; modules <id>~<nested>[~<section>].scm; => #f for other jobs.
+  (def (compile-job-module job)
+    (match (thread-name job)
+      (['compile-file (? string? path)]
+       (let* ((file (path-strip-extension (path-strip-directory path)))
+              (base (cond
+                     ((string-index file #\~) => (cut substring file 0 <>))
+                     (else file))))
+         (path-expand base (path-directory path))))
+      (_ #f)))
+
+
+  (def compile-attempt-commit! ssi-update-publish!)
+  (def compile-attempt-abort! ssi-update-rollback!)))
+
+(cond-expand
+ ((defined compiler.run-compile-jobs!)
+  (def run-compile-jobs! compiler.run-compile-jobs!))
+ (else
+  ;; Reap every started job before rollback.
+  (def (run-compile-jobs! jobs)
+    (let ((started []) (failure #f))
+      (def (failed e) (unless failure (set! failure (list e))))
+      (for-each (lambda (job)
+                  (unless failure
+                    (with-catch failed
+                      (lambda () (thread-start! job) (set! started (cons job started))))))
+                jobs)
+      (for-each (lambda (job) (with-catch failed (cut compiler.join! job))) (reverse! started))
+      (when failure (raise (car failure)))))))
+
+;; records: library path without extension -> pending-module.
+;; executables: thunks to run after all static inputs have been published.
+(defstruct pending-modules (mx records executables))
 
 ;; deps: library paths of the dependencies built by the same make
-;; result: completion posted with #t once published, #f after a rollback attempt
-(defstruct pending-module (ssi deps result))
+;; result: completion posted with #t once published, #f after abort
+(defstruct pending-module (ssi attempt deps result))
 
 (def current-pending-modules
   (make-parameter #f))
@@ -613,24 +655,11 @@ TODO:
 (def current-build-dependencies
   (make-parameter []))
 
-(def (pending-module-add! pending ssi deps)
+(def (pending-module-add! pending ssi attempt deps)
   (with-lock (pending-modules-mx pending)
     (cut hash-put! (pending-modules-records pending)
          (path-strip-extension ssi)
-         (make-pending-module ssi deps (make-completion `(publish ,ssi))))))
-
-;; The library path of the module that a deferred gsc job compiles a file of.
-;; The driver names jobs (compile-file <libdir>/<id>[~<section>].scm), and nested
-;; modules <id>~<nested>[~<section>].scm; => #f for other jobs.
-(def (compile-job-module job)
-  (match (thread-name job)
-    (['compile-file (? string? path)]
-     (let* ((file (path-strip-extension (path-strip-directory path)))
-            (base (cond
-                   ((string-index file #\~) => (cut substring file 0 <>))
-                   (else file))))
-       (path-expand base (path-directory path))))
-    (_ #f)))
+         (make-pending-module ssi attempt deps (make-completion `(publish ,ssi))))))
 
 ;; A loader (<id>.scm) loads the sections of its module: compile it last.
 (def (compile-job-loader? job)
@@ -639,78 +668,71 @@ TODO:
      (not (string-index (path-strip-directory path) #\~)))
     (_ #f)))
 
-;; Runs jobs concurrently, within the core limit of :gerbil/compiler/base,
-;; and waits for all of them; => a list containing the first exception, or #f.
-;; The exception itself can be #f.
-(def (run-compile-jobs jobs)
-  (for-each thread-start! jobs)
-  (let lp ((rest jobs) (failure #f))
-    (match rest
-      ([job . rest]
-       (lp rest
-           (with-catch
-            (lambda (e)
-              (or failure (list (if (uncaught-exception? e) (uncaught-exception-reason e) e))))
-            (lambda () (thread-join! job) failure))))
-      (else failure))))
-
 ;; Runs the gsc jobs queued by the make, then publishes each module whose jobs
-;; and built dependencies all succeeded, and rolls back the others.
+;; and built dependencies all succeeded, and aborts the others.
 ;; Reports all failures once every job finished, leaving no gsc running.
 (def (execute-pending-modules! pending)
   (def records (pending-modules-records pending))
-  (def groups (make-hash-table))
-  (def others [])
-  (for (job (pending-compile-jobs))
-    (let (key (compile-job-module job))
-      (if (and key (hash-key? records key))
-        (hash-update! groups key (cut cons job <>) [])
-        (set! others (cons job others)))))
+  (cond-expand
+   ((defined compiler.current-compile-defer)
+    (def jobs-for compile-attempt-jobs))
+   (else
+    (def groups (make-hash-table))
+    (def others [])
+    (for (job (pending-compile-jobs))
+      (let (key (compile-job-module job))
+        (if (and key (hash-key? records key))
+          (hash-update! groups key (cut cons job <>) [])
+          (set! others (cons job others)))))
+    (def (jobs-for ssi) (reverse (hash-ref groups (path-strip-extension ssi) [])))))
   (def (settle! record)
-    (def module-ssi (pending-module-ssi record))
+    (def attempt (pending-module-attempt record))
     ;; Capture operational failures during compilation, dependency waits and
     ;; publication. Posting stays outside the catch: this worker alone owns it.
     ;; Distinguish publication, a failed dependency, and an exception.
     (def result
       (with-catch list
         (lambda ()
-          (let (jobs (reverse (hash-ref groups (path-strip-extension module-ssi) [])))
-            (or (run-compile-jobs (filter (? (not compile-job-loader?)) jobs))
-                (run-compile-jobs (filter compile-job-loader? jobs))
-                (and (andmap (lambda (dep)
-                               (let (dep-record (hash-get records dep))
-                                 (or (not dep-record)
-                                     (completion-wait! (pending-module-result dep-record)))))
-                             (pending-module-deps record))
-                     (begin (ssi-update-publish! module-ssi) #t)))))))
+          (let (jobs (jobs-for attempt))
+            (run-compile-jobs! (filter (? (not compile-job-loader?)) jobs))
+            (run-compile-jobs! (filter compile-job-loader? jobs))
+            (and (andmap (lambda (dep)
+                           (let (dep-record (hash-get records dep))
+                             (or (not dep-record)
+                                 (completion-wait! (pending-module-result dep-record)))))
+                         (pending-module-deps record))
+                 (begin (compile-attempt-commit! attempt) #t))))))
     (if (eq? result #t)
       (begin
         (completion-post! (pending-module-result record) #t)
         #f)
-      (let (rollback-failure
-            (with-catch list (lambda () (ssi-update-rollback! module-ssi) #f)))
+      (let (abort-failure
+            (with-catch list (lambda () (compile-attempt-abort! attempt) #f)))
         (completion-post! (pending-module-result record) #f)
-        (if (and result rollback-failure)
-          [(Error "Module settlement and rollback both failed"
-                  where: 'make irritants: [(car result) (car rollback-failure)])]
-          (or result rollback-failure)))))
+        (if (and result abort-failure)
+          [(Error "Module settlement and abort both failed"
+                  where: 'make irritants: [(car result) (car abort-failure)])]
+          (or result abort-failure)))))
   (let* ((threads (map (lambda (record)
                          (spawn/name `(publish ,(pending-module-ssi record)) settle! record))
                        (hash-values records)))
-         (failure (run-compile-jobs (reverse others)))
-         (failures (map thread-join! threads)))
-    (match (filter identity (cons failure failures))
-      ([] (void))
+         (other-failure
+          (cond-expand
+           ((defined compiler.current-compile-defer) #f)
+           (else (with-catch list (lambda () (run-compile-jobs! (reverse others)) #f)))))
+         (failures (cons other-failure (map thread-join! threads))))
+    (match (filter identity failures)
+      ([] (for-each (lambda (link!) (link!)) (reverse (pending-modules-executables pending))))
       ([failure] (raise (car failure)))
       (failures
        (raise (Error "Multiple failures during parallel build settlement"
                      where: 'make irritants: (map car failures)))))))
 
-;; Drops the queued gsc jobs of a failed make and rolls back its modules.
+;; Generation failed before settlement: none of these jobs has started.
 (def (abandon-pending-modules! pending)
-  (pending-compile-jobs)
+  (cond-expand ((not (defined compiler.current-compile-defer)) (pending-compile-jobs)))
   (for (record (hash-values (pending-modules-records pending)))
-    (ssi-update-rollback! (pending-module-ssi record))))
+    (compile-attempt-abort! (pending-module-attempt record))))
 
 (def (gsc-compile-opts opts)
   (match opts
@@ -734,18 +756,25 @@ TODO:
          parallel: (> (settings-parallelize settings) 1)
          (when/list gsc-opts [gsc-options: gsc-opts]) ...])
     (def ssi (library-path mod ".ssi" settings))
-    (def pending (and invoke-gsc? (current-pending-modules)))
-    (ssi-update-begin! ssi)
-    (try
-     (compile-module srcpath gxc-opts)
-     (catch (e)
-       (ssi-update-rollback! ssi)
-       (raise e)))
-    (ssi-update-stage! ssi)
-    (if pending
-      ;; gsc jobs deferred to the end of the make
-      (pending-module-add! pending ssi (current-build-dependencies))
-      (ssi-update-publish! ssi))))
+    (cond-expand
+     ((defined compiler.current-compile-defer)
+      (def pending (current-pending-modules))
+      (def deps (current-build-dependencies))
+      (parameterize ((current-compile-defer (and pending (cut pending-module-add! pending ssi <> deps))))
+        (compile-module srcpath gxc-opts)))
+     (else
+      (def pending (and invoke-gsc? (current-pending-modules)))
+      (ssi-update-begin! ssi)
+      (try
+       (compile-module srcpath gxc-opts)
+       (catch (e)
+         (ssi-update-rollback! ssi)
+         (raise e)))
+      (ssi-update-stage! ssi)
+      (if pending
+        ;; gsc jobs deferred to the end of the make
+        (pending-module-add! pending ssi ssi (current-build-dependencies))
+        (ssi-update-publish! ssi))))))
 
 (def (gsc-libpath mod settings)
   (def libdir-prefix (settings-libdir-prefix settings))
@@ -836,11 +865,23 @@ TODO:
      verbose: (settings-verbose>=? settings 9)
      debug: (settings-debug settings)
      full-program-optimization: (settings-full-program-optimization settings)
-     parallel: (> (settings-parallelize settings) 1)
+     parallel: #f
      (when/list gsc-opts [gsc-options: gsc-opts]) ...])
+  (def (link!)
+    (message "... compile exe " mod " -> " binpath)
+    (cond-expand
+     ((defined compiler.current-compile-defer)
+      (parameterize ((current-compile-defer #f)) (gxc#compile-exe srcpath gxc-opts)))
+     (else
+      (gxc#compile-exe srcpath gxc-opts))))
   (gxc-compile mod gsc-opts settings #f)
-  (message "... compile exe " mod " -> " binpath)
-  (gxc#compile-exe srcpath gxc-opts))
+  (cond
+   ((current-pending-modules)
+    => (lambda (pending)
+         (do-with-lock (pending-modules-mx pending)
+           (set! (pending-modules-executables pending)
+                 (cons link! (pending-modules-executables pending))))))
+   (else (link!))))
 
 (def (compile/static-linkage mod opts settings compile-e)
   (when (member "--enable-shared" (string-split (configure-command-string) #\'))

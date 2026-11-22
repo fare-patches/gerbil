@@ -2,11 +2,14 @@
 ;;; © Gerbil contributors
 ;;; Incremental make freshness and nested dependency ordering
 
-(import :std/io/tempfile
+(import (prefix-in :gerbil/compiler/base compiler.)
+        :std/source
+        :std/io/tempfile
         :std/misc/process
         :std/test
         ./make)
-(export make-test make-output-integrity-test)
+(extern namespace: std/make run-compile-jobs!)
+(export make-test make-output-integrity-test make-publication-test)
 
 (def (test-incremental-make (cores : :fixnum))
   => :void
@@ -90,24 +93,27 @@
 ;;; :gerbil/compiler/base would run at the end of the next make and mask staleness.
 ;;; The subprocess uses the installed :std/make, not ./make.
 
-(def (run-gxi forms)
+(def (run-gxi forms (env []))
   ;; => #t on success, else the process output for the failure report
   (def status #f)
   (def output
-    (run-process [(path-expand "gxi" (path-expand "~~bin"))
+    (run-process ["env" env ... (path-expand "gxi" (path-expand "~~bin"))
                   (foldr (lambda (form args) (cons* "-e" (object->string form) args))
                          [] forms) ...]
                  stdin-redirection: #f stderr-redirection: #t
                  check-status: (lambda (s _) (set! status s))))
   (or (zero? status) output))
 
-(def (make/subprocess modules directory cores)
-  (run-gxi ['(import :std/make)
+(def (make/subprocess modules directory cores (setup []))
+  (run-gxi ['(import :std/make) setup ...
             `(make ',modules
                    srcdir: ,(path-expand "src" directory)
                    libdir: ,(path-expand "lib" directory)
                    bindir: ,(path-expand "bin" directory)
-                   parallelize: ,cores optimize: #t)]))
+                   parallelize: ,cores optimize: #t)]
+           ;; The native queue reads its limit before make is invoked; the
+           ;; sibling barrier requires two actual gsc processes simultaneously.
+           [(string-append "GERBIL_BUILD_CORES=" (number->string cores))]))
 
 (def (write-forms path forms)
   (call-with-output-file path
@@ -126,7 +132,7 @@
         (lp (fx1+ i) (fxand (fx* (fxxor h (u8vector-ref bytes i)) 16777619) #xffffffff))
         h))))
 
-(def (library-snapshot libdir)
+(def (library-snapshot libdir (include? true))
   ;; => [[relative-path mtime checksum] ...] for every file under libdir, sorted
   (def (walk dir rel acc)
     (foldl (lambda (name acc)
@@ -135,11 +141,8 @@
                (if (eq? (file-info-type (file-info path)) 'directory)
                  (walk path rel acc)
                  (cons [rel (file-mtime path) (file-checksum path)] acc))))
-           acc (directory-files dir)))
+           acc (filter include? (directory-files dir))))
   (list-sort (lambda (x y) (string<? (car x) (car y))) (walk libdir #f [])))
-
-(def (object-file-entry? entry)
-  (string-prefix? ".o" (path-extension (car entry))))
 
 (def (latest-object-file scm)
   ;; gsc writes base.o1 beside base.scm, then base.o2, ... on rebuilds.
@@ -190,7 +193,8 @@
      (check (string? (make/subprocess modules directory 2)) => #t)
      (check (map (lambda (ext) (file-exists? (path-expand (string-append prefix "/a" ext) libdir)))
                  '(".scm" ".ssi" ".o1" "~0.o1"))
-            => '(#t #f #f #f))
+            => (cond-expand ((defined compiler.current-compile-defer) '(#f #f #f #f))
+                            (else '(#t #f #f #f))))
      (c-source '(car [(a-value) 2]))
      (check (make/subprocess modules directory 2) => #t)
      (check (stale-object-files libdir prefix) => [])
@@ -234,16 +238,20 @@
        (header-source "this is not C\n")
        (d-source)
        (check (string? (make/subprocess modules directory cores)) => #t)
-       (let (after (library-snapshot libdir))
-         (check (map car after) => (map car before))
-         (check (filter object-file-entry? after) => (filter object-file-entry? before))))
+       (cond-expand
+        ((defined compiler.current-compile-defer) (check (library-snapshot libdir) => before))
+        (else
+         (def (object? entry) (string-prefix? ".o" (path-extension (car entry))))
+         (let (after (library-snapshot libdir))
+           (check (map car after) => (map car before))
+           (check (filter object? after) => (filter object? before))))))
      (header-source "static int d_ok = 2;\n")
      (check (make/subprocess modules directory cores) => #t)
      (check (stale-object-files libdir prefix) => []))))
 
 ;; Break publication after a's final native compile succeeds. Its dependent b
 ;; must roll back rather than publish or wait forever for a's result.
-(def (test-parallel-publication-failure (block-rollback? : :boolean)) => :void
+(def (test-legacy-publication-failure (block-rollback? : :boolean)) => :void
   (call-with-package
    (lambda (directory prefix source libdir)
      (def a (path-expand "a" (path-expand prefix libdir)))
@@ -307,8 +315,349 @@
      (check (file-exists? (string-append b ".ssi.new")) => #f)))
   (void))
 
+(def test-wrapper (path-expand "make-test-gsc.sh" (this-source-directory)))
+
+(def (wrap-gsc (directory : :string) (mode : :string)) => :list
+  ['(spawn-thread (lambda () (thread-sleep! 90) (displayln "gsc fixture timeout") (exit 124)))
+   `(setenv "MAKE_TEST_CONTROL" ,directory)
+   `(setenv "MAKE_TEST_MODE" ,mode)
+   '(setenv "MAKE_TEST_GSC" (getenv "GERBIL_GSC" (path-expand "~~bin/gsc")))
+   `(setenv "GERBIL_GSC" ,test-wrapper)])
+
+(def (write-nested (source : :procedure) (value : :fixnum)) => :void
+  (source "a.ss" '(export inner outer)
+          `(module inner (export answer) (def (answer) ,value))
+          '(def (outer) 10))
+  (void))
+
+(def (load-nested (prefix : :string) (libdir : :string) (expected : :fixnum))
+  (run-gxi [`(add-load-path! ,libdir)
+            `(import (in: ,(string->symbol (string-append ":" prefix "/a")) inner))
+            `(exit (if (= (answer) ,expected) 0 1))]))
+
+(def (wait-for-barrier (path : :string) (job :~ thread?) (allow-early-exit? #f))
+  (let lp ((n 600))
+    (cond
+     ((file-exists? path) (void))
+     ((thread-join! job 0 #f) => (lambda (result)
+                                  (unless allow-early-exit?
+                                    (error "build exited before barrier" path result))))
+     ((zero? n) (error "timed out at gsc barrier" path))
+     (else (thread-sleep! 0.1) (lp (fx1- n))))))
+
+;; Read all previously published files, including the interface, and detect any
+;; new public object. Private files and unfinished-build markers may coexist.
+(def (public-snapshot (libdir : :string)) => :list
+  (library-snapshot libdir
+    (lambda (name)
+      (not (or (string-prefix? "gxtmp" name)
+               (string-suffix? ".ssi.old" name)
+               (string-suffix? ".ssi.new" name))))))
+
+;; make's freshness comparison has one-second resolution. Backdate a public
+;; output to force one rebuild without racing the clock or changing the input.
+(def (backdate-static! (prefix : :string) (libdir : :string)) => :void
+  (run-process ["touch" "-t" "200001010000"
+                (path-expand (string-append "static/" prefix "__a.scm") libdir)])
+  (void))
+
+(def (test-precommit-failure (parallel? : :boolean)) => :void
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def mode (if parallel? "siblings" "link-failure"))
+     (def release (path-expand "release" directory))
+     (write-nested source 1)
+     (check (make/subprocess '("a") directory 1) => #t)
+     (backdate-static! prefix libdir)
+     (let (before (library-snapshot libdir))
+       (write-nested source 2)
+        (let* ((job (spawn-thread
+                     (lambda ()
+                       (make/subprocess '("a") directory (if parallel? 4 1)
+                         (wrap-gsc directory mode)))))
+               (during
+                (unwind-protect
+                  (begin
+                    (wait-for-barrier (path-expand (if parallel? "failed" "ready") directory) job)
+                    [(public-snapshot libdir) (load-nested prefix libdir 1)])
+                  (begin (call-with-output-file release void) (thread-join! job))))
+               (result (thread-join! job)))
+          (check (string? result) => #t)
+          (check (string-contains result "gsc fixture timeout") => #f)
+          (if parallel?
+            (check (file-exists? (path-expand "late-success" directory)) => #t)
+            (check (and (string-contains result "missing_gerbil_make_test_library") #t) => #t))
+          (check during => [before #t]))
+       (check (library-snapshot libdir) => before)
+       (check (load-nested prefix libdir 1) => #t))))
+  (void))
+
+(def (test-replacement (custom? : :boolean)) => :void
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def stem (path-expand "a" (path-expand prefix libdir)))
+     (def host-prefix "gxtmpbuilder.1234.")
+     (def setup
+       (append (wrap-gsc directory "trace")
+               (if custom?
+                 ['(import :gerbil/compiler/base)
+                  `(current-compile-temporary-prefix (lambda () ,host-prefix))]
+                 [])))
+     (def (compile!)
+       (run-gxi ['(import :gerbil/compiler) setup ...
+                 `(compile-module ,(path-expand "src/a.ss" directory)
+                    [output-dir: ,libdir optimize: #t generate-ssxi: #t
+                     invoke-gsc: #t keep-scm: #t])]))
+     (write-nested source 1)
+     (check (compile!) => #t)
+     (check (load-nested prefix libdir 1) => #t)
+     (let (input (call-with-input-file (path-expand "input" directory) read-line))
+       (check (path-directory input) => (path-directory stem))
+       (check (string-prefix? (if custom? host-prefix "gxtmp") (path-strip-directory input)) => #t)
+       (write-nested source 2)
+       ;; Leave the exact pathname previously passed to gsc occupied. A new
+       ;; attempt may choose another name, or explicitly fail on collision.
+       (when custom? (call-with-output-file input (cut display "other writer" <>)))
+       (let (result (compile!))
+         (when custom?
+           (check (call-with-input-file input read-line) => "other writer")
+           (delete-file input))
+         (if (and custom? (string? result))
+           (begin (check (load-nested prefix libdir 1) => #t) (check (compile!) => #t))
+           (check result => #t))))
+     (check (load-nested prefix libdir 2) => #t)
+     (for-each
+      (lambda (suffix) (check (file-exists? (string-append stem suffix)) => #t))
+      '(".ssi" ".ssxi.ss" ".scm" ".o1" ".o2" "~0.scm" "~0.o2" "~inner~0.o2"))
+     (check (file-exists? (path-expand (string-append "static/" prefix "__a.scm") libdir)) => #t)
+     (check (library-snapshot libdir) => (public-snapshot libdir))
+     (unless custom?
+       ;; Gambit fills the first hole without replacing later versions.
+       (let* ((first (string-append stem "~0.o1"))
+              (next (string-append stem "~0.o2"))
+              (later-checksum (file-checksum next)))
+         (delete-file first)
+         (check (compile!) => #t)
+         (check (file-exists? first) => #t)
+         (check (file-checksum next) => later-checksum)
+         (check (file-exists? (string-append stem "~0.o3")) => #f)))))
+  (void))
+
+(def (test-legacy-markers) => :void
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def stem (path-expand "a" (path-expand prefix libdir)))
+     (def ssi (string-append stem ".ssi"))
+     (source "a.ss" '(export answer) '(def (answer) 7))
+     (check (make/subprocess '("a") directory 2) => #t)
+     (for-each
+      (lambda (suffix n)
+        (let (marker (string-append ssi suffix))
+          (copy-file ssi marker)
+          (check (make/subprocess '("a") directory 2) => #t)
+          (check (file-exists? marker) => #f)
+          (check (file-exists? (string-append stem "~0.o" n)) => #t)))
+      '(".new" ".old") '("2" "3"))))
+  (void))
+
+;; Two independent gxi processes compile immutable, different sources to the
+;; same module id. At the loader barrier each has already compiled its runtime
+;; section and selected its loader object. Only the driver decides who wins.
+(def (test-live-object-collision (custom? : :boolean)) => :void
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def id (string->symbol (string-append ":" prefix "/a")))
+     (def (fixture name version)
+       (let (dir (path-expand name directory))
+         (create-directory dir)
+         (write-forms (path-expand "gerbil.pkg" dir) [`(package: ,(string->symbol prefix))])
+         (write-forms (path-expand "a.ss" dir)
+           ['(export interface-value runtime-value)
+            `(defrule (interface-value) ,version)
+            `(def (runtime-value) ,version)])
+         dir))
+     (def seed (fixture "seed" 1))
+     (def left (fixture "left" 2))
+     (def right (fixture "right" 3))
+     (def (load-version n)
+       (run-gxi [`(add-load-path! ,libdir) `(import ,id)
+                 `(exit (if (and (= (interface-value) ,n) (= (runtime-value) ,n)) 0 1))]))
+     (def (compile! dir race?)
+       (run-gxi ['(import :gerbil/compiler :gerbil/compiler/base)
+                 (if custom?
+                   ['(current-compile-temporary-prefix (lambda () "gxtmpcontest.123."))]
+                   []) ...
+                 (if race? (wrap-gsc dir "race") []) ...
+                 `(compile-module ,(path-expand "a.ss" dir)
+                    [output-dir: ,libdir invoke-gsc: #t keep-scm: #t])]))
+     (def (release! dir) (call-with-output-file (path-expand "release" dir) void))
+     (def (selected dir) (map (lambda (file) (call-with-input-file (path-expand file dir) read-line))
+                              '("section" "loader")))
+     (check (compile! seed #f) => #t)
+     (check (load-version 1) => #t)
+     (let* ((before (library-snapshot libdir))
+            (first (spawn-thread (cut compile! left #t)))
+            (second #f))
+       (unwind-protect
+         (begin
+           (wait-for-barrier (path-expand "ready" left) first)
+           (set! second (spawn-thread (cut compile! right #t)))
+           (wait-for-barrier (path-expand "ready" right) second #t)
+           (let ((during (public-snapshot libdir))
+                 (loaded (load-version 1)))
+             (release! left)
+             (let* ((r1 (thread-join! first))
+                    (middle (public-snapshot libdir))
+                    (middle-loaded (load-version (if (eq? r1 #t) 2 1))))
+               (release! right)
+               (let* ((r2 (thread-join! second))
+                      (after (library-snapshot libdir)))
+                 (check during => before)
+                 (when (file-exists? (path-expand "ready" right))
+                   (check (equal? (call-with-input-file (path-expand "loader-input" left) read-line)
+                                  (call-with-input-file (path-expand "loader-input" right) read-line))
+                          => #f))
+                 (check loaded => #t)
+                 (check middle-loaded => #t)
+                 (check (or (eq? r1 #t) (eq? r2 #t)) => #t)
+                 (check (load-version (if (eq? r2 #t) 3 2)) => #t)
+                 (check after => (public-snapshot libdir))
+                 (for-each
+                  (lambda (name)
+                    (check (file-exists? (path-expand name (path-expand prefix libdir))) => #t))
+                  '("a~0.o2" "a.o2"))
+                 ;; Existing object versions remain byte-for-byte unchanged,
+                 ;; even when both processes can reserve different versions.
+                 (for-each
+                  (lambda (entry)
+                    (when (string-prefix? ".o" (path-extension (car entry)))
+                      (check (assoc (car entry) after) => entry)))
+                  middle)
+                 (cond
+                  ((and (eq? r1 #t) (eq? r2 #t))
+                   (check (selected left) => '("a~0.o2" "a.o2"))
+                   (check (selected right) => '("a~0.o3" "a.o3")))
+                  (else
+                   (let* ((left-lost? (not (eq? r1 #t)))
+                          (failure (if left-lost? r1 r2)))
+                     (check (string? failure) => #t)
+                     (check (string-contains failure "timeout") => #f)
+                     (if left-lost? (check middle => before) (check after => middle))
+                     ;; The same source, prefix, wrapper and arguments succeed
+                     ;; when rerun alone (its release barrier is already open).
+                     (check (compile! (if left-lost? left right) #t) => #t)
+                     (check (load-version (if left-lost? 2 3)) => #t))))))))
+         (begin
+           (release! left)
+           (release! right)
+           (thread-join! first)
+           (when second (thread-join! second)))))))
+  (void))
+
+;; Obstruct an ordinary destination after gsc succeeds. Versioned objects
+;; are renamed first; the primary's generation is untouched by the fixture.
+(def (test-parallel-publication-failure) => :void
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def a (path-expand "a" (path-expand prefix libdir)))
+     (def b (path-expand "b" (path-expand prefix libdir)))
+     (def ssi (string-append a ".ssi"))
+     (def section (string-append a "~0.scm"))
+     (def static (path-expand (string-append "static/" prefix "__a.scm") libdir))
+     (def marker (string-append ssi ".new"))
+     (source "a.ss" '(export a-value) '(def (a-value) 42))
+     (source "b.ss" '(import ./a) '(export b-value) '(def (b-value) (+ 1 (a-value))))
+     (check (make/subprocess '("a") directory 1) => #t)
+     (def old-interface (file-checksum ssi))
+     (backdate-static! prefix libdir)
+     (let (result (make/subprocess '("b" "a") directory 2
+                    [(wrap-gsc directory "obstruct") ...
+                     `(setenv "MAKE_TEST_SECTION" ,section)]))
+       (check (string? result) => #t)
+       (check (string-contains result "gsc fixture timeout") => #f))
+     (check (file-exists? (path-expand "obstructed" directory)) => #t)
+     (check (file-exists? (string-append a "~0.o2")) => #t)
+     (check (file-exists? marker) => #t)
+     (check (file-checksum ssi) => old-interface)
+     (check (file-exists? (string-append b ".ssi")) => #f)
+     (delete-file-or-directory section #t)
+     (rename-file (path-expand "prior.scm" directory) section)
+     ;; The ordinary rename order is unspecified. Remove the stale timestamp
+     ;; used to force the failed build so only the dirty marker forces a retry.
+     (run-process ["touch" section static])
+     (let (src-time (file-mtime (path-expand "src/a.ss" directory)))
+       (check (>= (file-mtime ssi) src-time) => #t)
+       (check (>= (file-mtime static) src-time) => #t))
+     (check (make/subprocess '("a") directory 2) => #t)
+     (check (file-exists? (string-append a "~0.o3")) => #t)
+     (check (file-exists? marker) => #f)))
+  (void))
+
+(def (test-deferred-optimizer-input)
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def (build)
+       (run-gxi ['(import :std/make :gerbil/compiler/optimize-base)
+                 '(def caller-info (make-optimizer-info))
+                 `(parameterize ((current-compile-optimizer-info caller-info))
+                    (make '("b" "a") srcdir: ,(path-expand "src" directory)
+                          libdir: ,libdir parallelize: 2 optimize: #t))
+                 '(exit (if (zero? (hash-length (optimizer-info-ssxi caller-info))) 0 1))]
+                ["GERBIL_BUILD_CORES=2"]))
+     (source "a.ss" '(export value) '(def (value) => :fixnum 42))
+     (source "b.ss" '(import ./a) '(export result) '(def (result) (fx1+ (value))))
+     (check (build) => #t)
+     ;; The published signature still accepts zero arguments during generation.
+     (source "a.ss" '(export value) '(def (value (s : :string)) => :string s))
+     (source "b.ss" '(import ./a) '(export result) '(def (result) (string-length (value "second"))))
+     (backdate-static! prefix libdir)
+     (check (build) => #t)
+     (check (run-gxi [`(add-load-path! ,libdir)
+                      `(import ,(string->symbol (string-append ":" prefix "/b")))
+                      '(exit (if (= (result) 6) 0 1))])
+            => #t))))
+
+(def (test-duplicate-native-output)
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def output (path-expand "duplicate.o1" directory))
+     (write-nested source 1)
+     (let (result
+           (run-gxi ['(import :gerbil/compiler)
+                     `(compile-module ,(path-expand "src/a.ss" directory)
+                        [output-dir: ,libdir invoke-gsc: #t parallel: #t
+                         gsc-options: ["-o" ,output]])]))
+       (check (and (string? result) (string-contains result "Multiple compiler outputs for path") #t)
+              => #t)
+       (check (file-exists? output) => #f)
+       (check (library-snapshot libdir) => [])))))
+
+(def (test-executable-private-dependencies)
+  (call-with-package
+   (lambda (directory prefix source libdir)
+     (def dep (path-expand (string-append "static/" prefix "__a") libdir))
+     (source "a.ss" '(export value) '(def (value) 42))
+     (source "prog.ss" '(import ./a) '(export main) '(def (main) (exit (if (= (value) 42) 0 1))))
+     (check (make/subprocess '("a" (exe: "prog")) directory 2) => #t)
+     (check (file-exists? (string-append dep ".scm")) => #t)
+     (check (file-exists? (string-append dep ".c")) => #f)
+     (check (file-exists? (string-append dep ".o")) => #f)
+     (check (run-process [(path-expand "bin/prog" directory)]) => ""))))
+
+(def (test-partial-job-start)
+  (def ran? #f)
+  (def spent (spawn-thread void))
+  (thread-join! spent)
+  (let (first (compiler.make-compile-job (lambda () (thread-yield!) (set! ran? #t)) 'first))
+    (check-exception (run-compile-jobs! [first spent]) started-thread-exception?)
+    (check ran? => #t)))
+
 (def make-output-integrity-test
   (test-suite "test :std/make output integrity"
+    (test-case "deferred optimizer sees the rebuilt provider signature"
+      (test-deferred-optimizer-input))
+    (test-case "a failed thread start joins earlier jobs"
+      (test-partial-job-start))
     (test-case "resumed parallel build recompiles modules whose gsc jobs never ran"
       (test-resume-aborted-parallel-build))
     (test-case "expansion failure keeps previous outputs, one worker"
@@ -322,8 +671,37 @@
     (test-case "gsc failure keeps previous objects and is retried, one worker"
       (test-gsc-failure-keeps-objects 1))
     (test-case "gsc failure keeps previous objects and is retried, parallel workers"
-      (test-gsc-failure-keeps-objects 2))
-    (test-case "parallel publication failure reaches caller and rolls back dependent"
-      (test-parallel-publication-failure #f))
-    (test-case "parallel publication and rollback failures both reach caller"
-      (test-parallel-publication-failure #t))))
+      (test-gsc-failure-keeps-objects 2))))
+
+;; Each compiler has its own publication protocol and failure injection points.
+(cond-expand
+ ((defined compiler.current-compile-defer)
+  (def make-publication-test
+    (test-suite "compiler-staged publication"
+      (test-case "two sections cannot produce the same explicit output"
+        (test-duplicate-native-output))
+      (test-case "linking an executable leaves its dependency cache alone"
+        (test-executable-private-dependencies))
+      (test-case "staged replacement preserves nested identity"
+        (test-replacement #f))
+      (test-case "host-qualified staging tolerates another writer's file"
+        (test-replacement #t))
+      (test-case "concurrent processes cannot overwrite same object version"
+        (test-live-object-collision #f))
+      (test-case "concurrent processes sharing a fixed prefix cannot clobber each other"
+        (test-live-object-collision #t))
+      (test-case "old module remains public through a blocked, failing link"
+        (test-precommit-failure #f))
+      (test-case "deferred sibling finishing after failure cannot publish"
+        (test-precommit-failure #t))
+      (test-case "partial publication rejects dependent and forces recovery"
+        (test-parallel-publication-failure))
+      (test-case "fresh-looking outputs with legacy interface markers are rebuilt"
+        (test-legacy-markers)))))
+ (else
+  (def make-publication-test
+    (test-suite "interface marker publication"
+      (test-case "parallel publication failure reaches caller and rolls back dependent"
+        (test-legacy-publication-failure #f))
+      (test-case "parallel publication and rollback failures both reach caller"
+        (test-legacy-publication-failure #t))))))
