@@ -861,6 +861,7 @@ TODO:
   (def gsc-opts (compile-exe-gsc-opts opts))
   (def gxc-opts
     [invoke-gsc: #t
+     output-dir: (settings-libdir settings)
      output-file: binpath
      verbose: (settings-verbose>=? settings 9)
      debug: (settings-debug settings)

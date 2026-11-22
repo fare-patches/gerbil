@@ -488,8 +488,11 @@
                    ['(current-compile-temporary-prefix (lambda () "gxtmpcontest.123."))]
                    []) ...
                  (if race? (wrap-gsc dir "race") []) ...
-                 `(compile-module ,(path-expand "a.ss" dir)
-                    [output-dir: ,libdir invoke-gsc: #t keep-scm: #t])]))
+                 `(with-catch
+                    (lambda (e) (display-exception e) (exit 1))
+                    (lambda ()
+                      (compile-module ,(path-expand "a.ss" dir)
+                        [output-dir: ,libdir invoke-gsc: #t keep-scm: #t])))]))
      (def (release! dir) (call-with-output-file (path-expand "release" dir) void))
      (def (selected dir) (map (lambda (file) (call-with-input-file (path-expand file dir) read-line))
                               '("section" "loader")))
@@ -624,9 +627,12 @@
      (write-nested source 1)
      (let (result
            (run-gxi ['(import :gerbil/compiler)
-                     `(compile-module ,(path-expand "src/a.ss" directory)
-                        [output-dir: ,libdir invoke-gsc: #t parallel: #t
-                         gsc-options: ["-o" ,output]])]))
+                     `(with-catch
+                        (lambda (e) (display-exception e) (exit 1))
+                        (lambda ()
+                          (compile-module ,(path-expand "src/a.ss" directory)
+                            [output-dir: ,libdir invoke-gsc: #t parallel: #t
+                             gsc-options: ["-o" ,output]])))]))
        (check (and (string? result) (string-contains result "Multiple compiler outputs for path") #t)
               => #t)
        (check (file-exists? output) => #f)
