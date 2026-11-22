@@ -23,7 +23,7 @@ gerbil_version() {
 		echo "$GERBIL_VERSION"
 	else
 		local ts=$(date -Iseconds| sed 's/[-| |:]//g')
-		echo "${GERBIL_RELEASE:-v18.2}-$ts"
+		echo "${GERBIL_RELEASE:-v0.19}-$ts"
 	fi
 }
 
