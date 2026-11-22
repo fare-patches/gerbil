@@ -302,6 +302,21 @@ package: gerbil/runtime
       origin:
       gerbil/runtime/util))))
   (declare-type
+   force-current-outputs
+   (@lambda 0
+            #f
+            signature:
+            (return:
+             void::t
+             effect:
+             #f
+             arguments:
+             #f
+             unchecked:
+             #f
+             origin:
+             gerbil/runtime/util)))
+  (declare-type
    true
    (@lambda (0)
             #f

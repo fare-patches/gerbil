@@ -1,22 +1,22 @@
 (declare (block) (standard-bindings) (extended-bindings))
 (begin
-  (define gerbil/runtime/eval::timestamp 1789839225)
+  (define gerbil/runtime/eval::timestamp 1795039815)
   (begin
     (define __syntax::t
-      (let ((__tmp180834 (list)) (__tmp180833 (cons (cons 'struct: '#t) '())))
+      (let ((__tmp180905 (list)) (__tmp180904 (cons (cons 'struct: '#t) '())))
         (declare (not safe))
         (make-class-type
          '__syntax::t
          '__syntax
-         __tmp180834
+         __tmp180905
          '(e id)
-         __tmp180833
+         __tmp180904
          '#f)))
     (define __syntax?
       (let () (declare (not safe)) (__make-class-predicate __syntax::t)))
     (define make-__syntax
-      (lambda _%$args180638%_
-        (apply make-instance __syntax::t _%$args180638%_)))
+      (lambda _%$args180709%_
+        (apply make-instance __syntax::t _%$args180709%_)))
     (define __syntax-e
       (let ()
         (declare (not safe))
@@ -48,21 +48,21 @@
         (declare (not safe))
         (__make-class-slot-unchecked-mutator __syntax::t 'id)))
     (define __core-form::t
-      (let ((__tmp180836 (list __syntax::t))
-            (__tmp180835 (cons (cons 'struct: '#t) '())))
+      (let ((__tmp180907 (list __syntax::t))
+            (__tmp180906 (cons (cons 'struct: '#t) '())))
         (declare (not safe))
         (make-class-type
          '__core-form::t
          '__core-form
-         __tmp180836
+         __tmp180907
          '()
-         __tmp180835
+         __tmp180906
          '#f)))
     (define __core-form?
       (let () (declare (not safe)) (__make-class-predicate __core-form::t)))
     (define make-__core-form
-      (lambda _%$args180635%_
-        (apply make-instance __core-form::t _%$args180635%_)))
+      (lambda _%$args180706%_
+        (apply make-instance __core-form::t _%$args180706%_)))
     (define __core-form-e
       (let ()
         (declare (not safe))
@@ -96,23 +96,23 @@
         (declare (not safe))
         (__make-class-slot-unchecked-mutator __core-form::t 'id)))
     (define __core-expression::t
-      (let ((__tmp180838 (list __core-form::t))
-            (__tmp180837 (cons (cons 'struct: '#t) '())))
+      (let ((__tmp180909 (list __core-form::t))
+            (__tmp180908 (cons (cons 'struct: '#t) '())))
         (declare (not safe))
         (make-class-type
          '__core-expression::t
          '__core-expression
-         __tmp180838
+         __tmp180909
          '()
-         __tmp180837
+         __tmp180908
          '#f)))
     (define __core-expression?
       (let ()
         (declare (not safe))
         (__make-class-predicate __core-expression::t)))
     (define make-__core-expression
-      (lambda _%$args180632%_
-        (apply make-instance __core-expression::t _%$args180632%_)))
+      (lambda _%$args180703%_
+        (apply make-instance __core-expression::t _%$args180703%_)))
     (define __core-expression-e
       (let ()
         (declare (not safe))
@@ -146,23 +146,23 @@
         (declare (not safe))
         (__make-class-slot-unchecked-mutator __core-expression::t 'id)))
     (define __core-special-form::t
-      (let ((__tmp180840 (list __core-form::t))
-            (__tmp180839 (cons (cons 'struct: '#t) '())))
+      (let ((__tmp180911 (list __core-form::t))
+            (__tmp180910 (cons (cons 'struct: '#t) '())))
         (declare (not safe))
         (make-class-type
          '__core-special-form::t
          '__core-special-form
-         __tmp180840
+         __tmp180911
          '()
-         __tmp180839
+         __tmp180910
          '#f)))
     (define __core-special-form?
       (let ()
         (declare (not safe))
         (__make-class-predicate __core-special-form::t)))
     (define make-__core-special-form
-      (lambda _%$args180629%_
-        (apply make-instance __core-special-form::t _%$args180629%_)))
+      (lambda _%$args180700%_
+        (apply make-instance __core-special-form::t _%$args180700%_)))
     (define __core-special-form-e
       (let ()
         (declare (not safe))
@@ -200,409 +200,409 @@
     (define __current-compiler (make-parameter '#f))
     (define __current-path (make-parameter '()))
     (define __core-resolve
-      (lambda (_%id180606%_)
-        (let* ((_%h180608%_ __core)
-               (_%key180611%_
-                (let () (declare (not safe)) (__AST-e _%id180606%_)))
-               (_%h180615%_ _%h180608%_)
-               (_%h180617%_ _%h180615%_))
+      (lambda (_%id180677%_)
+        (let* ((_%h180679%_ __core)
+               (_%key180682%_
+                (let () (declare (not safe)) (__AST-e _%id180677%_)))
+               (_%h180686%_ _%h180679%_)
+               (_%h180688%_ _%h180686%_))
           (declare (not safe))
-          (__hash-get _%h180617%_ _%key180611%_))))
+          (__hash-get _%h180688%_ _%key180682%_))))
     (define __core-bound-id?__%
-      (lambda (_%id180589%_ _%is?180590%_)
-        (let ((_%$e180592%_ (__core-resolve _%id180589%_)))
-          (if _%$e180592%_ (_%is?180590%_ _%$e180592%_) '#f))))
+      (lambda (_%id180660%_ _%is?180661%_)
+        (let ((_%$e180663%_ (__core-resolve _%id180660%_)))
+          (if _%$e180663%_ (_%is?180661%_ _%$e180663%_) '#f))))
     (define __core-bound-id?__0
-      (lambda (_%id180599%_)
-        (let ((_%is?180601%_ true))
-          (__core-bound-id?__% _%id180599%_ _%is?180601%_))))
+      (lambda (_%id180670%_)
+        (let ((_%is?180672%_ true))
+          (__core-bound-id?__% _%id180670%_ _%is?180672%_))))
     (define __core-bound-id?
-      (lambda _g180841_
-        (let ((_g180842_ (let () (declare (not safe)) (##length _g180841_))))
-          (cond ((let () (declare (not safe)) (##fx= _g180842_ 1))
-                 (apply __core-bound-id?__0 _g180841_))
-                ((let () (declare (not safe)) (##fx= _g180842_ 2))
-                 (apply __core-bound-id?__% _g180841_))
+      (lambda _g180912_
+        (let ((_g180913_ (let () (declare (not safe)) (##length _g180912_))))
+          (cond ((let () (declare (not safe)) (##fx= _g180913_ 1))
+                 (apply __core-bound-id?__0 _g180912_))
+                ((let () (declare (not safe)) (##fx= _g180913_ 2))
+                 (apply __core-bound-id?__% _g180912_))
                 (else
                  (##raise-wrong-number-of-arguments-exception
                   __core-bound-id?
-                  _g180841_))))))
+                  _g180912_))))))
     (define __core-bind-syntax!__%
-      (lambda (_%id180547%_ _%e180548%_ _%make180549%_)
-        (let* ((_%h180551%_ __core)
-               (_%key180554%_ _%id180547%_)
-               (_%value180557%_
+      (lambda (_%id180618%_ _%e180619%_ _%make180620%_)
+        (let* ((_%h180622%_ __core)
+               (_%key180625%_ _%id180618%_)
+               (_%value180628%_
                 (if (let ()
                       (declare (not safe))
-                      (##structure-instance-of? _%e180548%_ '__syntax::t))
-                    _%e180548%_
-                    (_%make180549%_ _%e180548%_ _%id180547%_)))
-               (_%h180561%_ _%h180551%_)
-               (_%h180563%_ _%h180561%_))
+                      (##structure-instance-of? _%e180619%_ '__syntax::t))
+                    _%e180619%_
+                    (_%make180620%_ _%e180619%_ _%id180618%_)))
+               (_%h180632%_ _%h180622%_)
+               (_%h180634%_ _%h180632%_))
           (declare (not safe))
-          (__hash-put! _%h180563%_ _%key180554%_ _%value180557%_))))
+          (__hash-put! _%h180634%_ _%key180625%_ _%value180628%_))))
     (define __core-bind-syntax!__0
-      (lambda (_%id180579%_ _%e180580%_)
-        (let ((_%make180582%_ make-__syntax))
-          (__core-bind-syntax!__% _%id180579%_ _%e180580%_ _%make180582%_))))
+      (lambda (_%id180650%_ _%e180651%_)
+        (let ((_%make180653%_ make-__syntax))
+          (__core-bind-syntax!__% _%id180650%_ _%e180651%_ _%make180653%_))))
     (define __core-bind-syntax!
-      (lambda _g180843_
-        (let ((_g180844_ (let () (declare (not safe)) (##length _g180843_))))
-          (cond ((let () (declare (not safe)) (##fx= _g180844_ 2))
-                 (apply __core-bind-syntax!__0 _g180843_))
-                ((let () (declare (not safe)) (##fx= _g180844_ 3))
-                 (apply __core-bind-syntax!__% _g180843_))
+      (lambda _g180914_
+        (let ((_g180915_ (let () (declare (not safe)) (##length _g180914_))))
+          (cond ((let () (declare (not safe)) (##fx= _g180915_ 2))
+                 (apply __core-bind-syntax!__0 _g180914_))
+                ((let () (declare (not safe)) (##fx= _g180915_ 3))
+                 (apply __core-bind-syntax!__% _g180914_))
                 (else
                  (##raise-wrong-number-of-arguments-exception
                   __core-bind-syntax!
-                  _g180843_))))))
+                  _g180914_))))))
     (define __SRC__%
-      (lambda (_%e180527%_ _%src-stx180528%_)
-        (if (or (pair? _%e180527%_) (symbol? _%e180527%_))
-            (let ((__tmp180845
+      (lambda (_%e180598%_ _%src-stx180599%_)
+        (if (or (pair? _%e180598%_) (symbol? _%e180598%_))
+            (let ((__tmp180916
                    (if (let ()
                          (declare (not safe))
                          (##structure-instance-of?
-                          _%src-stx180528%_
+                          _%src-stx180599%_
                           'gerbil#AST::t))
                        (__locat (let ()
                                   (declare (not safe))
-                                  (__AST-source _%src-stx180528%_)))
+                                  (__AST-source _%src-stx180599%_)))
                        '#f)))
               (declare (not safe))
-              (##make-source _%e180527%_ __tmp180845))
+              (##make-source _%e180598%_ __tmp180916))
             (if (let ()
                   (declare (not safe))
-                  (##structure-instance-of? _%e180527%_ 'gerbil#AST::t))
-                (let ((__tmp180847
+                  (##structure-instance-of? _%e180598%_ 'gerbil#AST::t))
+                (let ((__tmp180918
                        (let ()
                          (declare (not safe))
-                         (##unchecked-structure-ref _%e180527%_ '1 '#f '#f)))
-                      (__tmp180846
+                         (##unchecked-structure-ref _%e180598%_ '1 '#f '#f)))
+                      (__tmp180917
                        (__locat (let ()
                                   (declare (not safe))
-                                  (__AST-source _%e180527%_)))))
+                                  (__AST-source _%e180598%_)))))
                   (declare (not safe))
-                  (##make-source __tmp180847 __tmp180846))
+                  (##make-source __tmp180918 __tmp180917))
                 (let ()
                   (declare (not safe))
-                  (error '"BUG! Cannot sourcify object" _%e180527%_))))))
+                  (error '"BUG! Cannot sourcify object" _%e180598%_))))))
     (define __SRC__0
-      (lambda (_%e180539%_)
-        (let ((_%src-stx180541%_ '#f))
-          (__SRC__% _%e180539%_ _%src-stx180541%_))))
+      (lambda (_%e180610%_)
+        (let ((_%src-stx180612%_ '#f))
+          (__SRC__% _%e180610%_ _%src-stx180612%_))))
     (define __SRC
-      (lambda _g180848_
-        (let ((_g180849_ (let () (declare (not safe)) (##length _g180848_))))
-          (cond ((let () (declare (not safe)) (##fx= _g180849_ 1))
-                 (apply __SRC__0 _g180848_))
-                ((let () (declare (not safe)) (##fx= _g180849_ 2))
-                 (apply __SRC__% _g180848_))
+      (lambda _g180919_
+        (let ((_g180920_ (let () (declare (not safe)) (##length _g180919_))))
+          (cond ((let () (declare (not safe)) (##fx= _g180920_ 1))
+                 (apply __SRC__0 _g180919_))
+                ((let () (declare (not safe)) (##fx= _g180920_ 2))
+                 (apply __SRC__% _g180919_))
                 (else
                  (##raise-wrong-number-of-arguments-exception
                   __SRC
-                  _g180848_))))))
+                  _g180919_))))))
     (define __locat
-      (lambda (_%loc180524%_)
-        (if (let () (declare (not safe)) (##locat? _%loc180524%_))
-            _%loc180524%_
+      (lambda (_%loc180595%_)
+        (if (let () (declare (not safe)) (##locat? _%loc180595%_))
+            _%loc180595%_
             '#f)))
     (define __check-values
-      (lambda (_%obj180519%_ _%k180520%_)
-        (let ((_%count180522%_
-               (if (let () (declare (not safe)) (##values? _%obj180519%_))
+      (lambda (_%obj180590%_ _%k180591%_)
+        (let ((_%count180593%_
+               (if (let () (declare (not safe)) (##values? _%obj180590%_))
                    (let ()
                      (declare (not safe))
-                     (##values-length _%obj180519%_))
+                     (##values-length _%obj180590%_))
                    '1)))
-          (if (fx= _%count180522%_ _%k180520%_)
+          (if (fx= _%count180593%_ _%k180591%_)
               '#!void
-              (let ((__tmp180851
-                     (if (fx< _%count180522%_ _%k180520%_)
+              (let ((__tmp180922
+                     (if (fx< _%count180593%_ _%k180591%_)
                          '"Too few values for context"
                          '"Too many values for context"))
-                    (__tmp180850
+                    (__tmp180921
                      (if (let ()
                            (declare (not safe))
-                           (##values? _%obj180519%_))
+                           (##values? _%obj180590%_))
                          (let ()
                            (declare (not safe))
-                           (##values->list _%obj180519%_))
-                         _%obj180519%_)))
+                           (##values->list _%obj180590%_))
+                         _%obj180590%_)))
                 (declare (not safe))
-                (error __tmp180851 __tmp180850 _%k180520%_))))))
+                (error __tmp180922 __tmp180921 _%k180591%_))))))
     (define __compile
-      (lambda (_%stx180488%_)
-        (let* ((_%$e180490%_ _%stx180488%_)
-               (_%$%$E180492180498%_
+      (lambda (_%stx180559%_)
+        (let* ((_%$e180561%_ _%stx180559%_)
+               (_%$%$E180563180569%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180490%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180490%_))
-              (let* ((_%$%$tgt180493180501%_
-                      (let () (declare (not safe)) (__AST-e _%$e180490%_)))
-                     (_%$%$hd180494180504%_
+                     _%$e180561%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180561%_))
+              (let* ((_%$%$tgt180564180572%_
+                      (let () (declare (not safe)) (__AST-e _%$e180561%_)))
+                     (_%$%$hd180565180575%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180493180501%_)))
-                     (_%$%$tl180495180507%_
+                        (##car _%$%$tgt180564180572%_)))
+                     (_%$%$tl180566180578%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180493180501%_)))
-                     (_%form180511%_ _%$%$hd180494180504%_)
-                     (_%$e180513%_ (__core-resolve _%form180511%_)))
-                (if _%$e180513%_
-                    ((##structure-ref _%$e180513%_ '1 __syntax::t '#f)
-                     _%stx180488%_)
+                        (##cdr _%$%$tgt180564180572%_)))
+                     (_%form180582%_ _%$%$hd180565180575%_)
+                     (_%$e180584%_ (__core-resolve _%form180582%_)))
+                (if _%$e180584%_
+                    ((##structure-ref _%$e180584%_ '1 __syntax::t '#f)
+                     _%stx180559%_)
                     (let ()
                       (declare (not safe))
                       (__raise-syntax-error
                        '#f
                        '"Bad syntax; cannot resolve form"
-                       _%stx180488%_
-                       _%form180511%_))))
-              (_%$%$E180492180498%_)))))
+                       _%stx180559%_
+                       _%form180582%_))))
+              (_%$%$E180563180569%_)))))
     (define __compile-error__%
-      (lambda (_%stx180475%_ _%detail180476%_)
+      (lambda (_%stx180546%_ _%detail180547%_)
         (let ()
           (declare (not safe))
           (__raise-syntax-error
            'compile
            '"Bad syntax; cannot compile"
-           _%stx180475%_
-           _%detail180476%_))))
+           _%stx180546%_
+           _%detail180547%_))))
     (define __compile-error__0
-      (lambda (_%stx180481%_)
-        (let ((_%detail180483%_ '#f))
-          (__compile-error__% _%stx180481%_ _%detail180483%_))))
+      (lambda (_%stx180552%_)
+        (let ((_%detail180554%_ '#f))
+          (__compile-error__% _%stx180552%_ _%detail180554%_))))
     (define __compile-error
-      (lambda _g180852_
-        (let ((_g180853_ (let () (declare (not safe)) (##length _g180852_))))
-          (cond ((let () (declare (not safe)) (##fx= _g180853_ 1))
-                 (apply __compile-error__0 _g180852_))
-                ((let () (declare (not safe)) (##fx= _g180853_ 2))
-                 (apply __compile-error__% _g180852_))
+      (lambda _g180923_
+        (let ((_g180924_ (let () (declare (not safe)) (##length _g180923_))))
+          (cond ((let () (declare (not safe)) (##fx= _g180924_ 1))
+                 (apply __compile-error__0 _g180923_))
+                ((let () (declare (not safe)) (##fx= _g180924_ 2))
+                 (apply __compile-error__% _g180923_))
                 (else
                  (##raise-wrong-number-of-arguments-exception
                   __compile-error
-                  _g180852_))))))
+                  _g180923_))))))
     (define __compile-ignore%
-      (lambda (_%stx180472%_) (__SRC__% ''#!void _%stx180472%_)))
+      (lambda (_%stx180543%_) (__SRC__% ''#!void _%stx180543%_)))
     (define __compile-begin%
-      (lambda (_%stx180447%_)
-        (let* ((_%$e180449%_ _%stx180447%_)
-               (_%$%$E180451180457%_
+      (lambda (_%stx180518%_)
+        (let* ((_%$e180520%_ _%stx180518%_)
+               (_%$%$E180522180528%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180449%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180449%_))
-              (let* ((_%$%$tgt180452180460%_
-                      (let () (declare (not safe)) (__AST-e _%$e180449%_)))
-                     (_%$%$hd180453180463%_
+                     _%$e180520%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180520%_))
+              (let* ((_%$%$tgt180523180531%_
+                      (let () (declare (not safe)) (__AST-e _%$e180520%_)))
+                     (_%$%$hd180524180534%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180452180460%_)))
-                     (_%$%$tl180454180466%_
+                        (##car _%$%$tgt180523180531%_)))
+                     (_%$%$tl180525180537%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180452180460%_)))
-                     (_%body180470%_ _%$%$tl180454180466%_))
+                        (##cdr _%$%$tgt180523180531%_)))
+                     (_%body180541%_ _%$%$tl180525180537%_))
                 (__SRC__%
-                 (cons 'begin (map __compile _%body180470%_))
-                 _%stx180447%_))
-              (_%$%$E180451180457%_)))))
+                 (cons 'begin (map __compile _%body180541%_))
+                 _%stx180518%_))
+              (_%$%$E180522180528%_)))))
     (define __compile-begin-foreign%
-      (lambda (_%stx180422%_)
-        (let* ((_%$e180424%_ _%stx180422%_)
-               (_%$%$E180426180432%_
+      (lambda (_%stx180493%_)
+        (let* ((_%$e180495%_ _%stx180493%_)
+               (_%$%$E180497180503%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180424%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180424%_))
-              (let* ((_%$%$tgt180427180435%_
-                      (let () (declare (not safe)) (__AST-e _%$e180424%_)))
-                     (_%$%$hd180428180438%_
+                     _%$e180495%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180495%_))
+              (let* ((_%$%$tgt180498180506%_
+                      (let () (declare (not safe)) (__AST-e _%$e180495%_)))
+                     (_%$%$hd180499180509%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180427180435%_)))
-                     (_%$%$tl180429180441%_
+                        (##car _%$%$tgt180498180506%_)))
+                     (_%$%$tl180500180512%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180427180435%_)))
-                     (_%body180445%_ _%$%$tl180429180441%_))
+                        (##cdr _%$%$tgt180498180506%_)))
+                     (_%body180516%_ _%$%$tl180500180512%_))
                 (__SRC__%
                  (cons 'begin
                        (let ()
                          (declare (not safe))
-                         (__AST->datum _%body180445%_)))
-                 _%stx180422%_))
-              (_%$%$E180426180432%_)))))
+                         (__AST->datum _%body180516%_)))
+                 _%stx180493%_))
+              (_%$%$E180497180503%_)))))
     (define __compile-import%
-      (lambda (_%stx180397%_)
-        (let* ((_%$e180399%_ _%stx180397%_)
-               (_%$%$E180401180407%_
+      (lambda (_%stx180468%_)
+        (let* ((_%$e180470%_ _%stx180468%_)
+               (_%$%$E180472180478%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180399%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180399%_))
-              (let* ((_%$%$tgt180402180410%_
-                      (let () (declare (not safe)) (__AST-e _%$e180399%_)))
-                     (_%$%$hd180403180413%_
+                     _%$e180470%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180470%_))
+              (let* ((_%$%$tgt180473180481%_
+                      (let () (declare (not safe)) (__AST-e _%$e180470%_)))
+                     (_%$%$hd180474180484%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180402180410%_)))
-                     (_%$%$tl180404180416%_
+                        (##car _%$%$tgt180473180481%_)))
+                     (_%$%$tl180475180487%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180402180410%_)))
-                     (_%body180420%_ _%$%$tl180404180416%_))
+                        (##cdr _%$%$tgt180473180481%_)))
+                     (_%body180491%_ _%$%$tl180475180487%_))
                 (__SRC__%
-                 (list '__eval-import (list 'quote _%body180420%_))
-                 _%stx180397%_))
-              (_%$%$E180401180407%_)))))
+                 (list '__eval-import (list 'quote _%body180491%_))
+                 _%stx180468%_))
+              (_%$%$E180472180478%_)))))
     (define __compile-begin-annotation%
-      (lambda (_%stx180344%_)
-        (let* ((_%$e180346%_ _%stx180344%_)
-               (_%$%$E180348180360%_
+      (lambda (_%stx180415%_)
+        (let* ((_%$e180417%_ _%stx180415%_)
+               (_%$%$E180419180431%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180346%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180346%_))
-              (let* ((_%$%$tgt180349180363%_
-                      (let () (declare (not safe)) (__AST-e _%$e180346%_)))
-                     (_%$%$hd180350180366%_
+                     _%$e180417%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180417%_))
+              (let* ((_%$%$tgt180420180434%_
+                      (let () (declare (not safe)) (__AST-e _%$e180417%_)))
+                     (_%$%$hd180421180437%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180349180363%_)))
-                     (_%$%$tl180351180369%_
+                        (##car _%$%$tgt180420180434%_)))
+                     (_%$%$tl180422180440%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180349180363%_))))
+                        (##cdr _%$%$tgt180420180434%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl180351180369%_))
-                    (let* ((_%$%$tgt180352180373%_
+                      (__AST-pair? _%$%$tl180422180440%_))
+                    (let* ((_%$%$tgt180423180444%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl180351180369%_)))
-                           (_%$%$hd180353180376%_
+                              (__AST-e _%$%$tl180422180440%_)))
+                           (_%$%$hd180424180447%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt180352180373%_)))
-                           (_%$%$tl180354180379%_
+                              (##car _%$%$tgt180423180444%_)))
+                           (_%$%$tl180425180450%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt180352180373%_)))
-                           (_%ann180383%_ _%$%$hd180353180376%_))
+                              (##cdr _%$%$tgt180423180444%_)))
+                           (_%ann180454%_ _%$%$hd180424180447%_))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$%$tl180354180379%_))
-                          (let* ((_%$%$tgt180355180385%_
+                            (__AST-pair? _%$%$tl180425180450%_))
+                          (let* ((_%$%$tgt180426180456%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl180354180379%_)))
-                                 (_%$%$hd180356180388%_
+                                    (__AST-e _%$%$tl180425180450%_)))
+                                 (_%$%$hd180427180459%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt180355180385%_)))
-                                 (_%$%$tl180357180391%_
+                                    (##car _%$%$tgt180426180456%_)))
+                                 (_%$%$tl180428180462%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt180355180385%_)))
-                                 (_%expr180395%_ _%$%$hd180356180388%_))
+                                    (##cdr _%$%$tgt180426180456%_)))
+                                 (_%expr180466%_ _%$%$hd180427180459%_))
                             (if (equal? (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl180357180391%_))
+                                          (__AST-e _%$%$tl180428180462%_))
                                         '())
-                                (__compile _%expr180395%_)
-                                (_%$%$E180348180360%_)))
-                          (_%$%$E180348180360%_)))
-                    (_%$%$E180348180360%_)))
-              (_%$%$E180348180360%_)))))
+                                (__compile _%expr180466%_)
+                                (_%$%$E180419180431%_)))
+                          (_%$%$E180419180431%_)))
+                    (_%$%$E180419180431%_)))
+              (_%$%$E180419180431%_)))))
     (define __compile-define-values%
-      (lambda (_%stx180235%_)
-        (let* ((_%$e180237%_ _%stx180235%_)
-               (_%$%$E180239180251%_
+      (lambda (_%stx180306%_)
+        (let* ((_%$e180308%_ _%stx180306%_)
+               (_%$%$E180310180322%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180237%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180237%_))
-              (let* ((_%$%$tgt180240180254%_
-                      (let () (declare (not safe)) (__AST-e _%$e180237%_)))
-                     (_%$%$hd180241180257%_
+                     _%$e180308%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180308%_))
+              (let* ((_%$%$tgt180311180325%_
+                      (let () (declare (not safe)) (__AST-e _%$e180308%_)))
+                     (_%$%$hd180312180328%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180240180254%_)))
-                     (_%$%$tl180242180260%_
+                        (##car _%$%$tgt180311180325%_)))
+                     (_%$%$tl180313180331%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180240180254%_))))
+                        (##cdr _%$%$tgt180311180325%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl180242180260%_))
-                    (let* ((_%$%$tgt180243180264%_
+                      (__AST-pair? _%$%$tl180313180331%_))
+                    (let* ((_%$%$tgt180314180335%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl180242180260%_)))
-                           (_%$%$hd180244180267%_
+                              (__AST-e _%$%$tl180313180331%_)))
+                           (_%$%$hd180315180338%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt180243180264%_)))
-                           (_%$%$tl180245180270%_
+                              (##car _%$%$tgt180314180335%_)))
+                           (_%$%$tl180316180341%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt180243180264%_)))
-                           (_%hd180274%_ _%$%$hd180244180267%_))
+                              (##cdr _%$%$tgt180314180335%_)))
+                           (_%hd180345%_ _%$%$hd180315180338%_))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$%$tl180245180270%_))
-                          (let* ((_%$%$tgt180246180276%_
+                            (__AST-pair? _%$%$tl180316180341%_))
+                          (let* ((_%$%$tgt180317180347%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl180245180270%_)))
-                                 (_%$%$hd180247180279%_
+                                    (__AST-e _%$%$tl180316180341%_)))
+                                 (_%$%$hd180318180350%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt180246180276%_)))
-                                 (_%$%$tl180248180282%_
+                                    (##car _%$%$tgt180317180347%_)))
+                                 (_%$%$tl180319180353%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt180246180276%_)))
-                                 (_%expr180286%_ _%$%$hd180247180279%_))
+                                    (##cdr _%$%$tgt180317180347%_)))
+                                 (_%expr180357%_ _%$%$hd180318180350%_))
                             (if (equal? (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl180248180282%_))
+                                          (__AST-e _%$%$tl180319180353%_))
                                         '())
-                                (let* ((_%$e180288%_ _%hd180274%_)
-                                       (_%$%$E180290180331%_
+                                (let* ((_%$e180359%_ _%hd180345%_)
+                                       (_%$%$E180361180402%_
                                         (lambda ()
-                                          (let ((_%$%$E180291180316%_
+                                          (let ((_%$%$E180362180387%_
                                                  (lambda ()
-                                                   (let* ((_%$%$E180292180303%_
+                                                   (let* ((_%$%$E180363180374%_
                                                            (lambda ()
                                                              (let ()
                                                                (declare
@@ -611,10 +611,10 @@
                        (__raise-syntax-error
                         '#f
                         '"Bad syntax; malformed ast clause"
-                        _%$e180288%_))))
-                  (_%ids180306%_ _%hd180274%_)
-                  (_%len180308%_ (length _%ids180306%_))
-                  (_%tmp180310%_
+                        _%$e180359%_))))
+                  (_%ids180377%_ _%hd180345%_)
+                  (_%len180379%_ (length _%ids180377%_))
+                  (_%tmp180381%_
                    (__SRC__0 (let () (declare (not safe)) (##gensym)))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                                                      (__SRC__%
@@ -622,294 +622,294 @@
                                                             (cons (__SRC__%
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                            (list 'define
-                                 _%tmp180310%_
-                                 (__compile _%expr180286%_))
-                           _%stx180235%_)
+                                 _%tmp180381%_
+                                 (__compile _%expr180357%_))
+                           _%stx180306%_)
                           (cons (__SRC__%
                                  (list '__check-values
-                                       _%tmp180310%_
-                                       _%len180308%_)
-                                 _%stx180235%_)
-                                (let ((__tmp180855
-                                       (lambda (_%id180313%_ _%k180314%_)
+                                       _%tmp180381%_
+                                       _%len180379%_)
+                                 _%stx180306%_)
+                                (let ((__tmp180926
+                                       (lambda (_%id180384%_ _%k180385%_)
                                          (if (let ()
                                                (declare (not safe))
-                                               (__AST-e _%id180313%_))
+                                               (__AST-e _%id180384%_))
                                              (__SRC__%
                                               (list 'define
-                                                    (__SRC__0 _%id180313%_)
+                                                    (__SRC__0 _%id180384%_)
                                                     (list '##values-ref
-                                                          _%tmp180310%_
-                                                          _%k180314%_))
-                                              _%stx180235%_)
+                                                          _%tmp180381%_
+                                                          _%k180385%_))
+                                              _%stx180306%_)
                                              '#f)))
-                                      (__tmp180854
+                                      (__tmp180925
                                        (let ()
                                          (declare (not safe))
-                                         (##iota _%len180308%_))))
+                                         (##iota _%len180379%_))))
                                   (declare (not safe))
                                   (filter-map__1
-                                   __tmp180855
-                                   _%ids180306%_
-                                   __tmp180854)))))
-              _%stx180235%_)))))
+                                   __tmp180926
+                                   _%ids180377%_
+                                   __tmp180925)))))
+              _%stx180306%_)))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                                             (if (let ()
                                                   (declare (not safe))
-                                                  (__AST-pair? _%$e180288%_))
-                                                (let* ((_%$%$tgt180293180319%_
+                                                  (__AST-pair? _%$e180359%_))
+                                                (let* ((_%$%$tgt180364180390%_
                                                         (let ()
                                                           (declare (not safe))
-                                                          (__AST-e _%$e180288%_)))
-                                                       (_%$%$hd180294180322%_
+                                                          (__AST-e _%$e180359%_)))
+                                                       (_%$%$hd180365180393%_
                                                         (let ()
                                                           (declare (not safe))
-                                                          (##car _%$%$tgt180293180319%_)))
-                                                       (_%$%$tl180295180325%_
+                                                          (##car _%$%$tgt180364180390%_)))
+                                                       (_%$%$tl180366180396%_
                                                         (let ()
                                                           (declare (not safe))
-                                                          (##cdr _%$%$tgt180293180319%_)))
-                                                       (_%id180329%_
-                                                        _%$%$hd180294180322%_))
+                                                          (##cdr _%$%$tgt180364180390%_)))
+                                                       (_%id180400%_
+                                                        _%$%$hd180365180393%_))
                                                   (if (equal? (let ()
                                                                 (declare
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                           (not safe))
-                        (__AST-e _%$%$tl180295180325%_))
+                        (__AST-e _%$%$tl180366180396%_))
                       '())
               (__SRC__%
                (list 'define
-                     (__SRC__0 _%id180329%_)
-                     (__compile _%expr180286%_))
-               _%stx180235%_)
-              (_%$%$E180291180316%_)))
+                     (__SRC__0 _%id180400%_)
+                     (__compile _%expr180357%_))
+               _%stx180306%_)
+              (_%$%$E180362180387%_)))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                (_%$%$E180291180316%_))))))
+                                                (_%$%$E180362180387%_))))))
                                   (if (let ()
                                         (declare (not safe))
-                                        (__AST-pair? _%$e180288%_))
-                                      (let* ((_%$%$tgt180296180334%_
+                                        (__AST-pair? _%$e180359%_))
+                                      (let* ((_%$%$tgt180367180405%_
                                               (let ()
                                                 (declare (not safe))
-                                                (__AST-e _%$e180288%_)))
-                                             (_%$%$hd180297180337%_
+                                                (__AST-e _%$e180359%_)))
+                                             (_%$%$hd180368180408%_
                                               (let ()
                                                 (declare (not safe))
-                                                (##car _%$%$tgt180296180334%_)))
-                                             (_%$%$tl180298180340%_
+                                                (##car _%$%$tgt180367180405%_)))
+                                             (_%$%$tl180369180411%_
                                               (let ()
                                                 (declare (not safe))
-                                                (##cdr _%$%$tgt180296180334%_))))
+                                                (##cdr _%$%$tgt180367180405%_))))
                                         (if (equal? (let ()
                                                       (declare (not safe))
-                                                      (__AST-e _%$%$hd180297180337%_))
+                                                      (__AST-e _%$%$hd180368180408%_))
                                                     '#f)
                                             (if (equal? (let ()
                                                           (declare (not safe))
-                                                          (__AST-e _%$%$tl180298180340%_))
+                                                          (__AST-e _%$%$tl180369180411%_))
                                                         '())
-                                                (__compile _%expr180286%_)
-                                                (_%$%$E180290180331%_))
-                                            (_%$%$E180290180331%_)))
-                                      (_%$%$E180290180331%_)))
-                                (_%$%$E180239180251%_)))
-                          (_%$%$E180239180251%_)))
-                    (_%$%$E180239180251%_)))
-              (_%$%$E180239180251%_)))))
+                                                (__compile _%expr180357%_)
+                                                (_%$%$E180361180402%_))
+                                            (_%$%$E180361180402%_)))
+                                      (_%$%$E180361180402%_)))
+                                (_%$%$E180310180322%_)))
+                          (_%$%$E180310180322%_)))
+                    (_%$%$E180310180322%_)))
+              (_%$%$E180310180322%_)))))
     (define __compile-head-id
-      (lambda (_%e180233%_)
+      (lambda (_%e180304%_)
         (__SRC__0
-         (if (let () (declare (not safe)) (__AST-e _%e180233%_))
-             _%e180233%_
+         (if (let () (declare (not safe)) (__AST-e _%e180304%_))
+             _%e180304%_
              (let () (declare (not safe)) (##gensym))))))
     (define __compile-lambda-head
-      (lambda (_%hd180190%_)
-        (let _%recur180192%_ ((_%rest180194%_ _%hd180190%_))
-          (let* ((_%$e180196%_ _%rest180194%_)
-                 (_%$%$E180198180216%_
+      (lambda (_%hd180261%_)
+        (let _%recur180263%_ ((_%rest180265%_ _%hd180261%_))
+          (let* ((_%$e180267%_ _%rest180265%_)
+                 (_%$%$E180269180287%_
                   (lambda ()
-                    (let ((_%$%$E180199180213%_
+                    (let ((_%$%$E180270180284%_
                            (lambda ()
-                             (let* ((_%$%$E180200180208%_
+                             (let* ((_%$%$E180271180279%_
                                      (lambda ()
                                        (let ()
                                          (declare (not safe))
                                          (__raise-syntax-error
                                           '#f
                                           '"Bad syntax; malformed ast clause"
-                                          _%$e180196%_))))
-                                    (_%tail180211%_ _%$e180196%_))
-                               (__compile-head-id _%tail180211%_)))))
+                                          _%$e180267%_))))
+                                    (_%tail180282%_ _%$e180267%_))
+                               (__compile-head-id _%tail180282%_)))))
                       (if (equal? (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$e180196%_))
+                                    (__AST-e _%$e180267%_))
                                   '())
                           '()
-                          (_%$%$E180199180213%_))))))
-            (if (let () (declare (not safe)) (__AST-pair? _%$e180196%_))
-                (let* ((_%$%$tgt180201180219%_
-                        (let () (declare (not safe)) (__AST-e _%$e180196%_)))
-                       (_%$%$hd180202180222%_
+                          (_%$%$E180270180284%_))))))
+            (if (let () (declare (not safe)) (__AST-pair? _%$e180267%_))
+                (let* ((_%$%$tgt180272180290%_
+                        (let () (declare (not safe)) (__AST-e _%$e180267%_)))
+                       (_%$%$hd180273180293%_
                         (let ()
                           (declare (not safe))
-                          (##car _%$%$tgt180201180219%_)))
-                       (_%$%$tl180203180225%_
+                          (##car _%$%$tgt180272180290%_)))
+                       (_%$%$tl180274180296%_
                         (let ()
                           (declare (not safe))
-                          (##cdr _%$%$tgt180201180219%_)))
-                       (_%hd180229%_ _%$%$hd180202180222%_)
-                       (_%rest180231%_ _%$%$tl180203180225%_))
-                  (cons (__compile-head-id _%hd180229%_)
-                        (_%recur180192%_ _%rest180231%_)))
-                (_%$%$E180198180216%_))))))
+                          (##cdr _%$%$tgt180272180290%_)))
+                       (_%hd180300%_ _%$%$hd180273180293%_)
+                       (_%rest180302%_ _%$%$tl180274180296%_))
+                  (cons (__compile-head-id _%hd180300%_)
+                        (_%recur180263%_ _%rest180302%_)))
+                (_%$%$E180269180287%_))))))
     (define __compile-lambda%
-      (lambda (_%stx180137%_)
-        (let* ((_%$e180139%_ _%stx180137%_)
-               (_%$%$E180141180153%_
+      (lambda (_%stx180208%_)
+        (let* ((_%$e180210%_ _%stx180208%_)
+               (_%$%$E180212180224%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e180139%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e180139%_))
-              (let* ((_%$%$tgt180142180156%_
-                      (let () (declare (not safe)) (__AST-e _%$e180139%_)))
-                     (_%$%$hd180143180159%_
+                     _%$e180210%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e180210%_))
+              (let* ((_%$%$tgt180213180227%_
+                      (let () (declare (not safe)) (__AST-e _%$e180210%_)))
+                     (_%$%$hd180214180230%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt180142180156%_)))
-                     (_%$%$tl180144180162%_
+                        (##car _%$%$tgt180213180227%_)))
+                     (_%$%$tl180215180233%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt180142180156%_))))
+                        (##cdr _%$%$tgt180213180227%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl180144180162%_))
-                    (let* ((_%$%$tgt180145180166%_
+                      (__AST-pair? _%$%$tl180215180233%_))
+                    (let* ((_%$%$tgt180216180237%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl180144180162%_)))
-                           (_%$%$hd180146180169%_
+                              (__AST-e _%$%$tl180215180233%_)))
+                           (_%$%$hd180217180240%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt180145180166%_)))
-                           (_%$%$tl180147180172%_
+                              (##car _%$%$tgt180216180237%_)))
+                           (_%$%$tl180218180243%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt180145180166%_)))
-                           (_%hd180176%_ _%$%$hd180146180169%_))
+                              (##cdr _%$%$tgt180216180237%_)))
+                           (_%hd180247%_ _%$%$hd180217180240%_))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$%$tl180147180172%_))
-                          (let* ((_%$%$tgt180148180178%_
+                            (__AST-pair? _%$%$tl180218180243%_))
+                          (let* ((_%$%$tgt180219180249%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl180147180172%_)))
-                                 (_%$%$hd180149180181%_
+                                    (__AST-e _%$%$tl180218180243%_)))
+                                 (_%$%$hd180220180252%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt180148180178%_)))
-                                 (_%$%$tl180150180184%_
+                                    (##car _%$%$tgt180219180249%_)))
+                                 (_%$%$tl180221180255%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt180148180178%_)))
-                                 (_%body180188%_ _%$%$hd180149180181%_))
+                                    (##cdr _%$%$tgt180219180249%_)))
+                                 (_%body180259%_ _%$%$hd180220180252%_))
                             (if (equal? (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl180150180184%_))
+                                          (__AST-e _%$%$tl180221180255%_))
                                         '())
                                 (__SRC__%
                                  (list 'lambda
-                                       (__compile-lambda-head _%hd180176%_)
-                                       (__compile _%body180188%_))
-                                 _%stx180137%_)
-                                (_%$%$E180141180153%_)))
-                          (_%$%$E180141180153%_)))
-                    (_%$%$E180141180153%_)))
-              (_%$%$E180141180153%_)))))
+                                       (__compile-lambda-head _%hd180247%_)
+                                       (__compile _%body180259%_))
+                                 _%stx180208%_)
+                                (_%$%$E180212180224%_)))
+                          (_%$%$E180212180224%_)))
+                    (_%$%$E180212180224%_)))
+              (_%$%$E180212180224%_)))))
     (define __compile-case-lambda%
-      (lambda (_%stx179902%_)
-        (letrec ((_%variadic?179904%_
-                  (lambda (_%hd180102%_)
-                    (let* ((_%$e180104%_ _%hd180102%_)
-                           (_%$%$E180106180122%_
+      (lambda (_%stx179973%_)
+        (letrec ((_%variadic?179975%_
+                  (lambda (_%hd180173%_)
+                    (let* ((_%$e180175%_ _%hd180173%_)
+                           (_%$%$E180177180193%_
                             (lambda ()
-                              (let ((_%$%$E180107180119%_
+                              (let ((_%$%$E180178180190%_
                                      (lambda ()
-                                       (let ((_%$%$E180108180116%_
+                                       (let ((_%$%$E180179180187%_
                                               (lambda ()
                                                 (let ()
                                                   (declare (not safe))
                                                   (__raise-syntax-error
                                                    '#f
                                                    '"Bad syntax; malformed ast clause"
-                                                   _%$e180104%_)))))
+                                                   _%$e180175%_)))))
                                          '#t))))
                                 (if (equal? (let ()
                                               (declare (not safe))
-                                              (__AST-e _%$e180104%_))
+                                              (__AST-e _%$e180175%_))
                                             '())
                                     '#f
-                                    (_%$%$E180107180119%_))))))
+                                    (_%$%$E180178180190%_))))))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$e180104%_))
-                          (let* ((_%$%$tgt180109180125%_
+                            (__AST-pair? _%$e180175%_))
+                          (let* ((_%$%$tgt180180180196%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$e180104%_)))
-                                 (_%$%$hd180110180128%_
+                                    (__AST-e _%$e180175%_)))
+                                 (_%$%$hd180181180199%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt180109180125%_)))
-                                 (_%$%$tl180111180131%_
+                                    (##car _%$%$tgt180180180196%_)))
+                                 (_%$%$tl180182180202%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt180109180125%_)))
-                                 (_%rest180135%_ _%$%$tl180111180131%_))
-                            (_%variadic?179904%_ _%rest180135%_))
-                          (_%$%$E180106180122%_)))))
-                 (_%arity179905%_
-                  (lambda (_%hd180040%_)
-                    (let _%lp180042%_ ((_%rest180044%_ _%hd180040%_)
-                                       (_%k180045%_ '0))
-                      (let* ((_%$e180047%_ _%rest180044%_)
-                             (_%$%$E180049180060%_
+                                    (##cdr _%$%$tgt180180180196%_)))
+                                 (_%rest180206%_ _%$%$tl180182180202%_))
+                            (_%variadic?179975%_ _%rest180206%_))
+                          (_%$%$E180177180193%_)))))
+                 (_%arity179976%_
+                  (lambda (_%hd180111%_)
+                    (let _%lp180113%_ ((_%rest180115%_ _%hd180111%_)
+                                       (_%k180116%_ '0))
+                      (let* ((_%$e180118%_ _%rest180115%_)
+                             (_%$%$E180120180131%_
                               (lambda ()
-                                (let ((_%$%$E180050180057%_
+                                (let ((_%$%$E180121180128%_
                                        (lambda ()
                                          (let ()
                                            (declare (not safe))
                                            (__raise-syntax-error
                                             '#f
                                             '"Bad syntax; malformed ast clause"
-                                            _%$e180047%_)))))
-                                  _%k180045%_))))
+                                            _%$e180118%_)))))
+                                  _%k180116%_))))
                         (if (let ()
                               (declare (not safe))
-                              (__AST-pair? _%$e180047%_))
-                            (let* ((_%$%$tgt180051180063%_
+                              (__AST-pair? _%$e180118%_))
+                            (let* ((_%$%$tgt180122180134%_
                                     (let ()
                                       (declare (not safe))
-                                      (__AST-e _%$e180047%_)))
-                                   (_%$%$hd180052180066%_
+                                      (__AST-e _%$e180118%_)))
+                                   (_%$%$hd180123180137%_
                                     (let ()
                                       (declare (not safe))
-                                      (##car _%$%$tgt180051180063%_)))
-                                   (_%$%$tl180053180069%_
+                                      (##car _%$%$tgt180122180134%_)))
+                                   (_%$%$tl180124180140%_
                                     (let ()
                                       (declare (not safe))
-                                      (##cdr _%$%$tgt180051180063%_)))
-                                   (_%rest180073%_ _%$%$tl180053180069%_))
-                              (_%lp180042%_
-                               _%rest180073%_
-                               (let ((_%x180075%_ _%k180045%_))
-                                 (if (fixnum? _%x180075%_)
-                                     (let ((_%x180080%_ _%x180075%_))
+                                      (##cdr _%$%$tgt180122180134%_)))
+                                   (_%rest180144%_ _%$%$tl180124180140%_))
+                              (_%lp180113%_
+                               _%rest180144%_
+                               (let ((_%x180146%_ _%k180116%_))
+                                 (if (fixnum? _%x180146%_)
+                                     (let ((_%x180151%_ _%x180146%_))
                                        (declare (not safe))
-                                       (__fx1+ _%x180080%_))
+                                       (__fx1+ _%x180151%_))
                                      (begin
                                        (raise-contract-violation-error
                                         '"contract violation"
@@ -918,1226 +918,1226 @@
                                         'contract:
                                         'fixnum?
                                         'value:
-                                        _%x180075%_)
+                                        _%x180146%_)
                                        '#!void)))))
-                            (_%$%$E180049180060%_))))))
-                 (_%generate179906%_
-                  (lambda (_%rest179967%_ _%args179968%_ _%len179969%_)
-                    (let* ((_%$e179971%_ _%rest179967%_)
-                           (_%$%$E179973179984%_
+                            (_%$%$E180120180131%_))))))
+                 (_%generate179977%_
+                  (lambda (_%rest180038%_ _%args180039%_ _%len180040%_)
+                    (let* ((_%$e180042%_ _%rest180038%_)
+                           (_%$%$E180044180055%_
                             (lambda ()
-                              (let ((_%$%$E179974179981%_
+                              (let ((_%$%$E180045180052%_
                                      (lambda ()
                                        (let ()
                                          (declare (not safe))
                                          (__raise-syntax-error
                                           '#f
                                           '"Bad syntax; malformed ast clause"
-                                          _%$e179971%_)))))
+                                          _%$e180042%_)))))
                                 (__SRC__%
                                  (list 'error
                                        '"No clause matching arguments"
-                                       _%args179968%_)
-                                 _%stx179902%_)))))
+                                       _%args180039%_)
+                                 _%stx179973%_)))))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$e179971%_))
-                          (let* ((_%$%$tgt179975179987%_
+                            (__AST-pair? _%$e180042%_))
+                          (let* ((_%$%$tgt180046180058%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$e179971%_)))
-                                 (_%$%$hd179976179990%_
+                                    (__AST-e _%$e180042%_)))
+                                 (_%$%$hd180047180061%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt179975179987%_)))
-                                 (_%$%$tl179977179993%_
+                                    (##car _%$%$tgt180046180058%_)))
+                                 (_%$%$tl180048180064%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt179975179987%_)))
-                                 (_%clause179997%_ _%$%$hd179976179990%_)
-                                 (_%rest179999%_ _%$%$tl179977179993%_)
-                                 (_%$e180001%_ _%clause179997%_)
-                                 (_%$%$E180003180012%_
+                                    (##cdr _%$%$tgt180046180058%_)))
+                                 (_%clause180068%_ _%$%$hd180047180061%_)
+                                 (_%rest180070%_ _%$%$tl180048180064%_)
+                                 (_%$e180072%_ _%clause180068%_)
+                                 (_%$%$E180074180083%_
                                   (lambda ()
                                     (let ()
                                       (declare (not safe))
                                       (__raise-syntax-error
                                        '#f
                                        '"Bad syntax; malformed ast clause"
-                                       _%$e180001%_)))))
+                                       _%$e180072%_)))))
                             (if (let ()
                                   (declare (not safe))
-                                  (__AST-pair? _%$e180001%_))
-                                (let* ((_%$%$tgt180004180015%_
+                                  (__AST-pair? _%$e180072%_))
+                                (let* ((_%$%$tgt180075180086%_
                                         (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$e180001%_)))
-                                       (_%$%$hd180005180018%_
+                                          (__AST-e _%$e180072%_)))
+                                       (_%$%$hd180076180089%_
                                         (let ()
                                           (declare (not safe))
-                                          (##car _%$%$tgt180004180015%_)))
-                                       (_%$%$tl180006180021%_
+                                          (##car _%$%$tgt180075180086%_)))
+                                       (_%$%$tl180077180092%_
                                         (let ()
                                           (declare (not safe))
-                                          (##cdr _%$%$tgt180004180015%_)))
-                                       (_%hd180025%_ _%$%$hd180005180018%_))
+                                          (##cdr _%$%$tgt180075180086%_)))
+                                       (_%hd180096%_ _%$%$hd180076180089%_))
                                   (if (let ()
                                         (declare (not safe))
-                                        (__AST-pair? _%$%$tl180006180021%_))
-                                      (let* ((_%$%$tgt180007180027%_
+                                        (__AST-pair? _%$%$tl180077180092%_))
+                                      (let* ((_%$%$tgt180078180098%_
                                               (let ()
                                                 (declare (not safe))
-                                                (__AST-e _%$%$tl180006180021%_)))
-                                             (_%$%$hd180008180030%_
+                                                (__AST-e _%$%$tl180077180092%_)))
+                                             (_%$%$hd180079180101%_
                                               (let ()
                                                 (declare (not safe))
-                                                (##car _%$%$tgt180007180027%_)))
-                                             (_%$%$tl180009180033%_
+                                                (##car _%$%$tgt180078180098%_)))
+                                             (_%$%$tl180080180104%_
                                               (let ()
                                                 (declare (not safe))
-                                                (##cdr _%$%$tgt180007180027%_))))
+                                                (##cdr _%$%$tgt180078180098%_))))
                                         (if (equal? (let ()
                                                       (declare (not safe))
-                                                      (__AST-e _%$%$tl180009180033%_))
+                                                      (__AST-e _%$%$tl180080180104%_))
                                                     '())
-                                            (let ((_%clen180037%_
-                                                   (_%arity179905%_
-                                                    _%hd180025%_))
-                                                  (_%cmp180038%_
-                                                   (if (_%variadic?179904%_
-                                                        _%hd180025%_)
+                                            (let ((_%clen180108%_
+                                                   (_%arity179976%_
+                                                    _%hd180096%_))
+                                                  (_%cmp180109%_
+                                                   (if (_%variadic?179975%_
+                                                        _%hd180096%_)
                                                        'fx>=
                                                        'fx=)))
                                               (__SRC__%
                                                (list 'if
-                                                     (list _%cmp180038%_
-                                                           _%len179969%_
-                                                           _%clen180037%_)
+                                                     (list _%cmp180109%_
+                                                           _%len180040%_
+                                                           _%clen180108%_)
                                                      (__SRC__%
                                                       (list '##apply
                                                             (__compile-lambda%
                                                              (cons '%#lambda
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                           _%clause179997%_))
-                    _%args179968%_)
-              _%stx179902%_)
+                           _%clause180068%_))
+                    _%args180039%_)
+              _%stx179973%_)
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                     (_%generate179906%_
-                                                      _%rest179999%_
-                                                      _%args179968%_
-                                                      _%len179969%_))
-                                               _%stx179902%_))
-                                            (_%$%$E180003180012%_)))
-                                      (_%$%$E180003180012%_)))
-                                (_%$%$E180003180012%_)))
-                          (_%$%$E179973179984%_))))))
-          (let* ((_%$e179908%_ _%stx179902%_)
-                 (_%$%$E179910179942%_
+                                                     (_%generate179977%_
+                                                      _%rest180070%_
+                                                      _%args180039%_
+                                                      _%len180040%_))
+                                               _%stx179973%_))
+                                            (_%$%$E180074180083%_)))
+                                      (_%$%$E180074180083%_)))
+                                (_%$%$E180074180083%_)))
+                          (_%$%$E180044180055%_))))))
+          (let* ((_%$e179979%_ _%stx179973%_)
+                 (_%$%$E179981180013%_
                   (lambda ()
-                    (let ((_%$%$E179911179924%_
+                    (let ((_%$%$E179982179995%_
                            (lambda ()
                              (let ()
                                (declare (not safe))
                                (__raise-syntax-error
                                 '#f
                                 '"Bad syntax; malformed ast clause"
-                                _%$e179908%_)))))
+                                _%$e179979%_)))))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$e179908%_))
-                          (let* ((_%$%$tgt179912179927%_
+                            (__AST-pair? _%$e179979%_))
+                          (let* ((_%$%$tgt179983179998%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$e179908%_)))
-                                 (_%$%$hd179913179930%_
+                                    (__AST-e _%$e179979%_)))
+                                 (_%$%$hd179984180001%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt179912179927%_)))
-                                 (_%$%$tl179914179933%_
+                                    (##car _%$%$tgt179983179998%_)))
+                                 (_%$%$tl179985180004%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt179912179927%_)))
-                                 (_%clauses179937%_ _%$%$tl179914179933%_))
-                            (let ((_%args179939%_
+                                    (##cdr _%$%$tgt179983179998%_)))
+                                 (_%clauses180008%_ _%$%$tl179985180004%_))
+                            (let ((_%args180010%_
                                    (__SRC__%
                                     (let () (declare (not safe)) (##gensym))
-                                    _%stx179902%_))
-                                  (_%len179940%_
+                                    _%stx179973%_))
+                                  (_%len180011%_
                                    (__SRC__%
                                     (let () (declare (not safe)) (##gensym))
-                                    _%stx179902%_)))
+                                    _%stx179973%_)))
                               (__SRC__%
                                (list 'lambda
-                                     _%args179939%_
+                                     _%args180010%_
                                      (__SRC__%
                                       (list 'let
-                                            (list (list _%len179940%_
+                                            (list (list _%len180011%_
                                                         (__SRC__%
                                                          (list '##length
-                                                               _%args179939%_)
-                                                         _%stx179902%_)))
-                                            (_%generate179906%_
-                                             _%clauses179937%_
-                                             _%args179939%_
-                                             _%len179940%_))
-                                      _%stx179902%_))
-                               _%stx179902%_)))
-                          (_%$%$E179911179924%_))))))
-            (if (let () (declare (not safe)) (__AST-pair? _%$e179908%_))
-                (let* ((_%$%$tgt179915179945%_
-                        (let () (declare (not safe)) (__AST-e _%$e179908%_)))
-                       (_%$%$hd179916179948%_
+                                                               _%args180010%_)
+                                                         _%stx179973%_)))
+                                            (_%generate179977%_
+                                             _%clauses180008%_
+                                             _%args180010%_
+                                             _%len180011%_))
+                                      _%stx179973%_))
+                               _%stx179973%_)))
+                          (_%$%$E179982179995%_))))))
+            (if (let () (declare (not safe)) (__AST-pair? _%$e179979%_))
+                (let* ((_%$%$tgt179986180016%_
+                        (let () (declare (not safe)) (__AST-e _%$e179979%_)))
+                       (_%$%$hd179987180019%_
                         (let ()
                           (declare (not safe))
-                          (##car _%$%$tgt179915179945%_)))
-                       (_%$%$tl179917179951%_
+                          (##car _%$%$tgt179986180016%_)))
+                       (_%$%$tl179988180022%_
                         (let ()
                           (declare (not safe))
-                          (##cdr _%$%$tgt179915179945%_))))
+                          (##cdr _%$%$tgt179986180016%_))))
                   (if (let ()
                         (declare (not safe))
-                        (__AST-pair? _%$%$tl179917179951%_))
-                      (let* ((_%$%$tgt179918179955%_
+                        (__AST-pair? _%$%$tl179988180022%_))
+                      (let* ((_%$%$tgt179989180026%_
                               (let ()
                                 (declare (not safe))
-                                (__AST-e _%$%$tl179917179951%_)))
-                             (_%$%$hd179919179958%_
+                                (__AST-e _%$%$tl179988180022%_)))
+                             (_%$%$hd179990180029%_
                               (let ()
                                 (declare (not safe))
-                                (##car _%$%$tgt179918179955%_)))
-                             (_%$%$tl179920179961%_
+                                (##car _%$%$tgt179989180026%_)))
+                             (_%$%$tl179991180032%_
                               (let ()
                                 (declare (not safe))
-                                (##cdr _%$%$tgt179918179955%_)))
-                             (_%clause179965%_ _%$%$hd179919179958%_))
+                                (##cdr _%$%$tgt179989180026%_)))
+                             (_%clause180036%_ _%$%$hd179990180029%_))
                         (if (equal? (let ()
                                       (declare (not safe))
-                                      (__AST-e _%$%$tl179920179961%_))
+                                      (__AST-e _%$%$tl179991180032%_))
                                     '())
                             (__compile-lambda%
-                             (cons '%#lambda _%clause179965%_))
-                            (_%$%$E179910179942%_)))
-                      (_%$%$E179910179942%_)))
-                (_%$%$E179910179942%_))))))
+                             (cons '%#lambda _%clause180036%_))
+                            (_%$%$E179981180013%_)))
+                      (_%$%$E179981180013%_)))
+                (_%$%$E179981180013%_))))))
     (define __compile-let-form
-      (lambda (_%stx179671%_ _%compile-simple179672%_ _%compile-values179673%_)
-        (letrec ((_%simple-bind?179675%_
-                  (lambda (_%hd179860%_)
-                    (let* ((_%$%hd179861179871%_ _%hd179860%_)
-                           (_%$%else179864179879%_ (lambda () '#f)))
-                      (let ((_%$%K179867179892%_ (lambda (_%id179890%_) '#t))
-                            (_%$%K179866179884%_ (lambda () '#t)))
-                        (let ((_%$%try-match179863179887%_
+      (lambda (_%stx179742%_ _%compile-simple179743%_ _%compile-values179744%_)
+        (letrec ((_%simple-bind?179746%_
+                  (lambda (_%hd179931%_)
+                    (let* ((_%$%hd179932179942%_ _%hd179931%_)
+                           (_%$%else179935179950%_ (lambda () '#f)))
+                      (let ((_%$%K179938179963%_ (lambda (_%id179961%_) '#t))
+                            (_%$%K179937179955%_ (lambda () '#t)))
+                        (let ((_%$%try-match179934179958%_
                                (lambda ()
                                  (if (let ()
                                        (declare (not safe))
-                                       (##eq? _%$%hd179861179871%_ '#f))
-                                     (_%$%K179866179884%_)
-                                     (_%$%else179864179879%_)))))
-                          (if (pair? _%$%hd179861179871%_)
-                              (let ((_%$%tl179869179897%_
+                                       (##eq? _%$%hd179932179942%_ '#f))
+                                     (_%$%K179937179955%_)
+                                     (_%$%else179935179950%_)))))
+                          (if (pair? _%$%hd179932179942%_)
+                              (let ((_%$%tl179940179968%_
                                      (let ()
                                        (declare (not safe))
-                                       (##cdr _%$%hd179861179871%_)))
-                                    (_%$%hd179868179895%_
+                                       (##cdr _%$%hd179932179942%_)))
+                                    (_%$%hd179939179966%_
                                      (let ()
                                        (declare (not safe))
-                                       (##car _%$%hd179861179871%_))))
-                                (if (null? _%$%tl179869179897%_)
-                                    (let ((_%id179900%_ _%$%hd179868179895%_))
-                                      (_%$%K179867179892%_ _%id179900%_))
-                                    (_%$%try-match179863179887%_)))
-                              (_%$%try-match179863179887%_)))))))
-                 (_%car-e179676%_
-                  (lambda (_%hd179858%_)
-                    (if (pair? _%hd179858%_)
-                        (let () (declare (not safe)) (##car _%hd179858%_))
-                        _%hd179858%_))))
-          (let* ((_%$e179678%_ _%stx179671%_)
-                 (_%$%$E179680179823%_
+                                       (##car _%$%hd179932179942%_))))
+                                (if (null? _%$%tl179940179968%_)
+                                    (let ((_%id179971%_ _%$%hd179939179966%_))
+                                      (_%$%K179938179963%_ _%id179971%_))
+                                    (_%$%try-match179934179958%_)))
+                              (_%$%try-match179934179958%_)))))))
+                 (_%car-e179747%_
+                  (lambda (_%hd179929%_)
+                    (if (pair? _%hd179929%_)
+                        (let () (declare (not safe)) (##car _%hd179929%_))
+                        _%hd179929%_))))
+          (let* ((_%$e179749%_ _%stx179742%_)
+                 (_%$%$E179751179894%_
                   (lambda ()
-                    (let ((_%$%$E179681179703%_
+                    (let ((_%$%$E179752179774%_
                            (lambda ()
                              (let ()
                                (declare (not safe))
                                (__raise-syntax-error
                                 '#f
                                 '"Bad syntax; malformed ast clause"
-                                _%$e179678%_)))))
+                                _%$e179749%_)))))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$e179678%_))
-                          (let* ((_%$%$tgt179682179706%_
+                            (__AST-pair? _%$e179749%_))
+                          (let* ((_%$%$tgt179753179777%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$e179678%_)))
-                                 (_%$%$hd179683179709%_
+                                    (__AST-e _%$e179749%_)))
+                                 (_%$%$hd179754179780%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt179682179706%_)))
-                                 (_%$%$tl179684179712%_
+                                    (##car _%$%$tgt179753179777%_)))
+                                 (_%$%$tl179755179783%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt179682179706%_))))
+                                    (##cdr _%$%$tgt179753179777%_))))
                             (if (let ()
                                   (declare (not safe))
-                                  (__AST-pair? _%$%$tl179684179712%_))
-                                (let* ((_%$%$tgt179685179716%_
+                                  (__AST-pair? _%$%$tl179755179783%_))
+                                (let* ((_%$%$tgt179756179787%_
                                         (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl179684179712%_)))
-                                       (_%$%$hd179686179719%_
+                                          (__AST-e _%$%$tl179755179783%_)))
+                                       (_%$%$hd179757179790%_
                                         (let ()
                                           (declare (not safe))
-                                          (##car _%$%$tgt179685179716%_)))
-                                       (_%$%$tl179687179722%_
+                                          (##car _%$%$tgt179756179787%_)))
+                                       (_%$%$tl179758179793%_
                                         (let ()
                                           (declare (not safe))
-                                          (##cdr _%$%$tgt179685179716%_)))
-                                       (_%hd179726%_ _%$%$hd179686179719%_))
+                                          (##cdr _%$%$tgt179756179787%_)))
+                                       (_%hd179797%_ _%$%$hd179757179790%_))
                                   (if (let ()
                                         (declare (not safe))
-                                        (__AST-pair? _%$%$tl179687179722%_))
-                                      (let* ((_%$%$tgt179688179728%_
+                                        (__AST-pair? _%$%$tl179758179793%_))
+                                      (let* ((_%$%$tgt179759179799%_
                                               (let ()
                                                 (declare (not safe))
-                                                (__AST-e _%$%$tl179687179722%_)))
-                                             (_%$%$hd179689179731%_
+                                                (__AST-e _%$%$tl179758179793%_)))
+                                             (_%$%$hd179760179802%_
                                               (let ()
                                                 (declare (not safe))
-                                                (##car _%$%$tgt179688179728%_)))
-                                             (_%$%$tl179690179734%_
+                                                (##car _%$%$tgt179759179799%_)))
+                                             (_%$%$tl179761179805%_
                                               (let ()
                                                 (declare (not safe))
-                                                (##cdr _%$%$tgt179688179728%_)))
-                                             (_%body179738%_
-                                              _%$%$hd179689179731%_))
+                                                (##cdr _%$%$tgt179759179799%_)))
+                                             (_%body179809%_
+                                              _%$%$hd179760179802%_))
                                         (if (equal? (let ()
                                                       (declare (not safe))
-                                                      (__AST-e _%$%$tl179690179734%_))
+                                                      (__AST-e _%$%$tl179761179805%_))
                                                     '())
-                                            (let* ((_%hd-ids179778%_
-                                                    (map (lambda (_%bind179740%_)
-                                                           (let* ((_%$e179742%_
+                                            (let* ((_%hd-ids179849%_
+                                                    (map (lambda (_%bind179811%_)
+                                                           (let* ((_%$e179813%_
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                           _%bind179740%_)
-                          (_%$%$E179744179753%_
+                           _%bind179811%_)
+                          (_%$%$E179815179824%_
                            (lambda ()
                              (let ()
                                (declare (not safe))
                                (__raise-syntax-error
                                 '#f
                                 '"Bad syntax; malformed ast clause"
-                                _%$e179742%_)))))
+                                _%$e179813%_)))))
                      (if (let ()
                            (declare (not safe))
-                           (__AST-pair? _%$e179742%_))
-                         (let* ((_%$%$tgt179745179756%_
+                           (__AST-pair? _%$e179813%_))
+                         (let* ((_%$%$tgt179816179827%_
                                  (let ()
                                    (declare (not safe))
-                                   (__AST-e _%$e179742%_)))
-                                (_%$%$hd179746179759%_
+                                   (__AST-e _%$e179813%_)))
+                                (_%$%$hd179817179830%_
                                  (let ()
                                    (declare (not safe))
-                                   (##car _%$%$tgt179745179756%_)))
-                                (_%$%$tl179747179762%_
+                                   (##car _%$%$tgt179816179827%_)))
+                                (_%$%$tl179818179833%_
                                  (let ()
                                    (declare (not safe))
-                                   (##cdr _%$%$tgt179745179756%_)))
-                                (_%ids179766%_ _%$%$hd179746179759%_))
+                                   (##cdr _%$%$tgt179816179827%_)))
+                                (_%ids179837%_ _%$%$hd179817179830%_))
                            (if (let ()
                                  (declare (not safe))
-                                 (__AST-pair? _%$%$tl179747179762%_))
-                               (let* ((_%$%$tgt179748179768%_
+                                 (__AST-pair? _%$%$tl179818179833%_))
+                               (let* ((_%$%$tgt179819179839%_
                                        (let ()
                                          (declare (not safe))
-                                         (__AST-e _%$%$tl179747179762%_)))
-                                      (_%$%$hd179749179771%_
+                                         (__AST-e _%$%$tl179818179833%_)))
+                                      (_%$%$hd179820179842%_
                                        (let ()
                                          (declare (not safe))
-                                         (##car _%$%$tgt179748179768%_)))
-                                      (_%$%$tl179750179774%_
+                                         (##car _%$%$tgt179819179839%_)))
+                                      (_%$%$tl179821179845%_
                                        (let ()
                                          (declare (not safe))
-                                         (##cdr _%$%$tgt179748179768%_))))
+                                         (##cdr _%$%$tgt179819179839%_))))
                                  (if (equal? (let ()
                                                (declare (not safe))
-                                               (__AST-e _%$%$tl179750179774%_))
+                                               (__AST-e _%$%$tl179821179845%_))
                                              '())
-                                     _%ids179766%_
-                                     (_%$%$E179744179753%_)))
-                               (_%$%$E179744179753%_)))
-                         (_%$%$E179744179753%_))))
-                 _%hd179726%_))
+                                     _%ids179837%_
+                                     (_%$%$E179815179824%_)))
+                               (_%$%$E179815179824%_)))
+                         (_%$%$E179815179824%_))))
+                 _%hd179797%_))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                   (_%exprs179818%_
-                                                    (map (lambda (_%bind179780%_)
-                                                           (let* ((_%$e179782%_
+                                                   (_%exprs179889%_
+                                                    (map (lambda (_%bind179851%_)
+                                                           (let* ((_%$e179853%_
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                           _%bind179780%_)
-                          (_%$%$E179784179793%_
+                           _%bind179851%_)
+                          (_%$%$E179855179864%_
                            (lambda ()
                              (let ()
                                (declare (not safe))
                                (__raise-syntax-error
                                 '#f
                                 '"Bad syntax; malformed ast clause"
-                                _%$e179782%_)))))
+                                _%$e179853%_)))))
                      (if (let ()
                            (declare (not safe))
-                           (__AST-pair? _%$e179782%_))
-                         (let* ((_%$%$tgt179785179796%_
+                           (__AST-pair? _%$e179853%_))
+                         (let* ((_%$%$tgt179856179867%_
                                  (let ()
                                    (declare (not safe))
-                                   (__AST-e _%$e179782%_)))
-                                (_%$%$hd179786179799%_
+                                   (__AST-e _%$e179853%_)))
+                                (_%$%$hd179857179870%_
                                  (let ()
                                    (declare (not safe))
-                                   (##car _%$%$tgt179785179796%_)))
-                                (_%$%$tl179787179802%_
+                                   (##car _%$%$tgt179856179867%_)))
+                                (_%$%$tl179858179873%_
                                  (let ()
                                    (declare (not safe))
-                                   (##cdr _%$%$tgt179785179796%_))))
+                                   (##cdr _%$%$tgt179856179867%_))))
                            (if (let ()
                                  (declare (not safe))
-                                 (__AST-pair? _%$%$tl179787179802%_))
-                               (let* ((_%$%$tgt179788179806%_
+                                 (__AST-pair? _%$%$tl179858179873%_))
+                               (let* ((_%$%$tgt179859179877%_
                                        (let ()
                                          (declare (not safe))
-                                         (__AST-e _%$%$tl179787179802%_)))
-                                      (_%$%$hd179789179809%_
+                                         (__AST-e _%$%$tl179858179873%_)))
+                                      (_%$%$hd179860179880%_
                                        (let ()
                                          (declare (not safe))
-                                         (##car _%$%$tgt179788179806%_)))
-                                      (_%$%$tl179790179812%_
+                                         (##car _%$%$tgt179859179877%_)))
+                                      (_%$%$tl179861179883%_
                                        (let ()
                                          (declare (not safe))
-                                         (##cdr _%$%$tgt179788179806%_)))
-                                      (_%expr179816%_ _%$%$hd179789179809%_))
+                                         (##cdr _%$%$tgt179859179877%_)))
+                                      (_%expr179887%_ _%$%$hd179860179880%_))
                                  (if (equal? (let ()
                                                (declare (not safe))
-                                               (__AST-e _%$%$tl179790179812%_))
+                                               (__AST-e _%$%$tl179861179883%_))
                                              '())
-                                     (__compile _%expr179816%_)
-                                     (_%$%$E179784179793%_)))
-                               (_%$%$E179784179793%_)))
-                         (_%$%$E179784179793%_))))
-                 _%hd179726%_))
+                                     (__compile _%expr179887%_)
+                                     (_%$%$E179855179864%_)))
+                               (_%$%$E179855179864%_)))
+                         (_%$%$E179855179864%_))))
+                 _%hd179797%_))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                   (_%body179820%_
+                                                   (_%body179891%_
                                                     (__compile
-                                                     _%body179738%_)))
+                                                     _%body179809%_)))
                                               (if (let ()
                                                     (declare (not safe))
                                                     (andmap__0
-                                                     _%simple-bind?179675%_
-                                                     _%hd-ids179778%_))
-                                                  (_%compile-simple179672%_
+                                                     _%simple-bind?179746%_
+                                                     _%hd-ids179849%_))
+                                                  (_%compile-simple179743%_
                                                    (let ()
                                                      (declare (not safe))
-                                                     (##map _%car-e179676%_
-                                                            _%hd-ids179778%_))
-                                                   _%exprs179818%_
-                                                   _%body179820%_)
-                                                  (_%compile-values179673%_
-                                                   _%hd-ids179778%_
-                                                   _%exprs179818%_
-                                                   _%body179820%_)))
-                                            (_%$%$E179681179703%_)))
-                                      (_%$%$E179681179703%_)))
-                                (_%$%$E179681179703%_)))
-                          (_%$%$E179681179703%_))))))
-            (if (let () (declare (not safe)) (__AST-pair? _%$e179678%_))
-                (let* ((_%$%$tgt179691179826%_
-                        (let () (declare (not safe)) (__AST-e _%$e179678%_)))
-                       (_%$%$hd179692179829%_
+                                                     (##map _%car-e179747%_
+                                                            _%hd-ids179849%_))
+                                                   _%exprs179889%_
+                                                   _%body179891%_)
+                                                  (_%compile-values179744%_
+                                                   _%hd-ids179849%_
+                                                   _%exprs179889%_
+                                                   _%body179891%_)))
+                                            (_%$%$E179752179774%_)))
+                                      (_%$%$E179752179774%_)))
+                                (_%$%$E179752179774%_)))
+                          (_%$%$E179752179774%_))))))
+            (if (let () (declare (not safe)) (__AST-pair? _%$e179749%_))
+                (let* ((_%$%$tgt179762179897%_
+                        (let () (declare (not safe)) (__AST-e _%$e179749%_)))
+                       (_%$%$hd179763179900%_
                         (let ()
                           (declare (not safe))
-                          (##car _%$%$tgt179691179826%_)))
-                       (_%$%$tl179693179832%_
+                          (##car _%$%$tgt179762179897%_)))
+                       (_%$%$tl179764179903%_
                         (let ()
                           (declare (not safe))
-                          (##cdr _%$%$tgt179691179826%_))))
+                          (##cdr _%$%$tgt179762179897%_))))
                   (if (let ()
                         (declare (not safe))
-                        (__AST-pair? _%$%$tl179693179832%_))
-                      (let* ((_%$%$tgt179694179836%_
+                        (__AST-pair? _%$%$tl179764179903%_))
+                      (let* ((_%$%$tgt179765179907%_
                               (let ()
                                 (declare (not safe))
-                                (__AST-e _%$%$tl179693179832%_)))
-                             (_%$%$hd179695179839%_
+                                (__AST-e _%$%$tl179764179903%_)))
+                             (_%$%$hd179766179910%_
                               (let ()
                                 (declare (not safe))
-                                (##car _%$%$tgt179694179836%_)))
-                             (_%$%$tl179696179842%_
+                                (##car _%$%$tgt179765179907%_)))
+                             (_%$%$tl179767179913%_
                               (let ()
                                 (declare (not safe))
-                                (##cdr _%$%$tgt179694179836%_))))
+                                (##cdr _%$%$tgt179765179907%_))))
                         (if (equal? (let ()
                                       (declare (not safe))
-                                      (__AST-e _%$%$hd179695179839%_))
+                                      (__AST-e _%$%$hd179766179910%_))
                                     '())
                             (if (let ()
                                   (declare (not safe))
-                                  (__AST-pair? _%$%$tl179696179842%_))
-                                (let* ((_%$%$tgt179697179846%_
+                                  (__AST-pair? _%$%$tl179767179913%_))
+                                (let* ((_%$%$tgt179768179917%_
                                         (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl179696179842%_)))
-                                       (_%$%$hd179698179849%_
+                                          (__AST-e _%$%$tl179767179913%_)))
+                                       (_%$%$hd179769179920%_
                                         (let ()
                                           (declare (not safe))
-                                          (##car _%$%$tgt179697179846%_)))
-                                       (_%$%$tl179699179852%_
+                                          (##car _%$%$tgt179768179917%_)))
+                                       (_%$%$tl179770179923%_
                                         (let ()
                                           (declare (not safe))
-                                          (##cdr _%$%$tgt179697179846%_)))
-                                       (_%body179856%_ _%$%$hd179698179849%_))
+                                          (##cdr _%$%$tgt179768179917%_)))
+                                       (_%body179927%_ _%$%$hd179769179920%_))
                                   (if (equal? (let ()
                                                 (declare (not safe))
-                                                (__AST-e _%$%$tl179699179852%_))
+                                                (__AST-e _%$%$tl179770179923%_))
                                               '())
-                                      (__compile _%body179856%_)
-                                      (_%$%$E179680179823%_)))
-                                (_%$%$E179680179823%_))
-                            (_%$%$E179680179823%_)))
-                      (_%$%$E179680179823%_)))
-                (_%$%$E179680179823%_))))))
+                                      (__compile _%body179927%_)
+                                      (_%$%$E179751179894%_)))
+                                (_%$%$E179751179894%_))
+                            (_%$%$E179751179894%_)))
+                      (_%$%$E179751179894%_)))
+                (_%$%$E179751179894%_))))))
     (define __compile-let-values%
-      (lambda (_%stx179483%_)
-        (letrec ((_%compile-simple179485%_
-                  (lambda (_%hd-ids179667%_ _%exprs179668%_ _%body179669%_)
+      (lambda (_%stx179554%_)
+        (letrec ((_%compile-simple179556%_
+                  (lambda (_%hd-ids179738%_ _%exprs179739%_ _%body179740%_)
                     (__SRC__%
                      (list 'let
-                           (let ((__tmp180856
-                                  (map __compile-head-id _%hd-ids179667%_)))
+                           (let ((__tmp180927
+                                  (map __compile-head-id _%hd-ids179738%_)))
                              (declare (not safe))
-                             (##map list __tmp180856 _%exprs179668%_))
-                           _%body179669%_)
-                     _%stx179483%_)))
-                 (_%compile-values179486%_
-                  (lambda (_%hd-ids179582%_ _%exprs179583%_ _%body179584%_)
-                    (let _%lp179586%_ ((_%rest179588%_ _%hd-ids179582%_)
-                                       (_%exprs179589%_ _%exprs179583%_)
-                                       (_%bind179590%_ '())
-                                       (_%post179591%_ '()))
-                      (let* ((_%$%rest179592179606%_ _%rest179588%_)
-                             (_%$%else179595179614%_
+                             (##map list __tmp180927 _%exprs179739%_))
+                           _%body179740%_)
+                     _%stx179554%_)))
+                 (_%compile-values179557%_
+                  (lambda (_%hd-ids179653%_ _%exprs179654%_ _%body179655%_)
+                    (let _%lp179657%_ ((_%rest179659%_ _%hd-ids179653%_)
+                                       (_%exprs179660%_ _%exprs179654%_)
+                                       (_%bind179661%_ '())
+                                       (_%post179662%_ '()))
+                      (let* ((_%$%rest179663179677%_ _%rest179659%_)
+                             (_%$%else179666179685%_
                               (lambda ()
                                 (__SRC__%
                                  (list 'let
-                                       (reverse _%bind179590%_)
-                                       (_%compile-post179487%_
-                                        _%post179591%_
-                                        _%body179584%_))
-                                 _%stx179483%_))))
-                        (let ((_%$%K179600179650%_
-                               (lambda (_%rest179647%_ _%id179648%_)
-                                 (_%lp179586%_
-                                  _%rest179647%_
-                                  (cdr _%exprs179589%_)
-                                  (cons (list (__compile-head-id _%id179648%_)
-                                              (car _%exprs179589%_))
-                                        _%bind179590%_)
-                                  _%post179591%_)))
-                              (_%$%K179597179632%_
-                               (lambda (_%rest179618%_ _%hd179619%_)
+                                       (reverse _%bind179661%_)
+                                       (_%compile-post179558%_
+                                        _%post179662%_
+                                        _%body179655%_))
+                                 _%stx179554%_))))
+                        (let ((_%$%K179671179721%_
+                               (lambda (_%rest179718%_ _%id179719%_)
+                                 (_%lp179657%_
+                                  _%rest179718%_
+                                  (cdr _%exprs179660%_)
+                                  (cons (list (__compile-head-id _%id179719%_)
+                                              (car _%exprs179660%_))
+                                        _%bind179661%_)
+                                  _%post179662%_)))
+                              (_%$%K179668179703%_
+                               (lambda (_%rest179689%_ _%hd179690%_)
                                  (if (let ()
                                        (declare (not safe))
-                                       (__AST-id? _%hd179619%_))
-                                     (_%lp179586%_
-                                      _%rest179618%_
-                                      (cdr _%exprs179589%_)
+                                       (__AST-id? _%hd179690%_))
+                                     (_%lp179657%_
+                                      _%rest179689%_
+                                      (cdr _%exprs179660%_)
                                       (cons (list (__compile-head-id
-                                                   _%hd179619%_)
+                                                   _%hd179690%_)
                                                   (list 'values->list
-                                                        (car _%exprs179589%_)))
-                                            _%bind179590%_)
-                                      _%post179591%_)
-                                     (if (list? _%hd179619%_)
-                                         (let* ((_%len179623%_
+                                                        (car _%exprs179660%_)))
+                                            _%bind179661%_)
+                                      _%post179662%_)
+                                     (if (list? _%hd179690%_)
+                                         (let* ((_%len179694%_
                                                  (let ()
                                                    (declare (not safe))
-                                                   (##length _%hd179619%_)))
-                                                (_%tmp179625%_
+                                                   (##length _%hd179690%_)))
+                                                (_%tmp179696%_
                                                  (__SRC__0
                                                   (let ()
                                                     (declare (not safe))
                                                     (##gensym)))))
-                                           (_%lp179586%_
-                                            _%rest179618%_
-                                            (cdr _%exprs179589%_)
-                                            (cons (list _%tmp179625%_
-                                                        (car _%exprs179589%_))
-                                                  _%bind179590%_)
-                                            (cons (cons _%tmp179625%_
-                                                        (cons _%len179623%_
-                                                              (let ((__tmp180858
+                                           (_%lp179657%_
+                                            _%rest179689%_
+                                            (cdr _%exprs179660%_)
+                                            (cons (list _%tmp179696%_
+                                                        (car _%exprs179660%_))
+                                                  _%bind179661%_)
+                                            (cons (cons _%tmp179696%_
+                                                        (cons _%len179694%_
+                                                              (let ((__tmp180929
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                             (lambda (_%id179628%_ _%k179629%_)
+                             (lambda (_%id179699%_ _%k179700%_)
                                (if (let ()
                                      (declare (not safe))
-                                     (__AST-e _%id179628%_))
-                                   (cons (__SRC__0 _%id179628%_) _%k179629%_)
+                                     (__AST-e _%id179699%_))
+                                   (cons (__SRC__0 _%id179699%_) _%k179700%_)
                                    '#f)))
-                            (__tmp180857
+                            (__tmp180928
                              (let ()
                                (declare (not safe))
-                               (##iota _%len179623%_))))
+                               (##iota _%len179694%_))))
                         (declare (not safe))
-                        (filter-map__1 __tmp180858 _%hd179619%_ __tmp180857))))
+                        (filter-map__1 __tmp180929 _%hd179690%_ __tmp180928))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                  _%post179591%_)))
+                                                  _%post179662%_)))
                                          (__compile-error__%
-                                          _%stx179483%_
-                                          _%hd179619%_))))))
-                          (if (pair? _%$%rest179592179606%_)
-                              (let ((_%$%tl179602179655%_
+                                          _%stx179554%_
+                                          _%hd179690%_))))))
+                          (if (pair? _%$%rest179663179677%_)
+                              (let ((_%$%tl179673179726%_
                                      (let ()
                                        (declare (not safe))
-                                       (##cdr _%$%rest179592179606%_)))
-                                    (_%$%hd179601179653%_
+                                       (##cdr _%$%rest179663179677%_)))
+                                    (_%$%hd179672179724%_
                                      (let ()
                                        (declare (not safe))
-                                       (##car _%$%rest179592179606%_))))
-                                (if (pair? _%$%hd179601179653%_)
-                                    (let ((_%$%tl179604179660%_
+                                       (##car _%$%rest179663179677%_))))
+                                (if (pair? _%$%hd179672179724%_)
+                                    (let ((_%$%tl179675179731%_
                                            (let ()
                                              (declare (not safe))
-                                             (##cdr _%$%hd179601179653%_)))
-                                          (_%$%hd179603179658%_
+                                             (##cdr _%$%hd179672179724%_)))
+                                          (_%$%hd179674179729%_
                                            (let ()
                                              (declare (not safe))
-                                             (##car _%$%hd179601179653%_))))
-                                      (if (null? _%$%tl179604179660%_)
-                                          (let ((_%id179663%_
-                                                 _%$%hd179603179658%_)
-                                                (_%rest179665%_
-                                                 _%$%tl179602179655%_))
-                                            (_%$%K179600179650%_
-                                             _%rest179665%_
-                                             _%id179663%_))
-                                          (let ((_%hd179640%_
-                                                 _%$%hd179601179653%_)
-                                                (_%rest179642%_
-                                                 _%$%tl179602179655%_))
-                                            (_%$%K179597179632%_
-                                             _%rest179642%_
-                                             _%hd179640%_))))
-                                    (let ((_%hd179640%_ _%$%hd179601179653%_)
-                                          (_%rest179642%_
-                                           _%$%tl179602179655%_))
-                                      (_%$%K179597179632%_
-                                       _%rest179642%_
-                                       _%hd179640%_))))
-                              (_%$%else179595179614%_)))))))
-                 (_%compile-post179487%_
-                  (lambda (_%post179489%_ _%body179490%_)
-                    (let _%lp179492%_ ((_%rest179494%_ _%post179489%_)
-                                       (_%check179495%_ '())
-                                       (_%bind179496%_ '()))
-                      (let* ((_%$%rest179497179509%_ _%rest179494%_)
-                             (_%$%else179499179517%_
+                                             (##car _%$%hd179672179724%_))))
+                                      (if (null? _%$%tl179675179731%_)
+                                          (let ((_%id179734%_
+                                                 _%$%hd179674179729%_)
+                                                (_%rest179736%_
+                                                 _%$%tl179673179726%_))
+                                            (_%$%K179671179721%_
+                                             _%rest179736%_
+                                             _%id179734%_))
+                                          (let ((_%hd179711%_
+                                                 _%$%hd179672179724%_)
+                                                (_%rest179713%_
+                                                 _%$%tl179673179726%_))
+                                            (_%$%K179668179703%_
+                                             _%rest179713%_
+                                             _%hd179711%_))))
+                                    (let ((_%hd179711%_ _%$%hd179672179724%_)
+                                          (_%rest179713%_
+                                           _%$%tl179673179726%_))
+                                      (_%$%K179668179703%_
+                                       _%rest179713%_
+                                       _%hd179711%_))))
+                              (_%$%else179666179685%_)))))))
+                 (_%compile-post179558%_
+                  (lambda (_%post179560%_ _%body179561%_)
+                    (let _%lp179563%_ ((_%rest179565%_ _%post179560%_)
+                                       (_%check179566%_ '())
+                                       (_%bind179567%_ '()))
+                      (let* ((_%$%rest179568179580%_ _%rest179565%_)
+                             (_%$%else179570179588%_
                               (lambda ()
                                 (__SRC__%
                                  (cons 'begin
-                                       (let ((__tmp180859
+                                       (let ((__tmp180930
                                               (list (__SRC__%
                                                      (list 'let
-                                                           _%bind179496%_
-                                                           _%body179490%_)
-                                                     _%stx179483%_))))
+                                                           _%bind179567%_
+                                                           _%body179561%_)
+                                                     _%stx179554%_))))
                                          (declare (not safe))
                                          (##append
-                                          _%check179495%_
-                                          __tmp180859)))
-                                 _%stx179483%_)))
-                             (_%$%K179501179556%_
-                              (lambda (_%rest179520%_
-                                       _%init179521%_
-                                       _%len179522%_
-                                       _%tmp179523%_)
-                                (_%lp179492%_
-                                 _%rest179520%_
+                                          _%check179566%_
+                                          __tmp180930)))
+                                 _%stx179554%_)))
+                             (_%$%K179572179627%_
+                              (lambda (_%rest179591%_
+                                       _%init179592%_
+                                       _%len179593%_
+                                       _%tmp179594%_)
+                                (_%lp179563%_
+                                 _%rest179591%_
                                  (cons (__SRC__%
                                         (list '__check-values
-                                              _%tmp179523%_
-                                              _%len179522%_)
-                                        _%stx179483%_)
-                                       _%check179495%_)
-                                 (let ((__tmp180860
-                                        (lambda (_%hd179525%_ _%r179526%_)
-                                          (let* ((_%$%hd179527179534%_
-                                                  _%hd179525%_)
-                                                 (_%$%E179529179538%_
+                                              _%tmp179594%_
+                                              _%len179593%_)
+                                        _%stx179554%_)
+                                       _%check179566%_)
+                                 (let ((__tmp180931
+                                        (lambda (_%hd179596%_ _%r179597%_)
+                                          (let* ((_%$%hd179598179605%_
+                                                  _%hd179596%_)
+                                                 (_%$%E179600179609%_
                                                   (lambda ()
                                                     (let ()
                                                       (declare (not safe))
                                                       (error '"No clause matching"
-                                                             _%$%hd179527179534%_
+                                                             _%$%hd179598179605%_
                                                              '([id . k])))
                                                     '#!void))
-                                                 (_%$%K179530179544%_
-                                                  (lambda (_%k179541%_
-                                                           _%id179542%_)
-                                                    (cons (list _%id179542%_
+                                                 (_%$%K179601179615%_
+                                                  (lambda (_%k179612%_
+                                                           _%id179613%_)
+                                                    (cons (list _%id179613%_
                                                                 (list '##values-ref
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                              _%tmp179523%_
-                              _%k179541%_))
-                  _%r179526%_))))
+                              _%tmp179594%_
+                              _%k179612%_))
+                  _%r179597%_))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                            (if (pair? _%$%hd179527179534%_)
-                                                (let ((_%$%hd179531179547%_
+                                            (if (pair? _%$%hd179598179605%_)
+                                                (let ((_%$%hd179602179618%_
                                                        (let ()
                                                          (declare (not safe))
-                                                         (##car _%$%hd179527179534%_)))
-                                                      (_%$%tl179532179549%_
+                                                         (##car _%$%hd179598179605%_)))
+                                                      (_%$%tl179603179620%_
                                                        (let ()
                                                          (declare (not safe))
-                                                         (##cdr _%$%hd179527179534%_))))
-                                                  (let* ((_%id179552%_
-                                                          _%$%hd179531179547%_)
-                                                         (_%k179554%_
-                                                          _%$%tl179532179549%_))
-                                                    (_%$%K179530179544%_
-                                                     _%k179554%_
-                                                     _%id179552%_)))
-                                                (_%$%E179529179538%_))))))
+                                                         (##cdr _%$%hd179598179605%_))))
+                                                  (let* ((_%id179623%_
+                                                          _%$%hd179602179618%_)
+                                                         (_%k179625%_
+                                                          _%$%tl179603179620%_))
+                                                    (_%$%K179601179615%_
+                                                     _%k179625%_
+                                                     _%id179623%_)))
+                                                (_%$%E179600179609%_))))))
                                    (declare (not safe))
                                    (foldr__0
-                                    __tmp180860
-                                    _%bind179496%_
-                                    _%init179521%_))))))
-                        (if (pair? _%$%rest179497179509%_)
-                            (let ((_%$%hd179502179559%_
+                                    __tmp180931
+                                    _%bind179567%_
+                                    _%init179592%_))))))
+                        (if (pair? _%$%rest179568179580%_)
+                            (let ((_%$%hd179573179630%_
                                    (let ()
                                      (declare (not safe))
-                                     (##car _%$%rest179497179509%_)))
-                                  (_%$%tl179503179561%_
+                                     (##car _%$%rest179568179580%_)))
+                                  (_%$%tl179574179632%_
                                    (let ()
                                      (declare (not safe))
-                                     (##cdr _%$%rest179497179509%_))))
-                              (if (pair? _%$%hd179502179559%_)
-                                  (let ((_%$%hd179504179564%_
+                                     (##cdr _%$%rest179568179580%_))))
+                              (if (pair? _%$%hd179573179630%_)
+                                  (let ((_%$%hd179575179635%_
                                          (let ()
                                            (declare (not safe))
-                                           (##car _%$%hd179502179559%_)))
-                                        (_%$%tl179505179566%_
+                                           (##car _%$%hd179573179630%_)))
+                                        (_%$%tl179576179637%_
                                          (let ()
                                            (declare (not safe))
-                                           (##cdr _%$%hd179502179559%_))))
-                                    (let ((_%tmp179569%_ _%$%hd179504179564%_))
-                                      (if (pair? _%$%tl179505179566%_)
-                                          (let ((_%$%hd179506179571%_
+                                           (##cdr _%$%hd179573179630%_))))
+                                    (let ((_%tmp179640%_ _%$%hd179575179635%_))
+                                      (if (pair? _%$%tl179576179637%_)
+                                          (let ((_%$%hd179577179642%_
                                                  (let ()
                                                    (declare (not safe))
-                                                   (##car _%$%tl179505179566%_)))
-                                                (_%$%tl179507179573%_
+                                                   (##car _%$%tl179576179637%_)))
+                                                (_%$%tl179578179644%_
                                                  (let ()
                                                    (declare (not safe))
-                                                   (##cdr _%$%tl179505179566%_))))
-                                            (let* ((_%len179576%_
-                                                    _%$%hd179506179571%_)
-                                                   (_%init179578%_
-                                                    _%$%tl179507179573%_)
-                                                   (_%rest179580%_
-                                                    _%$%tl179503179561%_))
-                                              (_%$%K179501179556%_
-                                               _%rest179580%_
-                                               _%init179578%_
-                                               _%len179576%_
-                                               _%tmp179569%_)))
-                                          (_%$%else179499179517%_))))
-                                  (_%$%else179499179517%_)))
-                            (_%$%else179499179517%_)))))))
+                                                   (##cdr _%$%tl179576179637%_))))
+                                            (let* ((_%len179647%_
+                                                    _%$%hd179577179642%_)
+                                                   (_%init179649%_
+                                                    _%$%tl179578179644%_)
+                                                   (_%rest179651%_
+                                                    _%$%tl179574179632%_))
+                                              (_%$%K179572179627%_
+                                               _%rest179651%_
+                                               _%init179649%_
+                                               _%len179647%_
+                                               _%tmp179640%_)))
+                                          (_%$%else179570179588%_))))
+                                  (_%$%else179570179588%_)))
+                            (_%$%else179570179588%_)))))))
           (__compile-let-form
-           _%stx179483%_
-           _%compile-simple179485%_
-           _%compile-values179486%_))))
+           _%stx179554%_
+           _%compile-simple179556%_
+           _%compile-values179557%_))))
     (define __compile-letrec-values%
-      (lambda (_%stx179280%_)
-        (letrec ((_%compile-simple179282%_
-                  (lambda (_%hd-ids179479%_ _%exprs179480%_ _%body179481%_)
+      (lambda (_%stx179351%_)
+        (letrec ((_%compile-simple179353%_
+                  (lambda (_%hd-ids179550%_ _%exprs179551%_ _%body179552%_)
                     (__SRC__%
                      (list 'letrec
-                           (let ((__tmp180861
-                                  (map __compile-head-id _%hd-ids179479%_)))
+                           (let ((__tmp180932
+                                  (map __compile-head-id _%hd-ids179550%_)))
                              (declare (not safe))
-                             (##map list __tmp180861 _%exprs179480%_))
-                           _%body179481%_)
-                     _%stx179280%_)))
-                 (_%compile-values179283%_
-                  (lambda (_%hd-ids179390%_ _%exprs179391%_ _%body179392%_)
-                    (let _%lp179394%_ ((_%rest179396%_ _%hd-ids179390%_)
-                                       (_%exprs179397%_ _%exprs179391%_)
-                                       (_%pre179398%_ '())
-                                       (_%bind179399%_ '())
-                                       (_%post179400%_ '()))
-                      (let* ((_%$%rest179401179415%_ _%rest179396%_)
-                             (_%$%else179404179423%_
+                             (##map list __tmp180932 _%exprs179551%_))
+                           _%body179552%_)
+                     _%stx179351%_)))
+                 (_%compile-values179354%_
+                  (lambda (_%hd-ids179461%_ _%exprs179462%_ _%body179463%_)
+                    (let _%lp179465%_ ((_%rest179467%_ _%hd-ids179461%_)
+                                       (_%exprs179468%_ _%exprs179462%_)
+                                       (_%pre179469%_ '())
+                                       (_%bind179470%_ '())
+                                       (_%post179471%_ '()))
+                      (let* ((_%$%rest179472179486%_ _%rest179467%_)
+                             (_%$%else179475179494%_
                               (lambda ()
-                                (_%compile-inner179284%_
-                                 _%pre179398%_
-                                 _%bind179399%_
-                                 _%post179400%_
-                                 _%body179392%_))))
-                        (let ((_%$%K179409179462%_
-                               (lambda (_%rest179459%_ _%id179460%_)
-                                 (_%lp179394%_
-                                  _%rest179459%_
-                                  (cdr _%exprs179397%_)
-                                  _%pre179398%_
-                                  (cons (list (__compile-head-id _%id179460%_)
-                                              (car _%exprs179397%_))
-                                        _%bind179399%_)
-                                  _%post179400%_)))
-                              (_%$%K179406179444%_
-                               (lambda (_%rest179427%_ _%hd179428%_)
+                                (_%compile-inner179355%_
+                                 _%pre179469%_
+                                 _%bind179470%_
+                                 _%post179471%_
+                                 _%body179463%_))))
+                        (let ((_%$%K179480179533%_
+                               (lambda (_%rest179530%_ _%id179531%_)
+                                 (_%lp179465%_
+                                  _%rest179530%_
+                                  (cdr _%exprs179468%_)
+                                  _%pre179469%_
+                                  (cons (list (__compile-head-id _%id179531%_)
+                                              (car _%exprs179468%_))
+                                        _%bind179470%_)
+                                  _%post179471%_)))
+                              (_%$%K179477179515%_
+                               (lambda (_%rest179498%_ _%hd179499%_)
                                  (if (let ()
                                        (declare (not safe))
-                                       (__AST-id? _%hd179428%_))
-                                     (_%lp179394%_
-                                      _%rest179427%_
-                                      (cdr _%exprs179397%_)
-                                      _%pre179398%_
+                                       (__AST-id? _%hd179499%_))
+                                     (_%lp179465%_
+                                      _%rest179498%_
+                                      (cdr _%exprs179468%_)
+                                      _%pre179469%_
                                       (cons (list (__compile-head-id
-                                                   _%hd179428%_)
+                                                   _%hd179499%_)
                                                   (list 'values->list
-                                                        (car _%exprs179397%_)))
-                                            _%bind179399%_)
-                                      _%post179400%_)
-                                     (if (list? _%hd179428%_)
-                                         (let* ((_%len179432%_
+                                                        (car _%exprs179468%_)))
+                                            _%bind179470%_)
+                                      _%post179471%_)
+                                     (if (list? _%hd179499%_)
+                                         (let* ((_%len179503%_
                                                  (let ()
                                                    (declare (not safe))
-                                                   (##length _%hd179428%_)))
-                                                (_%tmp179434%_
+                                                   (##length _%hd179499%_)))
+                                                (_%tmp179505%_
                                                  (__SRC__0
                                                   (let ()
                                                     (declare (not safe))
                                                     (##gensym)))))
-                                           (_%lp179394%_
-                                            _%rest179427%_
-                                            (cdr _%exprs179397%_)
-                                            (let ((__tmp180862
-                                                   (lambda (_%id179437%_
-                                                            _%r179438%_)
+                                           (_%lp179465%_
+                                            _%rest179498%_
+                                            (cdr _%exprs179468%_)
+                                            (let ((__tmp180933
+                                                   (lambda (_%id179508%_
+                                                            _%r179509%_)
                                                      (if (let ()
                                                            (declare (not safe))
-                                                           (__AST-e _%id179437%_))
+                                                           (__AST-e _%id179508%_))
                                                          (cons (cons (__SRC__0
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                              _%id179437%_)
+                              _%id179508%_)
                              '('#!void))
-                       _%r179438%_)
-                 _%r179438%_))))
+                       _%r179509%_)
+                 _%r179509%_))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                                               (declare (not safe))
                                               (foldl__0
-                                               __tmp180862
-                                               _%pre179398%_
-                                               _%hd179428%_))
-                                            (cons (list _%tmp179434%_
-                                                        (car _%exprs179397%_))
-                                                  _%bind179399%_)
-                                            (cons (cons _%tmp179434%_
-                                                        (cons _%len179432%_
-                                                              (let ((__tmp180864
+                                               __tmp180933
+                                               _%pre179469%_
+                                               _%hd179499%_))
+                                            (cons (list _%tmp179505%_
+                                                        (car _%exprs179468%_))
+                                                  _%bind179470%_)
+                                            (cons (cons _%tmp179505%_
+                                                        (cons _%len179503%_
+                                                              (let ((__tmp180935
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                             (lambda (_%id179440%_ _%k179441%_)
+                             (lambda (_%id179511%_ _%k179512%_)
                                (if (let ()
                                      (declare (not safe))
-                                     (__AST-e _%id179440%_))
-                                   (cons (__SRC__0 _%id179440%_) _%k179441%_)
+                                     (__AST-e _%id179511%_))
+                                   (cons (__SRC__0 _%id179511%_) _%k179512%_)
                                    '#f)))
-                            (__tmp180863
+                            (__tmp180934
                              (let ()
                                (declare (not safe))
-                               (##iota _%len179432%_))))
+                               (##iota _%len179503%_))))
                         (declare (not safe))
-                        (filter-map__1 __tmp180864 _%hd179428%_ __tmp180863))))
+                        (filter-map__1 __tmp180935 _%hd179499%_ __tmp180934))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                  _%post179400%_)))
+                                                  _%post179471%_)))
                                          (__compile-error__%
-                                          _%stx179280%_
-                                          _%hd179428%_))))))
-                          (if (pair? _%$%rest179401179415%_)
-                              (let ((_%$%tl179411179467%_
+                                          _%stx179351%_
+                                          _%hd179499%_))))))
+                          (if (pair? _%$%rest179472179486%_)
+                              (let ((_%$%tl179482179538%_
                                      (let ()
                                        (declare (not safe))
-                                       (##cdr _%$%rest179401179415%_)))
-                                    (_%$%hd179410179465%_
+                                       (##cdr _%$%rest179472179486%_)))
+                                    (_%$%hd179481179536%_
                                      (let ()
                                        (declare (not safe))
-                                       (##car _%$%rest179401179415%_))))
-                                (if (pair? _%$%hd179410179465%_)
-                                    (let ((_%$%tl179413179472%_
+                                       (##car _%$%rest179472179486%_))))
+                                (if (pair? _%$%hd179481179536%_)
+                                    (let ((_%$%tl179484179543%_
                                            (let ()
                                              (declare (not safe))
-                                             (##cdr _%$%hd179410179465%_)))
-                                          (_%$%hd179412179470%_
+                                             (##cdr _%$%hd179481179536%_)))
+                                          (_%$%hd179483179541%_
                                            (let ()
                                              (declare (not safe))
-                                             (##car _%$%hd179410179465%_))))
-                                      (if (null? _%$%tl179413179472%_)
-                                          (let ((_%id179475%_
-                                                 _%$%hd179412179470%_)
-                                                (_%rest179477%_
-                                                 _%$%tl179411179467%_))
-                                            (_%$%K179409179462%_
-                                             _%rest179477%_
-                                             _%id179475%_))
-                                          (let ((_%hd179452%_
-                                                 _%$%hd179410179465%_)
-                                                (_%rest179454%_
-                                                 _%$%tl179411179467%_))
-                                            (_%$%K179406179444%_
-                                             _%rest179454%_
-                                             _%hd179452%_))))
-                                    (let ((_%hd179452%_ _%$%hd179410179465%_)
-                                          (_%rest179454%_
-                                           _%$%tl179411179467%_))
-                                      (_%$%K179406179444%_
-                                       _%rest179454%_
-                                       _%hd179452%_))))
-                              (_%$%else179404179423%_)))))))
-                 (_%compile-inner179284%_
-                  (lambda (_%pre179385%_
-                           _%bind179386%_
-                           _%post179387%_
-                           _%body179388%_)
-                    (if (null? _%pre179385%_)
-                        (_%compile-bind179285%_
-                         _%bind179386%_
-                         _%post179387%_
-                         _%body179388%_)
+                                             (##car _%$%hd179481179536%_))))
+                                      (if (null? _%$%tl179484179543%_)
+                                          (let ((_%id179546%_
+                                                 _%$%hd179483179541%_)
+                                                (_%rest179548%_
+                                                 _%$%tl179482179538%_))
+                                            (_%$%K179480179533%_
+                                             _%rest179548%_
+                                             _%id179546%_))
+                                          (let ((_%hd179523%_
+                                                 _%$%hd179481179536%_)
+                                                (_%rest179525%_
+                                                 _%$%tl179482179538%_))
+                                            (_%$%K179477179515%_
+                                             _%rest179525%_
+                                             _%hd179523%_))))
+                                    (let ((_%hd179523%_ _%$%hd179481179536%_)
+                                          (_%rest179525%_
+                                           _%$%tl179482179538%_))
+                                      (_%$%K179477179515%_
+                                       _%rest179525%_
+                                       _%hd179523%_))))
+                              (_%$%else179475179494%_)))))))
+                 (_%compile-inner179355%_
+                  (lambda (_%pre179456%_
+                           _%bind179457%_
+                           _%post179458%_
+                           _%body179459%_)
+                    (if (null? _%pre179456%_)
+                        (_%compile-bind179356%_
+                         _%bind179457%_
+                         _%post179458%_
+                         _%body179459%_)
                         (__SRC__%
                          (list 'let
-                               (reverse _%pre179385%_)
-                               (_%compile-bind179285%_
-                                _%bind179386%_
-                                _%post179387%_
-                                _%body179388%_))
-                         _%stx179280%_))))
-                 (_%compile-bind179285%_
-                  (lambda (_%bind179381%_ _%post179382%_ _%body179383%_)
+                               (reverse _%pre179456%_)
+                               (_%compile-bind179356%_
+                                _%bind179457%_
+                                _%post179458%_
+                                _%body179459%_))
+                         _%stx179351%_))))
+                 (_%compile-bind179356%_
+                  (lambda (_%bind179452%_ _%post179453%_ _%body179454%_)
                     (__SRC__%
                      (list 'letrec
-                           (reverse _%bind179381%_)
-                           (_%compile-post179286%_
-                            _%post179382%_
-                            _%body179383%_))
-                     _%stx179280%_)))
-                 (_%compile-post179286%_
-                  (lambda (_%post179288%_ _%body179289%_)
-                    (let _%lp179291%_ ((_%rest179293%_ _%post179288%_)
-                                       (_%check179294%_ '())
-                                       (_%bind179295%_ '()))
-                      (let* ((_%$%rest179296179308%_ _%rest179293%_)
-                             (_%$%else179298179316%_
+                           (reverse _%bind179452%_)
+                           (_%compile-post179357%_
+                            _%post179453%_
+                            _%body179454%_))
+                     _%stx179351%_)))
+                 (_%compile-post179357%_
+                  (lambda (_%post179359%_ _%body179360%_)
+                    (let _%lp179362%_ ((_%rest179364%_ _%post179359%_)
+                                       (_%check179365%_ '())
+                                       (_%bind179366%_ '()))
+                      (let* ((_%$%rest179367179379%_ _%rest179364%_)
+                             (_%$%else179369179387%_
                               (lambda ()
                                 (__SRC__%
                                  (cons 'begin
-                                       (append _%check179294%_
-                                               _%bind179295%_
-                                               (list _%body179289%_)))
-                                 _%stx179280%_)))
-                             (_%$%K179300179355%_
-                              (lambda (_%rest179319%_
-                                       _%init179320%_
-                                       _%len179321%_
-                                       _%tmp179322%_)
-                                (_%lp179291%_
-                                 _%rest179319%_
+                                       (append _%check179365%_
+                                               _%bind179366%_
+                                               (list _%body179360%_)))
+                                 _%stx179351%_)))
+                             (_%$%K179371179426%_
+                              (lambda (_%rest179390%_
+                                       _%init179391%_
+                                       _%len179392%_
+                                       _%tmp179393%_)
+                                (_%lp179362%_
+                                 _%rest179390%_
                                  (cons (__SRC__%
                                         (list '__check-values
-                                              _%tmp179322%_
-                                              _%len179321%_)
-                                        _%stx179280%_)
-                                       _%check179294%_)
-                                 (let ((__tmp180865
-                                        (lambda (_%hd179324%_ _%r179325%_)
-                                          (let* ((_%$%hd179326179333%_
-                                                  _%hd179324%_)
-                                                 (_%$%E179328179337%_
+                                              _%tmp179393%_
+                                              _%len179392%_)
+                                        _%stx179351%_)
+                                       _%check179365%_)
+                                 (let ((__tmp180936
+                                        (lambda (_%hd179395%_ _%r179396%_)
+                                          (let* ((_%$%hd179397179404%_
+                                                  _%hd179395%_)
+                                                 (_%$%E179399179408%_
                                                   (lambda ()
                                                     (let ()
                                                       (declare (not safe))
                                                       (error '"No clause matching"
-                                                             _%$%hd179326179333%_
+                                                             _%$%hd179397179404%_
                                                              '([id . k])))
                                                     '#!void))
-                                                 (_%$%K179329179343%_
-                                                  (lambda (_%k179340%_
-                                                           _%id179341%_)
+                                                 (_%$%K179400179414%_
+                                                  (lambda (_%k179411%_
+                                                           _%id179412%_)
                                                     (cons (list 'set!
-                                                                _%id179341%_
+                                                                _%id179412%_
                                                                 (list '##values-ref
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                              _%tmp179322%_
-                              _%k179340%_))
-                  _%r179325%_))))
+                              _%tmp179393%_
+                              _%k179411%_))
+                  _%r179396%_))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                            (if (pair? _%$%hd179326179333%_)
-                                                (let ((_%$%hd179330179346%_
+                                            (if (pair? _%$%hd179397179404%_)
+                                                (let ((_%$%hd179401179417%_
                                                        (let ()
                                                          (declare (not safe))
-                                                         (##car _%$%hd179326179333%_)))
-                                                      (_%$%tl179331179348%_
+                                                         (##car _%$%hd179397179404%_)))
+                                                      (_%$%tl179402179419%_
                                                        (let ()
                                                          (declare (not safe))
-                                                         (##cdr _%$%hd179326179333%_))))
-                                                  (let* ((_%id179351%_
-                                                          _%$%hd179330179346%_)
-                                                         (_%k179353%_
-                                                          _%$%tl179331179348%_))
-                                                    (_%$%K179329179343%_
-                                                     _%k179353%_
-                                                     _%id179351%_)))
-                                                (_%$%E179328179337%_))))))
+                                                         (##cdr _%$%hd179397179404%_))))
+                                                  (let* ((_%id179422%_
+                                                          _%$%hd179401179417%_)
+                                                         (_%k179424%_
+                                                          _%$%tl179402179419%_))
+                                                    (_%$%K179400179414%_
+                                                     _%k179424%_
+                                                     _%id179422%_)))
+                                                (_%$%E179399179408%_))))))
                                    (declare (not safe))
                                    (foldr__0
-                                    __tmp180865
-                                    _%bind179295%_
-                                    _%init179320%_))))))
-                        (if (pair? _%$%rest179296179308%_)
-                            (let ((_%$%hd179301179358%_
+                                    __tmp180936
+                                    _%bind179366%_
+                                    _%init179391%_))))))
+                        (if (pair? _%$%rest179367179379%_)
+                            (let ((_%$%hd179372179429%_
                                    (let ()
                                      (declare (not safe))
-                                     (##car _%$%rest179296179308%_)))
-                                  (_%$%tl179302179360%_
+                                     (##car _%$%rest179367179379%_)))
+                                  (_%$%tl179373179431%_
                                    (let ()
                                      (declare (not safe))
-                                     (##cdr _%$%rest179296179308%_))))
-                              (if (pair? _%$%hd179301179358%_)
-                                  (let ((_%$%hd179303179363%_
+                                     (##cdr _%$%rest179367179379%_))))
+                              (if (pair? _%$%hd179372179429%_)
+                                  (let ((_%$%hd179374179434%_
                                          (let ()
                                            (declare (not safe))
-                                           (##car _%$%hd179301179358%_)))
-                                        (_%$%tl179304179365%_
+                                           (##car _%$%hd179372179429%_)))
+                                        (_%$%tl179375179436%_
                                          (let ()
                                            (declare (not safe))
-                                           (##cdr _%$%hd179301179358%_))))
-                                    (let ((_%tmp179368%_ _%$%hd179303179363%_))
-                                      (if (pair? _%$%tl179304179365%_)
-                                          (let ((_%$%hd179305179370%_
+                                           (##cdr _%$%hd179372179429%_))))
+                                    (let ((_%tmp179439%_ _%$%hd179374179434%_))
+                                      (if (pair? _%$%tl179375179436%_)
+                                          (let ((_%$%hd179376179441%_
                                                  (let ()
                                                    (declare (not safe))
-                                                   (##car _%$%tl179304179365%_)))
-                                                (_%$%tl179306179372%_
+                                                   (##car _%$%tl179375179436%_)))
+                                                (_%$%tl179377179443%_
                                                  (let ()
                                                    (declare (not safe))
-                                                   (##cdr _%$%tl179304179365%_))))
-                                            (let* ((_%len179375%_
-                                                    _%$%hd179305179370%_)
-                                                   (_%init179377%_
-                                                    _%$%tl179306179372%_)
-                                                   (_%rest179379%_
-                                                    _%$%tl179302179360%_))
-                                              (_%$%K179300179355%_
-                                               _%rest179379%_
-                                               _%init179377%_
-                                               _%len179375%_
-                                               _%tmp179368%_)))
-                                          (_%$%else179298179316%_))))
-                                  (_%$%else179298179316%_)))
-                            (_%$%else179298179316%_)))))))
+                                                   (##cdr _%$%tl179375179436%_))))
+                                            (let* ((_%len179446%_
+                                                    _%$%hd179376179441%_)
+                                                   (_%init179448%_
+                                                    _%$%tl179377179443%_)
+                                                   (_%rest179450%_
+                                                    _%$%tl179373179431%_))
+                                              (_%$%K179371179426%_
+                                               _%rest179450%_
+                                               _%init179448%_
+                                               _%len179446%_
+                                               _%tmp179439%_)))
+                                          (_%$%else179369179387%_))))
+                                  (_%$%else179369179387%_)))
+                            (_%$%else179369179387%_)))))))
           (__compile-let-form
-           _%stx179280%_
-           _%compile-simple179282%_
-           _%compile-values179283%_))))
+           _%stx179351%_
+           _%compile-simple179353%_
+           _%compile-values179354%_))))
     (define __compile-letrec*-values%
-      (lambda (_%stx179031%_)
-        (letrec ((_%compile-simple179033%_
-                  (lambda (_%hd-ids179276%_ _%exprs179277%_ _%body179278%_)
+      (lambda (_%stx179102%_)
+        (letrec ((_%compile-simple179104%_
+                  (lambda (_%hd-ids179347%_ _%exprs179348%_ _%body179349%_)
                     (__SRC__%
                      (list 'letrec*
-                           (let ((__tmp180866
-                                  (map __compile-head-id _%hd-ids179276%_)))
+                           (let ((__tmp180937
+                                  (map __compile-head-id _%hd-ids179347%_)))
                              (declare (not safe))
-                             (##map list __tmp180866 _%exprs179277%_))
-                           _%body179278%_)
-                     _%stx179031%_)))
-                 (_%compile-values179034%_
-                  (lambda (_%hd-ids179183%_ _%exprs179184%_ _%body179185%_)
-                    (let _%lp179187%_ ((_%rest179189%_ _%hd-ids179183%_)
-                                       (_%exprs179190%_ _%exprs179184%_)
-                                       (_%bind179191%_ '())
-                                       (_%post179192%_ '()))
-                      (let* ((_%$%rest179193179207%_ _%rest179189%_)
-                             (_%$%else179196179215%_
+                             (##map list __tmp180937 _%exprs179348%_))
+                           _%body179349%_)
+                     _%stx179102%_)))
+                 (_%compile-values179105%_
+                  (lambda (_%hd-ids179254%_ _%exprs179255%_ _%body179256%_)
+                    (let _%lp179258%_ ((_%rest179260%_ _%hd-ids179254%_)
+                                       (_%exprs179261%_ _%exprs179255%_)
+                                       (_%bind179262%_ '())
+                                       (_%post179263%_ '()))
+                      (let* ((_%$%rest179264179278%_ _%rest179260%_)
+                             (_%$%else179267179286%_
                               (lambda ()
-                                (_%compile-bind179035%_
-                                 _%bind179191%_
-                                 _%post179192%_
-                                 _%body179185%_))))
-                        (let ((_%$%K179201179259%_
-                               (lambda (_%rest179254%_ _%hd179255%_)
+                                (_%compile-bind179106%_
+                                 _%bind179262%_
+                                 _%post179263%_
+                                 _%body179256%_))))
+                        (let ((_%$%K179272179330%_
+                               (lambda (_%rest179325%_ _%hd179326%_)
                                  (if (let ()
                                        (declare (not safe))
-                                       (__AST-id? _%hd179255%_))
-                                     (let ((_%id179257%_
-                                            (__SRC__0 _%hd179255%_)))
-                                       (_%lp179187%_
-                                        _%rest179254%_
-                                        (cdr _%exprs179190%_)
-                                        (cons (cons _%id179257%_ '('#!void))
-                                              _%bind179191%_)
-                                        (cons (list _%id179257%_
-                                                    (car _%exprs179190%_))
-                                              _%post179192%_)))
-                                     (_%lp179187%_
-                                      _%rest179254%_
-                                      (cdr _%exprs179190%_)
-                                      _%bind179191%_
-                                      (cons (list '#f (car _%exprs179190%_))
-                                            _%post179192%_)))))
-                              (_%$%K179198179239%_
-                               (lambda (_%rest179219%_ _%hd179220%_)
+                                       (__AST-id? _%hd179326%_))
+                                     (let ((_%id179328%_
+                                            (__SRC__0 _%hd179326%_)))
+                                       (_%lp179258%_
+                                        _%rest179325%_
+                                        (cdr _%exprs179261%_)
+                                        (cons (cons _%id179328%_ '('#!void))
+                                              _%bind179262%_)
+                                        (cons (list _%id179328%_
+                                                    (car _%exprs179261%_))
+                                              _%post179263%_)))
+                                     (_%lp179258%_
+                                      _%rest179325%_
+                                      (cdr _%exprs179261%_)
+                                      _%bind179262%_
+                                      (cons (list '#f (car _%exprs179261%_))
+                                            _%post179263%_)))))
+                              (_%$%K179269179310%_
+                               (lambda (_%rest179290%_ _%hd179291%_)
                                  (if (let ()
                                        (declare (not safe))
-                                       (__AST-id? _%hd179220%_))
-                                     (let ((_%id179223%_
-                                            (__SRC__0 _%hd179220%_)))
-                                       (_%lp179187%_
-                                        _%rest179219%_
-                                        (cdr _%exprs179190%_)
-                                        (cons (cons _%id179223%_ '('#!void))
-                                              _%bind179191%_)
-                                        (cons (list _%id179223%_
+                                       (__AST-id? _%hd179291%_))
+                                     (let ((_%id179294%_
+                                            (__SRC__0 _%hd179291%_)))
+                                       (_%lp179258%_
+                                        _%rest179290%_
+                                        (cdr _%exprs179261%_)
+                                        (cons (cons _%id179294%_ '('#!void))
+                                              _%bind179262%_)
+                                        (cons (list _%id179294%_
                                                     (list 'values->list
-                                                          (car _%exprs179190%_)))
-                                              _%post179192%_)))
+                                                          (car _%exprs179261%_)))
+                                              _%post179263%_)))
                                      (if (let ()
                                            (declare (not safe))
-                                           (__AST-e _%hd179220%_))
-                                         (if (list? _%hd179220%_)
-                                             (let* ((_%len179227%_
+                                           (__AST-e _%hd179291%_))
+                                         (if (list? _%hd179291%_)
+                                             (let* ((_%len179298%_
                                                      (let ()
                                                        (declare (not safe))
                                                        (##length
-                                                        _%hd179220%_)))
-                                                    (_%tmp179229%_
+                                                        _%hd179291%_)))
+                                                    (_%tmp179300%_
                                                      (__SRC__0
                                                       (let ()
                                                         (declare (not safe))
                                                         (##gensym)))))
-                                               (_%lp179187%_
-                                                _%rest179219%_
-                                                (cdr _%exprs179190%_)
-                                                (let ((__tmp180867
-                                                       (lambda (_%id179232%_
-                                                                _%r179233%_)
+                                               (_%lp179258%_
+                                                _%rest179290%_
+                                                (cdr _%exprs179261%_)
+                                                (let ((__tmp180938
+                                                       (lambda (_%id179303%_
+                                                                _%r179304%_)
                                                          (if (let ()
                                                                (declare
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          (not safe))
-                       (__AST-e _%id179232%_))
-                     (cons (cons (__SRC__0 _%id179232%_) '('#!void))
-                           _%r179233%_)
-                     _%r179233%_))))
+                       (__AST-e _%id179303%_))
+                     (cons (cons (__SRC__0 _%id179303%_) '('#!void))
+                           _%r179304%_)
+                     _%r179304%_))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                                                   (declare (not safe))
                                                   (foldl__0
-                                                   __tmp180867
-                                                   _%bind179191%_
-                                                   _%hd179220%_))
-                                                (cons (cons _%tmp179229%_
-                                                            (cons (car _%exprs179190%_)
+                                                   __tmp180938
+                                                   _%bind179262%_
+                                                   _%hd179291%_))
+                                                (cons (cons _%tmp179300%_
+                                                            (cons (car _%exprs179261%_)
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                          (cons _%len179227%_
-                                (let ((__tmp180869
-                                       (lambda (_%id179235%_ _%k179236%_)
+                          (cons _%len179298%_
+                                (let ((__tmp180940
+                                       (lambda (_%id179306%_ _%k179307%_)
                                          (if (let ()
                                                (declare (not safe))
-                                               (__AST-e _%id179235%_))
-                                             (cons (__SRC__0 _%id179235%_)
-                                                   _%k179236%_)
+                                               (__AST-e _%id179306%_))
+                                             (cons (__SRC__0 _%id179306%_)
+                                                   _%k179307%_)
                                              '#f)))
-                                      (__tmp180868
+                                      (__tmp180939
                                        (let ()
                                          (declare (not safe))
-                                         (##iota _%len179227%_))))
+                                         (##iota _%len179298%_))))
                                   (declare (not safe))
                                   (filter-map__1
-                                   __tmp180869
-                                   _%hd179220%_
-                                   __tmp180868)))))
-              _%post179192%_)))
+                                   __tmp180940
+                                   _%hd179291%_
+                                   __tmp180939)))))
+              _%post179263%_)))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                                              (__compile-error__%
-                                              _%stx179031%_
-                                              _%hd179220%_))
-                                         (_%lp179187%_
-                                          _%rest179219%_
-                                          (cdr _%exprs179190%_)
-                                          _%bind179191%_
+                                              _%stx179102%_
+                                              _%hd179291%_))
+                                         (_%lp179258%_
+                                          _%rest179290%_
+                                          (cdr _%exprs179261%_)
+                                          _%bind179262%_
                                           (cons (list '#f
-                                                      (car _%exprs179190%_))
-                                                _%post179192%_)))))))
-                          (if (pair? _%$%rest179193179207%_)
-                              (let ((_%$%tl179203179264%_
+                                                      (car _%exprs179261%_))
+                                                _%post179263%_)))))))
+                          (if (pair? _%$%rest179264179278%_)
+                              (let ((_%$%tl179274179335%_
                                      (let ()
                                        (declare (not safe))
-                                       (##cdr _%$%rest179193179207%_)))
-                                    (_%$%hd179202179262%_
+                                       (##cdr _%$%rest179264179278%_)))
+                                    (_%$%hd179273179333%_
                                      (let ()
                                        (declare (not safe))
-                                       (##car _%$%rest179193179207%_))))
-                                (if (pair? _%$%hd179202179262%_)
-                                    (let ((_%$%tl179205179269%_
+                                       (##car _%$%rest179264179278%_))))
+                                (if (pair? _%$%hd179273179333%_)
+                                    (let ((_%$%tl179276179340%_
                                            (let ()
                                              (declare (not safe))
-                                             (##cdr _%$%hd179202179262%_)))
-                                          (_%$%hd179204179267%_
+                                             (##cdr _%$%hd179273179333%_)))
+                                          (_%$%hd179275179338%_
                                            (let ()
                                              (declare (not safe))
-                                             (##car _%$%hd179202179262%_))))
-                                      (if (null? _%$%tl179205179269%_)
-                                          (let ((_%hd179272%_
-                                                 _%$%hd179204179267%_)
-                                                (_%rest179274%_
-                                                 _%$%tl179203179264%_))
-                                            (_%$%K179201179259%_
-                                             _%rest179274%_
-                                             _%hd179272%_))
-                                          (let ((_%hd179247%_
-                                                 _%$%hd179202179262%_)
-                                                (_%rest179249%_
-                                                 _%$%tl179203179264%_))
-                                            (_%$%K179198179239%_
-                                             _%rest179249%_
-                                             _%hd179247%_))))
-                                    (let ((_%hd179247%_ _%$%hd179202179262%_)
-                                          (_%rest179249%_
-                                           _%$%tl179203179264%_))
-                                      (_%$%K179198179239%_
-                                       _%rest179249%_
-                                       _%hd179247%_))))
-                              (_%$%else179196179215%_)))))))
-                 (_%compile-bind179035%_
-                  (lambda (_%bind179179%_ _%post179180%_ _%body179181%_)
+                                             (##car _%$%hd179273179333%_))))
+                                      (if (null? _%$%tl179276179340%_)
+                                          (let ((_%hd179343%_
+                                                 _%$%hd179275179338%_)
+                                                (_%rest179345%_
+                                                 _%$%tl179274179335%_))
+                                            (_%$%K179272179330%_
+                                             _%rest179345%_
+                                             _%hd179343%_))
+                                          (let ((_%hd179318%_
+                                                 _%$%hd179273179333%_)
+                                                (_%rest179320%_
+                                                 _%$%tl179274179335%_))
+                                            (_%$%K179269179310%_
+                                             _%rest179320%_
+                                             _%hd179318%_))))
+                                    (let ((_%hd179318%_ _%$%hd179273179333%_)
+                                          (_%rest179320%_
+                                           _%$%tl179274179335%_))
+                                      (_%$%K179269179310%_
+                                       _%rest179320%_
+                                       _%hd179318%_))))
+                              (_%$%else179267179286%_)))))))
+                 (_%compile-bind179106%_
+                  (lambda (_%bind179250%_ _%post179251%_ _%body179252%_)
                     (__SRC__%
                      (list 'let
-                           (reverse _%bind179179%_)
-                           (_%compile-post179036%_
-                            _%post179180%_
-                            _%body179181%_))
-                     _%stx179031%_)))
-                 (_%compile-post179036%_
-                  (lambda (_%post179038%_ _%body179039%_)
+                           (reverse _%bind179250%_)
+                           (_%compile-post179107%_
+                            _%post179251%_
+                            _%body179252%_))
+                     _%stx179102%_)))
+                 (_%compile-post179107%_
+                  (lambda (_%post179109%_ _%body179110%_)
                     (__SRC__%
                      (cons 'begin
-                           (let ((__tmp180871
-                                  (lambda (_%hd179041%_ _%r179042%_)
-                                    (let* ((_%$%hd179043179066%_ _%hd179041%_)
-                                           (_%$%E179047179070%_
+                           (let ((__tmp180942
+                                  (lambda (_%hd179112%_ _%r179113%_)
+                                    (let* ((_%$%hd179114179137%_ _%hd179112%_)
+                                           (_%$%E179118179141%_
                                             (lambda ()
                                               (let ()
                                                 (declare (not safe))
                                                 (error '"No clause matching"
-                                                       _%$%hd179043179066%_
+                                                       _%$%hd179114179137%_
                                                        '([#f expr])
                                                        '([id expr])
                                                        '([tmp
@@ -2146,538 +2146,538 @@
                                                           .
                                                           init])))
                                               '#!void)))
-                                      (let ((_%$%K179060179164%_
-                                             (lambda (_%expr179162%_)
-                                               (cons _%expr179162%_
-                                                     _%r179042%_)))
-                                            (_%$%K179055179142%_
-                                             (lambda (_%expr179139%_
-                                                      _%id179140%_)
+                                      (let ((_%$%K179131179235%_
+                                             (lambda (_%expr179233%_)
+                                               (cons _%expr179233%_
+                                                     _%r179113%_)))
+                                            (_%$%K179126179213%_
+                                             (lambda (_%expr179210%_
+                                                      _%id179211%_)
                                                (cons (__SRC__%
                                                       (list 'set!
-                                                            _%id179140%_
-                                                            _%expr179139%_)
-                                                      _%stx179031%_)
-                                                     _%r179042%_)))
-                                            (_%$%K179048179109%_
-                                             (lambda (_%init179074%_
-                                                      _%len179075%_
-                                                      _%expr179076%_
-                                                      _%tmp179077%_)
+                                                            _%id179211%_
+                                                            _%expr179210%_)
+                                                      _%stx179102%_)
+                                                     _%r179113%_)))
+                                            (_%$%K179119179180%_
+                                             (lambda (_%init179145%_
+                                                      _%len179146%_
+                                                      _%expr179147%_
+                                                      _%tmp179148%_)
                                                (cons (__SRC__%
                                                       (cons 'let
-                                                            (cons (list (list _%tmp179077%_
+                                                            (cons (list (list _%tmp179148%_
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                                      _%expr179076%_))
+                                      _%expr179147%_))
                           (cons (__SRC__%
                                  (list '__check-values
-                                       _%tmp179077%_
-                                       _%len179075%_)
-                                 _%stx179031%_)
-                                (map (lambda (_%hd179079%_)
-                                       (let* ((_%$%hd179080179087%_
-                                               _%hd179079%_)
-                                              (_%$%E179082179091%_
+                                       _%tmp179148%_
+                                       _%len179146%_)
+                                 _%stx179102%_)
+                                (map (lambda (_%hd179150%_)
+                                       (let* ((_%$%hd179151179158%_
+                                               _%hd179150%_)
+                                              (_%$%E179153179162%_
                                                (lambda ()
                                                  (let ()
                                                    (declare (not safe))
                                                    (error '"No clause matching"
-                                                          _%$%hd179080179087%_
+                                                          _%$%hd179151179158%_
                                                           '([id . k])))
                                                  '#!void))
-                                              (_%$%K179083179097%_
-                                               (lambda (_%k179094%_
-                                                        _%id179095%_)
+                                              (_%$%K179154179168%_
+                                               (lambda (_%k179165%_
+                                                        _%id179166%_)
                                                  (__SRC__%
                                                   (list 'set!
-                                                        _%id179095%_
+                                                        _%id179166%_
                                                         (list '##values-ref
-                                                              _%tmp179077%_
-                                                              _%k179094%_))
-                                                  _%stx179031%_))))
-                                         (if (pair? _%$%hd179080179087%_)
-                                             (let ((_%$%hd179084179100%_
+                                                              _%tmp179148%_
+                                                              _%k179165%_))
+                                                  _%stx179102%_))))
+                                         (if (pair? _%$%hd179151179158%_)
+                                             (let ((_%$%hd179155179171%_
                                                     (let ()
                                                       (declare (not safe))
-                                                      (##car _%$%hd179080179087%_)))
-                                                   (_%$%tl179085179102%_
+                                                      (##car _%$%hd179151179158%_)))
+                                                   (_%$%tl179156179173%_
                                                     (let ()
                                                       (declare (not safe))
-                                                      (##cdr _%$%hd179080179087%_))))
-                                               (let* ((_%id179105%_
-                                                       _%$%hd179084179100%_)
-                                                      (_%k179107%_
-                                                       _%$%tl179085179102%_))
-                                                 (_%$%K179083179097%_
-                                                  _%k179107%_
-                                                  _%id179105%_)))
-                                             (_%$%E179082179091%_))))
-                                     _%init179074%_))))
-              _%stx179031%_)
+                                                      (##cdr _%$%hd179151179158%_))))
+                                               (let* ((_%id179176%_
+                                                       _%$%hd179155179171%_)
+                                                      (_%k179178%_
+                                                       _%$%tl179156179173%_))
+                                                 (_%$%K179154179168%_
+                                                  _%k179178%_
+                                                  _%id179176%_)))
+                                             (_%$%E179153179162%_))))
+                                     _%init179145%_))))
+              _%stx179102%_)
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                     _%r179042%_))))
-                                        (let* ((_%__match180731180732%_
-                                                (lambda (_%$%hd179049179112%_
-                                                         _%$%tl179050179114%_
-                                                         _%$%hd179051179119%_
-                                                         _%$%tl179052179121%_)
-                                                  (let ((_%tmp179117%_
-                                                         _%$%hd179049179112%_)
-                                                        (_%expr179124%_
-                                                         _%$%hd179051179119%_))
-                                                    (_%$%E179047179070%_))))
-                                               (_%__match180725180726%_
-                                                (lambda (_%$%hd179049179112%_
-                                                         _%$%tl179050179114%_)
-                                                  (let ((_%tmp179117%_
-                                                         _%$%hd179049179112%_))
-                                                    (_%$%E179047179070%_)))))
-                                          (if (pair? _%$%hd179043179066%_)
-                                              (let ((_%$%tl179062179169%_
+                                                     _%r179113%_))))
+                                        (let* ((_%__match180802180803%_
+                                                (lambda (_%$%hd179120179183%_
+                                                         _%$%tl179121179185%_
+                                                         _%$%hd179122179190%_
+                                                         _%$%tl179123179192%_)
+                                                  (let ((_%tmp179188%_
+                                                         _%$%hd179120179183%_)
+                                                        (_%expr179195%_
+                                                         _%$%hd179122179190%_))
+                                                    (_%$%E179118179141%_))))
+                                               (_%__match180796180797%_
+                                                (lambda (_%$%hd179120179183%_
+                                                         _%$%tl179121179185%_)
+                                                  (let ((_%tmp179188%_
+                                                         _%$%hd179120179183%_))
+                                                    (_%$%E179118179141%_)))))
+                                          (if (pair? _%$%hd179114179137%_)
+                                              (let ((_%$%tl179133179240%_
                                                      (let ()
                                                        (declare (not safe))
-                                                       (##cdr _%$%hd179043179066%_)))
-                                                    (_%$%hd179061179167%_
+                                                       (##cdr _%$%hd179114179137%_)))
+                                                    (_%$%hd179132179238%_
                                                      (let ()
                                                        (declare (not safe))
-                                                       (##car _%$%hd179043179066%_))))
+                                                       (##car _%$%hd179114179137%_))))
                                                 (if (let ()
                                                       (declare (not safe))
-                                                      (##eq? _%$%hd179061179167%_
+                                                      (##eq? _%$%hd179132179238%_
                                                              '#f))
-                                                    (if (pair? _%$%tl179062179169%_)
-                                                        (let ((_%$%tl179064179174%_
+                                                    (if (pair? _%$%tl179133179240%_)
+                                                        (let ((_%$%tl179135179245%_
                                                                (let ()
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          (declare (not safe))
-                         (##cdr _%$%tl179062179169%_)))
-                      (_%$%hd179063179172%_
+                         (##cdr _%$%tl179133179240%_)))
+                      (_%$%hd179134179243%_
                        (let ()
                          (declare (not safe))
-                         (##car _%$%tl179062179169%_))))
-                  (if (null? _%$%tl179064179174%_)
-                      (let ((_%expr179177%_ _%$%hd179063179172%_))
-                        (_%$%K179060179164%_ _%expr179177%_))
-                      (if (pair? _%$%tl179064179174%_)
-                          (let ((_%$%tl179054179128%_
+                         (##car _%$%tl179133179240%_))))
+                  (if (null? _%$%tl179135179245%_)
+                      (let ((_%expr179248%_ _%$%hd179134179243%_))
+                        (_%$%K179131179235%_ _%expr179248%_))
+                      (if (pair? _%$%tl179135179245%_)
+                          (let ((_%$%tl179125179199%_
                                  (let ()
                                    (declare (not safe))
-                                   (##cdr _%$%tl179064179174%_)))
-                                (_%$%hd179053179126%_
+                                   (##cdr _%$%tl179135179245%_)))
+                                (_%$%hd179124179197%_
                                  (let ()
                                    (declare (not safe))
-                                   (##car _%$%tl179064179174%_))))
-                            (let ((_%tmp179117%_ _%$%hd179061179167%_)
-                                  (_%expr179124%_ _%$%hd179063179172%_)
-                                  (_%len179131%_ _%$%hd179053179126%_)
-                                  (_%init179133%_ _%$%tl179054179128%_))
-                              (_%$%K179048179109%_
-                               _%init179133%_
-                               _%len179131%_
-                               _%expr179124%_
-                               _%tmp179117%_)))
-                          (_%__match180731180732%_
-                           _%$%hd179061179167%_
-                           _%$%tl179062179169%_
-                           _%$%hd179063179172%_
-                           _%$%tl179064179174%_))))
-                (_%__match180725180726%_
-                 _%$%hd179061179167%_
-                 _%$%tl179062179169%_))
+                                   (##car _%$%tl179135179245%_))))
+                            (let ((_%tmp179188%_ _%$%hd179132179238%_)
+                                  (_%expr179195%_ _%$%hd179134179243%_)
+                                  (_%len179202%_ _%$%hd179124179197%_)
+                                  (_%init179204%_ _%$%tl179125179199%_))
+                              (_%$%K179119179180%_
+                               _%init179204%_
+                               _%len179202%_
+                               _%expr179195%_
+                               _%tmp179188%_)))
+                          (_%__match180802180803%_
+                           _%$%hd179132179238%_
+                           _%$%tl179133179240%_
+                           _%$%hd179134179243%_
+                           _%$%tl179135179245%_))))
+                (_%__match180796180797%_
+                 _%$%hd179132179238%_
+                 _%$%tl179133179240%_))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                                    (if (pair? _%$%tl179062179169%_)
-                                                        (let ((_%$%tl179059179154%_
+                                                    (if (pair? _%$%tl179133179240%_)
+                                                        (let ((_%$%tl179130179225%_
                                                                (let ()
 ;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          (declare (not safe))
-                         (##cdr _%$%tl179062179169%_)))
-                      (_%$%hd179058179152%_
+                         (##cdr _%$%tl179133179240%_)))
+                      (_%$%hd179129179223%_
                        (let ()
                          (declare (not safe))
-                         (##car _%$%tl179062179169%_))))
-                  (if (null? _%$%tl179059179154%_)
-                      (let ((_%id179150%_ _%$%hd179061179167%_)
-                            (_%expr179157%_ _%$%hd179058179152%_))
-                        (_%$%K179055179142%_ _%expr179157%_ _%id179150%_))
-                      (if (pair? _%$%tl179059179154%_)
-                          (let ((_%$%tl179054179128%_
+                         (##car _%$%tl179133179240%_))))
+                  (if (null? _%$%tl179130179225%_)
+                      (let ((_%id179221%_ _%$%hd179132179238%_)
+                            (_%expr179228%_ _%$%hd179129179223%_))
+                        (_%$%K179126179213%_ _%expr179228%_ _%id179221%_))
+                      (if (pair? _%$%tl179130179225%_)
+                          (let ((_%$%tl179125179199%_
                                  (let ()
                                    (declare (not safe))
-                                   (##cdr _%$%tl179059179154%_)))
-                                (_%$%hd179053179126%_
+                                   (##cdr _%$%tl179130179225%_)))
+                                (_%$%hd179124179197%_
                                  (let ()
                                    (declare (not safe))
-                                   (##car _%$%tl179059179154%_))))
-                            (let ((_%tmp179117%_ _%$%hd179061179167%_)
-                                  (_%expr179124%_ _%$%hd179058179152%_)
-                                  (_%len179131%_ _%$%hd179053179126%_)
-                                  (_%init179133%_ _%$%tl179054179128%_))
-                              (_%$%K179048179109%_
-                               _%init179133%_
-                               _%len179131%_
-                               _%expr179124%_
-                               _%tmp179117%_)))
-                          (_%__match180731180732%_
-                           _%$%hd179061179167%_
-                           _%$%tl179062179169%_
-                           _%$%hd179058179152%_
-                           _%$%tl179059179154%_))))
-                (_%__match180725180726%_
-                 _%$%hd179061179167%_
-                 _%$%tl179062179169%_))))
+                                   (##car _%$%tl179130179225%_))))
+                            (let ((_%tmp179188%_ _%$%hd179132179238%_)
+                                  (_%expr179195%_ _%$%hd179129179223%_)
+                                  (_%len179202%_ _%$%hd179124179197%_)
+                                  (_%init179204%_ _%$%tl179125179199%_))
+                              (_%$%K179119179180%_
+                               _%init179204%_
+                               _%len179202%_
+                               _%expr179195%_
+                               _%tmp179188%_)))
+                          (_%__match180802180803%_
+                           _%$%hd179132179238%_
+                           _%$%tl179133179240%_
+                           _%$%hd179129179223%_
+                           _%$%tl179130179225%_))))
+                (_%__match180796180797%_
+                 _%$%hd179132179238%_
+                 _%$%tl179133179240%_))))
 ;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                                              (_%$%E179047179070%_)))))))
-                                 (__tmp180870 (list _%body179039%_)))
+                                              (_%$%E179118179141%_)))))))
+                                 (__tmp180941 (list _%body179110%_)))
                              (declare (not safe))
                              (foldl__0
-                              __tmp180871
-                              __tmp180870
-                              _%post179038%_)))
-                     _%stx179031%_))))
+                              __tmp180942
+                              __tmp180941
+                              _%post179109%_)))
+                     _%stx179102%_))))
           (__compile-let-form
-           _%stx179031%_
-           _%compile-simple179033%_
-           _%compile-values179034%_))))
+           _%stx179102%_
+           _%compile-simple179104%_
+           _%compile-values179105%_))))
     (define __compile-call%
-      (lambda (_%stx178991%_)
-        (let* ((_%$e178993%_ _%stx178991%_)
-               (_%$%$E178995179004%_
+      (lambda (_%stx179062%_)
+        (let* ((_%$e179064%_ _%stx179062%_)
+               (_%$%$E179066179075%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e178993%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e178993%_))
-              (let* ((_%$%$tgt178996179007%_
-                      (let () (declare (not safe)) (__AST-e _%$e178993%_)))
-                     (_%$%$hd178997179010%_
+                     _%$e179064%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e179064%_))
+              (let* ((_%$%$tgt179067179078%_
+                      (let () (declare (not safe)) (__AST-e _%$e179064%_)))
+                     (_%$%$hd179068179081%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt178996179007%_)))
-                     (_%$%$tl178998179013%_
+                        (##car _%$%$tgt179067179078%_)))
+                     (_%$%$tl179069179084%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt178996179007%_))))
+                        (##cdr _%$%$tgt179067179078%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl178998179013%_))
-                    (let* ((_%$%$tgt178999179017%_
+                      (__AST-pair? _%$%$tl179069179084%_))
+                    (let* ((_%$%$tgt179070179088%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl178998179013%_)))
-                           (_%$%$hd179000179020%_
+                              (__AST-e _%$%$tl179069179084%_)))
+                           (_%$%$hd179071179091%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt178999179017%_)))
-                           (_%$%$tl179001179023%_
+                              (##car _%$%$tgt179070179088%_)))
+                           (_%$%$tl179072179094%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt178999179017%_)))
-                           (_%rator179027%_ _%$%$hd179000179020%_)
-                           (_%rands179029%_ _%$%$tl179001179023%_))
+                              (##cdr _%$%$tgt179070179088%_)))
+                           (_%rator179098%_ _%$%$hd179071179091%_)
+                           (_%rands179100%_ _%$%$tl179072179094%_))
                       (__SRC__%
-                       (cons (__compile _%rator179027%_)
-                             (map __compile _%rands179029%_))
-                       _%stx178991%_))
-                    (_%$%$E178995179004%_)))
-              (_%$%$E178995179004%_)))))
+                       (cons (__compile _%rator179098%_)
+                             (map __compile _%rands179100%_))
+                       _%stx179062%_))
+                    (_%$%$E179066179075%_)))
+              (_%$%$E179066179075%_)))))
     (define __compile-ref%
-      (lambda (_%stx178953%_)
-        (let* ((_%$e178955%_ _%stx178953%_)
-               (_%$%$E178957178966%_
+      (lambda (_%stx179024%_)
+        (let* ((_%$e179026%_ _%stx179024%_)
+               (_%$%$E179028179037%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e178955%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e178955%_))
-              (let* ((_%$%$tgt178958178969%_
-                      (let () (declare (not safe)) (__AST-e _%$e178955%_)))
-                     (_%$%$hd178959178972%_
+                     _%$e179026%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e179026%_))
+              (let* ((_%$%$tgt179029179040%_
+                      (let () (declare (not safe)) (__AST-e _%$e179026%_)))
+                     (_%$%$hd179030179043%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt178958178969%_)))
-                     (_%$%$tl178960178975%_
+                        (##car _%$%$tgt179029179040%_)))
+                     (_%$%$tl179031179046%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt178958178969%_))))
+                        (##cdr _%$%$tgt179029179040%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl178960178975%_))
-                    (let* ((_%$%$tgt178961178979%_
+                      (__AST-pair? _%$%$tl179031179046%_))
+                    (let* ((_%$%$tgt179032179050%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl178960178975%_)))
-                           (_%$%$hd178962178982%_
+                              (__AST-e _%$%$tl179031179046%_)))
+                           (_%$%$hd179033179053%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt178961178979%_)))
-                           (_%$%$tl178963178985%_
+                              (##car _%$%$tgt179032179050%_)))
+                           (_%$%$tl179034179056%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt178961178979%_)))
-                           (_%id178989%_ _%$%$hd178962178982%_))
+                              (##cdr _%$%$tgt179032179050%_)))
+                           (_%id179060%_ _%$%$hd179033179053%_))
                       (if (equal? (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl178963178985%_))
+                                    (__AST-e _%$%$tl179034179056%_))
                                   '())
-                          (__SRC__% _%id178989%_ _%stx178953%_)
-                          (_%$%$E178957178966%_)))
-                    (_%$%$E178957178966%_)))
-              (_%$%$E178957178966%_)))))
+                          (__SRC__% _%id179060%_ _%stx179024%_)
+                          (_%$%$E179028179037%_)))
+                    (_%$%$E179028179037%_)))
+              (_%$%$E179028179037%_)))))
     (define __compile-setq%
-      (lambda (_%stx178900%_)
-        (let* ((_%$e178902%_ _%stx178900%_)
-               (_%$%$E178904178916%_
+      (lambda (_%stx178971%_)
+        (let* ((_%$e178973%_ _%stx178971%_)
+               (_%$%$E178975178987%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e178902%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e178902%_))
-              (let* ((_%$%$tgt178905178919%_
-                      (let () (declare (not safe)) (__AST-e _%$e178902%_)))
-                     (_%$%$hd178906178922%_
+                     _%$e178973%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e178973%_))
+              (let* ((_%$%$tgt178976178990%_
+                      (let () (declare (not safe)) (__AST-e _%$e178973%_)))
+                     (_%$%$hd178977178993%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt178905178919%_)))
-                     (_%$%$tl178907178925%_
+                        (##car _%$%$tgt178976178990%_)))
+                     (_%$%$tl178978178996%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt178905178919%_))))
+                        (##cdr _%$%$tgt178976178990%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl178907178925%_))
-                    (let* ((_%$%$tgt178908178929%_
+                      (__AST-pair? _%$%$tl178978178996%_))
+                    (let* ((_%$%$tgt178979179000%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl178907178925%_)))
-                           (_%$%$hd178909178932%_
+                              (__AST-e _%$%$tl178978178996%_)))
+                           (_%$%$hd178980179003%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt178908178929%_)))
-                           (_%$%$tl178910178935%_
+                              (##car _%$%$tgt178979179000%_)))
+                           (_%$%$tl178981179006%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt178908178929%_)))
-                           (_%id178939%_ _%$%$hd178909178932%_))
+                              (##cdr _%$%$tgt178979179000%_)))
+                           (_%id179010%_ _%$%$hd178980179003%_))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$%$tl178910178935%_))
-                          (let* ((_%$%$tgt178911178941%_
+                            (__AST-pair? _%$%$tl178981179006%_))
+                          (let* ((_%$%$tgt178982179012%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl178910178935%_)))
-                                 (_%$%$hd178912178944%_
+                                    (__AST-e _%$%$tl178981179006%_)))
+                                 (_%$%$hd178983179015%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt178911178941%_)))
-                                 (_%$%$tl178913178947%_
+                                    (##car _%$%$tgt178982179012%_)))
+                                 (_%$%$tl178984179018%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt178911178941%_)))
-                                 (_%expr178951%_ _%$%$hd178912178944%_))
+                                    (##cdr _%$%$tgt178982179012%_)))
+                                 (_%expr179022%_ _%$%$hd178983179015%_))
                             (if (equal? (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl178913178947%_))
+                                          (__AST-e _%$%$tl178984179018%_))
                                         '())
                                 (__SRC__%
                                  (list 'set!
-                                       (__SRC__% _%id178939%_ _%stx178900%_)
-                                       (__compile _%expr178951%_))
-                                 _%stx178900%_)
-                                (_%$%$E178904178916%_)))
-                          (_%$%$E178904178916%_)))
-                    (_%$%$E178904178916%_)))
-              (_%$%$E178904178916%_)))))
+                                       (__SRC__% _%id179010%_ _%stx178971%_)
+                                       (__compile _%expr179022%_))
+                                 _%stx178971%_)
+                                (_%$%$E178975178987%_)))
+                          (_%$%$E178975178987%_)))
+                    (_%$%$E178975178987%_)))
+              (_%$%$E178975178987%_)))))
     (define __compile-if%
-      (lambda (_%stx178832%_)
-        (let* ((_%$e178834%_ _%stx178832%_)
-               (_%$%$E178836178851%_
+      (lambda (_%stx178903%_)
+        (let* ((_%$e178905%_ _%stx178903%_)
+               (_%$%$E178907178922%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e178834%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e178834%_))
-              (let* ((_%$%$tgt178837178854%_
-                      (let () (declare (not safe)) (__AST-e _%$e178834%_)))
-                     (_%$%$hd178838178857%_
+                     _%$e178905%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e178905%_))
+              (let* ((_%$%$tgt178908178925%_
+                      (let () (declare (not safe)) (__AST-e _%$e178905%_)))
+                     (_%$%$hd178909178928%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt178837178854%_)))
-                     (_%$%$tl178839178860%_
+                        (##car _%$%$tgt178908178925%_)))
+                     (_%$%$tl178910178931%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt178837178854%_))))
+                        (##cdr _%$%$tgt178908178925%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl178839178860%_))
-                    (let* ((_%$%$tgt178840178864%_
+                      (__AST-pair? _%$%$tl178910178931%_))
+                    (let* ((_%$%$tgt178911178935%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl178839178860%_)))
-                           (_%$%$hd178841178867%_
+                              (__AST-e _%$%$tl178910178931%_)))
+                           (_%$%$hd178912178938%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt178840178864%_)))
-                           (_%$%$tl178842178870%_
+                              (##car _%$%$tgt178911178935%_)))
+                           (_%$%$tl178913178941%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt178840178864%_)))
-                           (_%p178874%_ _%$%$hd178841178867%_))
+                              (##cdr _%$%$tgt178911178935%_)))
+                           (_%p178945%_ _%$%$hd178912178938%_))
                       (if (let ()
                             (declare (not safe))
-                            (__AST-pair? _%$%$tl178842178870%_))
-                          (let* ((_%$%$tgt178843178876%_
+                            (__AST-pair? _%$%$tl178913178941%_))
+                          (let* ((_%$%$tgt178914178947%_
                                   (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl178842178870%_)))
-                                 (_%$%$hd178844178879%_
+                                    (__AST-e _%$%$tl178913178941%_)))
+                                 (_%$%$hd178915178950%_
                                   (let ()
                                     (declare (not safe))
-                                    (##car _%$%$tgt178843178876%_)))
-                                 (_%$%$tl178845178882%_
+                                    (##car _%$%$tgt178914178947%_)))
+                                 (_%$%$tl178916178953%_
                                   (let ()
                                     (declare (not safe))
-                                    (##cdr _%$%$tgt178843178876%_)))
-                                 (_%t178886%_ _%$%$hd178844178879%_))
+                                    (##cdr _%$%$tgt178914178947%_)))
+                                 (_%t178957%_ _%$%$hd178915178950%_))
                             (if (let ()
                                   (declare (not safe))
-                                  (__AST-pair? _%$%$tl178845178882%_))
-                                (let* ((_%$%$tgt178846178888%_
+                                  (__AST-pair? _%$%$tl178916178953%_))
+                                (let* ((_%$%$tgt178917178959%_
                                         (let ()
                                           (declare (not safe))
-                                          (__AST-e _%$%$tl178845178882%_)))
-                                       (_%$%$hd178847178891%_
+                                          (__AST-e _%$%$tl178916178953%_)))
+                                       (_%$%$hd178918178962%_
                                         (let ()
                                           (declare (not safe))
-                                          (##car _%$%$tgt178846178888%_)))
-                                       (_%$%$tl178848178894%_
+                                          (##car _%$%$tgt178917178959%_)))
+                                       (_%$%$tl178919178965%_
                                         (let ()
                                           (declare (not safe))
-                                          (##cdr _%$%$tgt178846178888%_)))
-                                       (_%f178898%_ _%$%$hd178847178891%_))
+                                          (##cdr _%$%$tgt178917178959%_)))
+                                       (_%f178969%_ _%$%$hd178918178962%_))
                                   (if (equal? (let ()
                                                 (declare (not safe))
-                                                (__AST-e _%$%$tl178848178894%_))
+                                                (__AST-e _%$%$tl178919178965%_))
                                               '())
                                       (__SRC__%
                                        (list 'if
-                                             (__compile _%p178874%_)
-                                             (__compile _%t178886%_)
-                                             (__compile _%f178898%_))
-                                       _%stx178832%_)
-                                      (_%$%$E178836178851%_)))
-                                (_%$%$E178836178851%_)))
-                          (_%$%$E178836178851%_)))
-                    (_%$%$E178836178851%_)))
-              (_%$%$E178836178851%_)))))
+                                             (__compile _%p178945%_)
+                                             (__compile _%t178957%_)
+                                             (__compile _%f178969%_))
+                                       _%stx178903%_)
+                                      (_%$%$E178907178922%_)))
+                                (_%$%$E178907178922%_)))
+                          (_%$%$E178907178922%_)))
+                    (_%$%$E178907178922%_)))
+              (_%$%$E178907178922%_)))))
     (define __compile-quote%
-      (lambda (_%stx178794%_)
-        (let* ((_%$e178796%_ _%stx178794%_)
-               (_%$%$E178798178807%_
+      (lambda (_%stx178865%_)
+        (let* ((_%$e178867%_ _%stx178865%_)
+               (_%$%$E178869178878%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e178796%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e178796%_))
-              (let* ((_%$%$tgt178799178810%_
-                      (let () (declare (not safe)) (__AST-e _%$e178796%_)))
-                     (_%$%$hd178800178813%_
+                     _%$e178867%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e178867%_))
+              (let* ((_%$%$tgt178870178881%_
+                      (let () (declare (not safe)) (__AST-e _%$e178867%_)))
+                     (_%$%$hd178871178884%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt178799178810%_)))
-                     (_%$%$tl178801178816%_
+                        (##car _%$%$tgt178870178881%_)))
+                     (_%$%$tl178872178887%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt178799178810%_))))
+                        (##cdr _%$%$tgt178870178881%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl178801178816%_))
-                    (let* ((_%$%$tgt178802178820%_
+                      (__AST-pair? _%$%$tl178872178887%_))
+                    (let* ((_%$%$tgt178873178891%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl178801178816%_)))
-                           (_%$%$hd178803178823%_
+                              (__AST-e _%$%$tl178872178887%_)))
+                           (_%$%$hd178874178894%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt178802178820%_)))
-                           (_%$%$tl178804178826%_
+                              (##car _%$%$tgt178873178891%_)))
+                           (_%$%$tl178875178897%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt178802178820%_)))
-                           (_%e178830%_ _%$%$hd178803178823%_))
+                              (##cdr _%$%$tgt178873178891%_)))
+                           (_%e178901%_ _%$%$hd178874178894%_))
                       (if (equal? (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl178804178826%_))
+                                    (__AST-e _%$%$tl178875178897%_))
                                   '())
                           (__SRC__%
                            (list 'quote
                                  (let ()
                                    (declare (not safe))
-                                   (__AST->datum _%e178830%_)))
-                           _%stx178794%_)
-                          (_%$%$E178798178807%_)))
-                    (_%$%$E178798178807%_)))
-              (_%$%$E178798178807%_)))))
+                                   (__AST->datum _%e178901%_)))
+                           _%stx178865%_)
+                          (_%$%$E178869178878%_)))
+                    (_%$%$E178869178878%_)))
+              (_%$%$E178869178878%_)))))
     (define __compile-quote-syntax%
-      (lambda (_%stx178756%_)
-        (let* ((_%$e178758%_ _%stx178756%_)
-               (_%$%$E178760178769%_
+      (lambda (_%stx178827%_)
+        (let* ((_%$e178829%_ _%stx178827%_)
+               (_%$%$E178831178840%_
                 (lambda ()
                   (let ()
                     (declare (not safe))
                     (__raise-syntax-error
                      '#f
                      '"Bad syntax; malformed ast clause"
-                     _%$e178758%_)))))
-          (if (let () (declare (not safe)) (__AST-pair? _%$e178758%_))
-              (let* ((_%$%$tgt178761178772%_
-                      (let () (declare (not safe)) (__AST-e _%$e178758%_)))
-                     (_%$%$hd178762178775%_
+                     _%$e178829%_)))))
+          (if (let () (declare (not safe)) (__AST-pair? _%$e178829%_))
+              (let* ((_%$%$tgt178832178843%_
+                      (let () (declare (not safe)) (__AST-e _%$e178829%_)))
+                     (_%$%$hd178833178846%_
                       (let ()
                         (declare (not safe))
-                        (##car _%$%$tgt178761178772%_)))
-                     (_%$%$tl178763178778%_
+                        (##car _%$%$tgt178832178843%_)))
+                     (_%$%$tl178834178849%_
                       (let ()
                         (declare (not safe))
-                        (##cdr _%$%$tgt178761178772%_))))
+                        (##cdr _%$%$tgt178832178843%_))))
                 (if (let ()
                       (declare (not safe))
-                      (__AST-pair? _%$%$tl178763178778%_))
-                    (let* ((_%$%$tgt178764178782%_
+                      (__AST-pair? _%$%$tl178834178849%_))
+                    (let* ((_%$%$tgt178835178853%_
                             (let ()
                               (declare (not safe))
-                              (__AST-e _%$%$tl178763178778%_)))
-                           (_%$%$hd178765178785%_
+                              (__AST-e _%$%$tl178834178849%_)))
+                           (_%$%$hd178836178856%_
                             (let ()
                               (declare (not safe))
-                              (##car _%$%$tgt178764178782%_)))
-                           (_%$%$tl178766178788%_
+                              (##car _%$%$tgt178835178853%_)))
+                           (_%$%$tl178837178859%_
                             (let ()
                               (declare (not safe))
-                              (##cdr _%$%$tgt178764178782%_)))
-                           (_%e178792%_ _%$%$hd178765178785%_))
+                              (##cdr _%$%$tgt178835178853%_)))
+                           (_%e178863%_ _%$%$hd178836178856%_))
                       (if (equal? (let ()
                                     (declare (not safe))
-                                    (__AST-e _%$%$tl178766178788%_))
+                                    (__AST-e _%$%$tl178837178859%_))
                                   '())
-                          (__SRC__% (list 'quote _%e178792%_) _%stx178756%_)
-                          (_%$%$E178760178769%_)))
-                    (_%$%$E178760178769%_)))
-              (_%$%$E178760178769%_)))))
+                          (__SRC__% (list 'quote _%e178863%_) _%stx178827%_)
+                          (_%$%$E178831178840%_)))
+                    (_%$%$E178831178840%_)))
+              (_%$%$E178831178840%_)))))
     (__core-bind-syntax!__% '%#begin __compile-begin% make-__core-special-form)
     (__core-bind-syntax!__%
      '%#begin-syntax
