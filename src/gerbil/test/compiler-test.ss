@@ -4,6 +4,7 @@
 (import :std/test
         :std/source
         :std/io/tempfile
+        (only-in :std/misc/process run-process/batch)
         :gerbil/compiler
         :gerbil/expander
         :gerbil/runtime/syntax
@@ -38,7 +39,8 @@
             (for-each
               (lambda (file)
                 (when (equal? (path-extension file) ".scm")
-                  (gxc#gsc-compile-file (path-expand file module-dir) #f)))
+                  (run-process/batch [(getenv "GERBIL_GSC" (path-expand "~~bin/gsc"))
+                                      (path-expand file module-dir)])))
               (directory-files module-dir))))
         (let* ((modid (string->symbol
                        (string-append ":test/"

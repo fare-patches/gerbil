@@ -271,15 +271,16 @@ namespace: gxc
                           (cons ctx deps))))))
 
       ;; A cache hit supplies committed inputs. On a miss produce a private
-      ;; matched C/object pair; no writer needs to wait on a public .lock file.
+      ;; matched C/object pair for this link only. The dependency may be rebuilt
+      ;; independently while the executable is linking.
       (def (dependency-pair scm)
         (let ((c (replace-extension-with-c scm))
               (o (replace-extension-with-object scm)))
           (if (and (file-exists? c) (file-exists? o)
                    (not (file-newer? scm c)) (not (file-newer? scm o)))
             (cons c o)
-            (let (c* (exe-compile-c scm scm c 'ordinary gsc-link-opts))
-              (cons c* (exe-compile-object c c* o 'ordinary gsc-static-opts #f))))))
+            (let (c* (exe-compile-c scm scm c 'temporary gsc-link-opts))
+              (cons c* (exe-compile-object c c* o 'temporary gsc-static-opts #f))))))
 
       (with-output-to-scheme-file (compile-stage-path output-scm)
         (cut generate-stub builtin-modules))
@@ -628,7 +629,7 @@ namespace: gxc
       (parameterize ((current-compile-gsc-options #f))
         (compile-scm-file scmrt loader-code))
       (if runtime-code?
-        (copy-file (compile-stage-path scm0) scms)
+        (copy-file (compile-input-path scm0) scms)
         (call-with-output-file scms void))))
 
   (let (all-modules (cons ctx (lift-nested-modules ctx)))
@@ -888,7 +889,7 @@ namespace: gxc
 
 (def (prepare-gsc-compile-job path phi?)
   (let* ((opts (gsc-link-options phi?))
-         (scm (compile-stage-path path))
+         (scm (compile-input-path path))
          (c (replace-extension path (gsc-target-extension opts)))
          (target? (member "-c" opts))
          (obj? (member "-obj" opts))
@@ -934,7 +935,7 @@ namespace: gxc
 
 (def (exe-link-stub scm bin kind libs-c deps-o libs-o opts includes ld-opts)
   (let* ((c (replace-extension scm ".c"))
-         (c* (exe-compile-c scm (compile-stage-path scm) c kind opts))
+         (c* (exe-compile-c scm (compile-input-path scm) c kind opts))
          (link (gsc-output-destination opts (replace-extension scm "_.c")))
          (link* (compile-stage-path link kind))
          (static? (eq? kind 'ordinary)))

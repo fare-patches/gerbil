@@ -368,6 +368,10 @@ static int gxc_try_lock_directory(const char *path) {
         (string-append (path-strip-directory reservation) ".")
         (make-hash-table) dirs [] (make-mutex) 'open))))
 
+(def (compile-input-path logical)
+  (compile-output-private
+   (hash-ref (compile-attempt-paths (current-compile-attempt)) (path-expand logical))))
+
 (def (compile-stage-path logical (kind 'ordinary))
   (let* ((a (current-compile-attempt))
          (logical (path-expand logical)))
@@ -377,23 +381,22 @@ static int gxc_try_lock_directory(const char *path) {
       (lambda ()
         (unless (eq? 'open (compile-attempt-state a))
           (error "Compiler attempt already settled" logical))
-        (cond
-         ((hash-get (compile-attempt-paths a) logical) => compile-output-private)
-         (else
-          (let* ((dir (path-directory logical))
-                 (prefix (compile-attempt-prefix a))
-                 (private (path-expand (string-append prefix (path-strip-directory logical)) dir)))
-            ;; Two primaries can stage into the same static directory. Reserve
-            ;; the prefix there too before allowing either producer to write.
-            (unless (hash-get (compile-attempt-dirs a) dir)
-              (compile-create-parent! dir)
-              (let (reservation (path-expand (substring prefix 0 (1- (string-length prefix))) dir))
-                (create-directory [path: reservation permissions: #o700])
-                (hash-put! (compile-attempt-dirs a) dir reservation)))
-            (when (compile-path-info private)
-              (error "Compiler staging path is occupied" private))
-            (hash-put! (compile-attempt-paths a) logical (make-compile-output logical private kind))
-            private)))))))
+        (when (hash-get (compile-attempt-paths a) logical)
+          (error "Multiple compiler outputs for path" logical))
+        (let* ((dir (path-directory logical))
+               (prefix (compile-attempt-prefix a))
+               (private (path-expand (string-append prefix (path-strip-directory logical)) dir)))
+          ;; Two primaries can stage into the same static directory. Reserve
+          ;; the prefix there too before allowing either producer to write.
+          (unless (hash-get (compile-attempt-dirs a) dir)
+            (compile-create-parent! dir)
+            (let (reservation (path-expand (substring prefix 0 (1- (string-length prefix))) dir))
+              (create-directory [path: reservation permissions: #o700])
+              (hash-put! (compile-attempt-dirs a) dir reservation)))
+          (when (compile-path-info private)
+            (error "Compiler staging path is occupied" private))
+          (hash-put! (compile-attempt-paths a) logical (make-compile-output logical private kind))
+          private)))))
 
 (def (compile-attempt-add-job! thunk name)
   (let (a (current-compile-attempt))
@@ -402,14 +405,14 @@ static int gxc_try_lock_directory(const char *path) {
 
 ;; Join even after a failed sibling (or a failed thread-start!). No cleanup
 ;; may race a writer. A raised #f must still count as failure.
-(def (compile-attempt-run-jobs! a)
+(def (run-compile-jobs! jobs)
   (let ((started []) (failure #f))
     (def (failed e) (unless failure (set! failure (list e))))
     (for-each (lambda (job)
                 (unless failure
                   (with-catch failed
                     (lambda () (thread-start! job) (set! started (cons job started))))))
-              (reverse (compile-attempt-jobs a)))
+              jobs)
     (for-each (lambda (job) (with-catch failed (cut join! job))) (reverse! started))
     (when failure (raise (car failure)))))
 
@@ -489,7 +492,9 @@ static int gxc_try_lock_directory(const char *path) {
         (begin0 (thunk)
           (cond
            ((current-compile-defer) => (lambda (defer) (defer a) (set! transferred? #t)))
-           (else (compile-attempt-run-jobs! a) (compile-attempt-commit! a)))))
+           (else
+            (run-compile-jobs! (reverse (compile-attempt-jobs a)))
+            (compile-attempt-commit! a)))))
       (unless transferred? (compile-attempt-abort! a)))))
 
 ;; parallel build support
@@ -517,8 +522,7 @@ static int gxc_try_lock_directory(const char *path) {
   (let loop ()
     (let (pending (pending-compile-jobs))
       (unless (null? pending)
-        (for-each thread-start! pending)
-        (for-each join! pending)))))
+        (run-compile-jobs! pending)))))
 
 (def (make-compile-job thunk name)
   (make-thread
