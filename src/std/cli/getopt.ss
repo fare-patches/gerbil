@@ -18,6 +18,9 @@
         option
         flag
         command
+        defgetopt-dispatch
+        getopt-dispatch
+        call-with-getopt-dispatch
         argument
         optional-argument
         rest-arguments
@@ -38,7 +41,7 @@
 
 (defstruct !getopt (opts cmds args help))
 (defstruct !top (key help))
-(defstruct (!command !top) (opts args)
+(defstruct (!command !top) (parser)
   final: #t)
 (defstruct (!opt !top) (short long))
 (defstruct (!option !opt) (value default)
@@ -96,10 +99,7 @@
   (make-!option id help short long value-e default))
 
 (def (command id help: (help #f) . args)
-  (with ((!getopt opts cmds args) (apply getopt args))
-    (if (null? cmds)
-      (make-!command id help opts args)
-      (error "Illegal command; cannot contain subcommands"))))
+  (make-!command id help (apply getopt help: help args)))
 
 (def (argument id
                help: (help #f)
@@ -117,21 +117,81 @@
                      value: (value-e identity))
   (make-!rest id help value-e))
 
+;; Only leaves have an arrow. Select the table shape during expansion.
+(defrules defgetopt-dispatch (=>)
+  ((_ name (key => handler) ...)
+   (defcommand-table name (key => handler) ...))
+  ((_ name (key target ...) ...)
+   (defmulti-command-table name (key target ...) ...)))
+
+;; Delay lookup so a handler can be defined after the dispatch table.
+(defrules defcommand-table (=>)
+  ((_ name (key => handler) ...)
+   (def name (delay-atomic (hash-eq (key handler) ...)))))
+
+(defrule (defmulti-command-table name (key target ...) ...)
+  (def name (delay-atomic (hash-eq (key (dispatch-target target ...)) ...))))
+
+(defrules dispatch-target (=>)
+  ((_ => handler) handler)
+  ((_ entry entries ...)
+   (let ()
+     (defgetopt-dispatch subtable entry entries ...)
+     subtable)))
+
+(def (getopt-dispatch (table   : :promise)
+                      command
+                      (options :~ hash-table?))
+  => :t
+  ((getopt-command-handler table command) options))
+
+(def (getopt-command-handler (table : :promise) command)
+  => :procedure
+  (let loop ((path (if (symbol? command) [command] command)) (table table))
+    (match path
+      ([key . rest]
+       (let (entry (hash-get (force table) key))
+         (cond
+          ((and (null? rest) (procedure? entry)) entry)
+          ((and (pair? rest) (promise? entry)) (loop rest entry))
+          (else (raise-getopt-error "No handler for command" command)))))
+      (else (raise-getopt-error "Expected a nonempty command path" command)))))
+
 (def (getopt-parse gopt args)
-  (let (ht (make-hash-table-eq))
-    (getopt-parse! ht gopt args)))
+  (parse-command-line gopt args #f))
 
-(def (getopt-parse! ht gopt rest)
-  (parameterize ((current-getopt-parser gopt))
-    (with ((!getopt opts cmds args) gopt)
-      (getopt-parse-opts! ht opts rest
-                          (if (null? cmds)
-                            (lambda (rest)
-                              (getopt-parse-args! ht args rest))
-                            (lambda (rest)
-                              (getopt-parse-cmd! ht cmds rest)))))))
+(def (parse-command-line gopt args show-help (finish values))
+  (let ((ht (make-hash-table-eq))
+        (nested? (ormap (lambda (cmd) (pair? (!getopt-cmds (!command-parser cmd))))
+                        (!getopt-cmds gopt))))
+    (let parse ((node gopt) (path []) (rest args))
+      (parameterize ((current-getopt-parser (cons node path)))
+        (with ((!getopt opts cmds args) node)
+          (getopt-parse-opts! ht opts rest
+            (lambda () (show-help (reverse path)))
+            (lambda (rest)
+              (cond
+               ((null? cmds)
+                (getopt-parse-args! ht args rest)
+                (cond
+                 ((eq? node (!command-parser help-command))
+                  (show-help (append (reverse (cdr path)) (hash-ref ht 'command))))
+                 ((null? path) (finish ht))
+                 (nested? (finish (reverse path) ht))
+                 (else (finish (car path) ht))))
+               ((null? rest) (raise-getopt-error "Missing command"))
+               ((find-command cmds (car rest))
+                => (lambda (cmd)
+                     (parse (!command-parser cmd) (cons (!top-key cmd) path) (cdr rest))))
+               (else (raise-getopt-error "Unknown command" (car rest)))))))))))
 
-(def (getopt-parse-opts! ht opts rest K)
+(def (find-command (cmds : :list) (name : :string))
+  ;; As with duplicate option spellings, the last declaration wins.
+  (foldl (lambda (cmd previous)
+           (if (string=? name (symbol->string (!top-key cmd))) cmd previous))
+         #f cmds))
+
+(def (getopt-parse-opts! ht opts rest show-help K)
   (def (end rest)
     ;; check for options with default values
     (for-each (match <>
@@ -164,6 +224,7 @@
           ((hash-get optht hd)
            => (lambda (opt)
                 (match opt
+                  ((? (cut eq? <> help-flag)) (show-help))
                   ((!option key _ _ _ value-e)
                    (match rest*
                      ([val . rest*]
@@ -209,29 +270,6 @@
          (raise-getopt-error "Unexpected arguments" rest))
        ht))))
 
-(def (getopt-parse-cmd! ht cmds rest)
-  (def cmdht (make-hash-table))
-  (for-each (lambda (cmd)
-              (with ((!command key) cmd)
-                (hash-put! cmdht (symbol->string key) cmd)))
-            cmds)
-
-  (match rest
-    ([cmd . rest]
-     (cond
-      ((hash-get cmdht cmd)
-       => (lambda (cmd)
-            (with ((!command key _ opts args) cmd)
-              (parameterize ((current-getopt-parser cmd))
-                (getopt-parse-opts! ht opts rest
-                                    (lambda (rest)
-                                      (getopt-parse-args! ht args rest)
-                                      (values key ht)))))))
-      (else
-       (raise-getopt-error "Unknown command" cmd))))
-    (else
-     (raise-getopt-error "Missing command"))))
-
 (def (getopt->positional-names gopt)
   (def rest-name #f)
   (def argkey !top-key)
@@ -249,7 +287,7 @@
    ((!getopt? obj)
     (display-help-getopt obj program port))
    ((!command? obj)
-    (display-help-command obj program port))
+    (display-help-getopt (!command-parser obj) (command-program (!top-key obj) program) port))
    ((getopt-error? obj)
     (parameterize ((current-output-port port))
       (displayln "Error: " (error-message obj))
@@ -259,19 +297,24 @@
                   (error-irritants obj))
         (newline))
       (newline))
-    (getopt-display-help (getopt-error-e obj) program port))
+    (when (getopt-error-e obj)
+      (with ([node . path] (getopt-error-e obj))
+        (display-help-getopt node (foldl command-program program (reverse path)) port))))
    (else
     (error "Unexpected object; expected a getopt, getopt-error, or command" obj))))
 
+(def (command-program (key : :symbol) (program : :string))
+  => :string
+  (string-append program " " (symbol->string key)))
+
 (def (getopt-display-help-topic gopt topic program (port (current-output-port)))
-  (let lp ((rest (!getopt-cmds gopt)))
-    (match rest
-      ([cmd . rest]
-       (if (eq? topic (!top-key cmd))
-         (getopt-display-help cmd program port)
-         (lp rest)))
-      (else
-       (getopt-display-help gopt program port)))))
+  (let loop ((node gopt) (program program)
+             (path (cond ((symbol? topic) [topic]) ((list? topic) topic) (else []))))
+    (cond
+     ((and (pair? path) (find-command (!getopt-cmds node) (symbol->string (car path))))
+      => (lambda (cmd)
+           (loop (!command-parser cmd) (command-program (!top-key cmd) program) (cdr path))))
+     (else (display-help-getopt node program port)))))
 
 (def (display-help-getopt obj program port)
   (parameterize ((current-output-port port))
@@ -281,7 +324,7 @@
         (newline))
       (if (null? cmds)
         (begin
-          (displayln "Usage: " program (if (null? opts) "" "[option ...]"))
+          (display* "Usage: " program (if (null? opts) "" " [option ...]"))
           (display-args args port)
           (unless (null? opts)
             (newline)
@@ -292,8 +335,8 @@
             (displayln "Arguments:")
             (display-arg-help args port)))
         (begin
-          (displayln "Usage: " program (if (null? opts) "" "[option ...]")
-                     "<command> command-arg ...")
+          (displayln "Usage: " program (if (null? opts) "" " [option ...]")
+                     " <command> command-arg ...")
           (unless (null? opts)
             (newline)
             (displayln "Options:")
@@ -304,22 +347,6 @@
                       ((!command key help)
                        (displayln " " key " " (tabs key) " " (or help "?"))))
                     cmds))))))
-
-(def (display-help-command obj program port)
-  (parameterize ((current-output-port port))
-    (with ((!command key help opts args) obj)
-      (displayln "Usage: " program " " key
-                 (if (null? opts) "" " [command-option ...]"))
-      (display-args args port)
-      (displayln "       " help)
-      (unless (null? opts)
-        (newline)
-        (displayln "Command Options:")
-        (display-option-help opts port))
-      (unless (null? args)
-        (newline)
-        (displayln "Arguments:")
-        (display-arg-help args port)))))
 
 (def (display-args args port)
   (parameterize ((current-output-port port))
@@ -335,20 +362,19 @@
 
 (def (display-option-help opts port)
   (parameterize ((current-output-port port))
-    (for-each (match <>
-                ((!option id help short long _ default)
-                 (displayln " " (or short "")
-                            " " (or long "")
-                            " <" id ">"
-                            " " (tabs (or short "") " " (or long "") " <" (symbol->string id) ">")
-                            " " (or help "?")
-                            " [default: " default "]"))
-                ((!flag _ help short long)
-                 (displayln " " (or short "")
-                            " " (or long "")
-                            " " (tabs (or short "") " " (or long ""))
-                            " " (or help "?"))))
-              opts)))
+    (for-each
+     (lambda (opt)
+       (with ((!opt key help short long) opt)
+         (display "  ")
+         (when short (display short))
+         (when (and short long) (display " "))
+         (when long (display long))
+         (when (!option? opt) (display* " <" key ">"))
+         (newline)
+         (display* "    " (or help "?"))
+         (when (!option? opt) (display* " [default: " (!option-default opt) "]"))
+         (newline)))
+     opts)))
 
 (def (display-arg-help args port)
   (parameterize ((current-output-port port))
@@ -374,49 +400,65 @@
       (make-string (fx- tablen len) #\space)
       "")))
 
+(def help-flag (flag 'help "-h" "--help" help: "display help"))
+(def help-command
+  (command 'help help: "display help for a command path"
+    (rest-arguments 'command value: string->symbol)))
+
+;; Construct the high-level parser's grammar without mutating reusable commands.
+(def (with-automatic-help (parser : !getopt))
+  => !getopt
+  (with ((!getopt opts cmds args help) parser)
+    (make-!getopt
+     (append opts [help-flag])
+     (if (null? cmds) []
+       (append (map (lambda (cmd)
+                      (make-!command (!top-key cmd) (!top-help cmd)
+                                     (with-automatic-help (!command-parser cmd))))
+                    cmds)
+               [help-command]))
+     args help)))
+
 (def (call-with-getopt proc args
                        program: program
                        help: (help #f)
                        exit-on-error: (exit? (exit-on-error?))
                        . gopts)
-  (def (parse! gopt)
-    (try
-     (getopt-parse gopt args)
-     (catch (e)
-       (cond
-        ((not exit?) (raise e))
-        ((getopt-error? e)
-         (getopt-display-help e program (current-error-port))
-         (exit 1))
-        (else
-         (exit-with-error e))))))
+  (run-getopt proc values args program help exit? gopts))
 
-  (let* ((gopt (apply getopt help: help gopts))
-         (cmds (!getopt-cmds gopt)))
-    (if (null? cmds)
-      ;; it only has options; add -h/--help
-      (let ((help-flag
-             (flag 'help "-h" "--help"
-               help: "display help"))
-            (opts (!getopt-opts gopt)))
-        (if (null? opts)
-          (set! (!getopt-opts gopt)
-            [help-flag])
-          (set-cdr! (last-pair opts)
-                    [help-flag]))
-        (let (opt (parse! gopt))
-          (if (hash-get opt 'help)
-            (getopt-display-help gopt program)
-            (proc opt))))
-      ;; it has commands; add help <command>
-      (let (help-cmd
-            (command 'help  help: "display help; help <command> for command help"
-              (optional-argument 'command value: string->symbol)))
-        (set-cdr! (last-pair cmds) [help-cmd])
-        (let ((values cmd opt) (parse! gopt))
-          (if (eq? cmd 'help)
-            (getopt-display-help-topic gopt (hash-get opt 'command) program)
-            (proc cmd opt)))))))
+;; Finish parsing and resolve any handler under the leaf's error context.
+;; Invoke application code after leaving the parse error handler.
+(def (run-getopt proc finish args program help exit? gopts)
+  (let (gopt (with-automatic-help (apply getopt help: help gopts)))
+    (let/cc done
+      (def (show-help path)
+        (getopt-display-help-topic gopt path program)
+        (done (void)))
+      (call-with-values
+       (lambda ()
+         (try
+          (parse-command-line gopt args show-help finish)
+          (catch (e)
+            (cond
+             ((not exit?) (raise e))
+             ((getopt-error? e)
+              (getopt-display-help e program (current-error-port))
+              (exit 1))
+             (else (exit-with-error e))))))
+       proc))))
+
+;; Parse errors and help are handled before calling a leaf handler.
+(def (call-with-getopt-dispatch (table : :promise)
+                                (args  : :list)
+                                program: program
+                                help: (help #f)
+                                exit-on-error: (exit? (exit-on-error?))
+                                . specs)
+  (def* resolve
+    ((_) (raise-getopt-error "Missing command"))
+    ((command options) (values (getopt-command-handler table command) options)))
+  (run-getopt (lambda (handler options) (handler options))
+              resolve args program help exit? specs))
 
 (def (getopt-parse->positional-arguments! gopt h)
   (defvalues (names rest-name) (getopt->positional-names gopt))

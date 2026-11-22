@@ -19,7 +19,7 @@ and is still available under that name for now, but its use is deprecated.
 => <parser>
 
 specifier:
- (command id [help: text] <cmd-specifier>)
+ (command id [help: text] <specifier> ...)
  <cmd-specifier> ...
 
 cmd-specifier:
@@ -42,8 +42,10 @@ with `getopt-parse`.
 
 `getopt-parse` accepts a parser and a list of string arguments and parses
 according to the parser specification. If it is parsing a specification with
-subcommands, it returns two values, the command id and a hash table with the
-parsed options. Otherwise it just returns the hash table with the parsed options.
+one command level, it returns two values, the command symbol and the option
+table. If any command has subcommands, the first value is a list of symbols
+from root to leaf. Without commands it just returns the table. Positional
+arguments belong to leaves. [Nested commands and dispatch tables](../../../../src/std/cli/getopt.md)
 An exception is raised if parsing the arguments fails.
 
 ### getopt-error?
@@ -52,8 +54,8 @@ An exception is raised if parsing the arguments fails.
 => boolean
 ```
 
-If parsing fails, then a `getopt-error` is raised, which can be guarded with
-`getopt-error?`.
+Use `getopt-error?` to recognize errors raised for invalid command lines or
+command paths with no registered handler.
 
 ### getopt-display-help
 ```scheme
@@ -74,7 +76,7 @@ a help message for a getopt error according to the argument specification.
 ```
 
 The procedure `getopt-display-help-topic` can be used to display a help page
-for a subcommand.
+for a subcommand. Pass a symbol for one level or a list of symbols for a path.
 
 ### getopt?
 ```scheme
@@ -104,12 +106,10 @@ Returns true if the object is a getopt command or command specifier.
 This shim around getopt parsing eliminates all the repetitive
 boilerplate around argument parsing with getopt.
 
-It creates a getopt parser that parses with options `gopts`, automatically
-including a help option or command accordingly.
+It adds `-h` and `--help` at each level and a `help` command at each branch.
 
-It then uses the parser to pair `args`, handling the exceptions and
-displayin help accordingly; if `exit-on-error` is true (the default),
-then parsing errors will exit the program.
+When `exit-on-error:` is true, a parse error displays help for the selected
+command and exits the program.
 
 If the parse succeeds it invokes `proc` with the output of the parse.
 
