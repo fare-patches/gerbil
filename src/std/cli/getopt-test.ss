@@ -578,6 +578,15 @@
       (check (optional-argument 'a parse: identity value: identity) =>! true)
       (check (rest-arguments 'a parse: identity value: identity) =>! true))
 
+    (test-case "multioption collects parsed values in argument order"
+      (def g (getopt (multioption 'n "-n" "--number" parse: string->number)))
+      (check-function (parser g 'n)
+        => [[]]
+        "-n" "2" => [[2]]
+        "--number=3" "-n2" "-n" "3" => [[3 2 3]])
+      (check (getopt (multioption 'n "-n") (flag 'n "--none"))
+             =>! contract-violation-error?))
+
     (test-case "flag default:"
       (def gopt (getopt (flag 'quiet "-q" default: 'no)
                         (flag 'loud "-l")))

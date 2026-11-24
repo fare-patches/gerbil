@@ -17,6 +17,7 @@
         getopt-display-help
         getopt-display-help-topic
         option
+        multioption
         flag
         command
         defgetopt-dispatch
@@ -47,6 +48,7 @@
 ;; A supplied default or optional value is wrapped so it can itself be #f.
 (defstruct (!opt !top) (short long parse default))
 (defstruct (!option !opt) (optional))
+(defstruct (!multioption !option) () final: #t)
 (defstruct (!flag !opt) ()
   final: #t)
 (defstruct (!arg !top) (parse))
@@ -99,7 +101,7 @@
          (make-!getopt opts (reverse cmds) (reverse args) help))))))
 
 ;; Option spellings are unique within each command. Scalar aliases may share
-;; one default.
+;; one default. A list-valued id can only be shared by other multioptions.
 (def (check-option-specs! opts)
   (def names (make-hash-table))
   (def ids (make-hash-table-eq))
@@ -117,6 +119,9 @@
        (claim-name! short)
        (claim-name! long)
        (when previous
+         (unless (eq? (!multioption? opt) (!multioption? previous))
+           (raise-contract-violation getopt "consistent option type for shared id"
+                                     id: id))
          (when (and default (!opt-default previous))
            (raise-contract-violation getopt "one default per option id" id: id)))
        (when (or default (not previous))
@@ -158,6 +163,17 @@
 
 ;; Same compiler workaround as flag above.
 (def option make-option-spec)
+
+(def (make-multioption-spec id (short :? :string) (long :? :string := #f)
+                            help: (help :? :string := #f)
+                            parse: (parse absent-value)
+                            value: (value absent-value)
+                            optional-value: (optional absent-value))
+  => !multioption
+  (make-!multioption id help short long (spec-parser id parse value)
+                     #f (value->option optional absent-value)))
+
+(def multioption make-multioption-spec)
 
 (def (command id help: (help #f) . args)
   (make-!command id help (apply getopt help: help args)))
@@ -269,20 +285,26 @@
 ;; TODO: opt-in GNU-style permutation, allowing options after positional arguments.
 (def (getopt-parse-opts! ht opts rest show-help K)
   (def names (make-hash-table))
+  (def collected (make-hash-table-eq))
   (for-each (lambda (opt)
               (when (!opt-short opt) (hash-put! names (!opt-short opt) opt))
               (when (!opt-long opt) (hash-put! names (!opt-long opt) opt)))
             opts)
 
   (def (store! opt value)
-    (hash-put! ht (!top-key opt) value))
+    (let (id (!top-key opt))
+      (if (!multioption? opt)
+        (hash-put! collected id (cons value (hash-ref collected id [])))
+        (hash-put! ht id value))))
 
   (def (end rest)
+    (hash-for-each (lambda (id items) (hash-put! ht id (reverse items))) collected)
     (for-each
      (lambda (opt)
        (let (id (!top-key opt))
          (unless (hash-key? ht id)
            (cond
+            ((!multioption? opt) (hash-put! ht id []))
             ((!opt-default opt) => (lambda (default) (hash-put! ht id (Some-value default))))))))
      opts)
     (K rest))
