@@ -160,6 +160,7 @@
 
     "struct/deque"
     "struct/lru"
+    "struct/option"
     "struct/queue"
     "struct/pqueue"
     "struct/rbtree"
