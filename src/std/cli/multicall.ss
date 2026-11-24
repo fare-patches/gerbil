@@ -119,6 +119,11 @@
 (defrules define-multicall-main ()
   ((_ ctx) (with-id ((main ctx "main"))
              (def main call-entry-point)))
+  ((d default: name opts ...) (d d default: name opts ...))
+  ((d ctx default: name opts ...)
+   (begin
+     (d ctx)
+     (set-default-entry-point! name opts ...)))
   ((d) (d d)))
 
 ;; Call function with the arguments of command-line as processed by processor:

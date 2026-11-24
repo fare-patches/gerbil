@@ -71,6 +71,26 @@
     (test-case "define-multicall-main defines main"
       (check (procedure? main) => #t))
 
+    (test-case "define-multicall-main shorthand configures dispatch"
+      (def (run previous definition . args)
+        (gxi-exit-output
+         (lambda (file)
+           ['(import :std/cli/multicall)
+            `(register-entry-point (lambda args (call-with-output-file ,file
+                                                  (lambda (port) (write args port))))
+                                   name: "keys")
+            `(set-default-entry-point! ',previous fallback: #t)
+            definition
+            `(main ,@args)])))
+      (check-function run
+        'old '(define-multicall-main default: 'keys) => (cons 0 "()")
+        'old '(define-multicall-main default: 'keys) "typo" => (cons 2 #f)
+        'old '(define-multicall-main default: 'keys fallback: #t) "a" "-b"
+        => (cons 0 "(\"a\" \"-b\")")
+        'old '(define-multicall-main here default: 'keys fallback: #t) "x"
+        => (cons 0 "(\"x\")")
+        'keys '(define-multicall-main) "x" => (cons 0 "(\"x\")")))
+
     (test-case "default entry point with no arguments"
       (with-saved-multicall-settings
        (set-default-entry-point! 'multicall-test-default)
