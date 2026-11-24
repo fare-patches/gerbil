@@ -95,7 +95,33 @@
          (error "Illegal argument; must be a getopt-object" hd))))
       (else
        (let (opts (reverse opts))
+         (check-option-specs! opts)
          (make-!getopt opts (reverse cmds) (reverse args) help))))))
+
+;; Option spellings are unique within each command. Scalar aliases may share
+;; one default.
+(def (check-option-specs! opts)
+  (def names (make-hash-table))
+  (def ids (make-hash-table-eq))
+  (for-each
+   (lambda (opt)
+     (with ((!opt id _ short long _ default) opt)
+       (def previous (hash-get ids id))
+       (def (claim-name! name)
+         (when name
+           (when (hash-key? names name)
+             (raise-contract-violation getopt "unique option name within a command"
+                                       name: name first-id: (hash-get names name)
+                                       second-id: id))
+           (hash-put! names name id)))
+       (claim-name! short)
+       (claim-name! long)
+       (when previous
+         (when (and default (!opt-default previous))
+           (raise-contract-violation getopt "one default per option id" id: id)))
+       (when (or default (not previous))
+         (hash-put! ids id opt))))
+   opts))
 
 (def (make-flag-spec id (short :? :string) (long :? :string := #f)
            help: (help :? :string := #f)
@@ -452,6 +478,7 @@
   => !getopt
   (with ((!getopt opts cmds args help) parser)
     (let (opts (append opts [help-flag]))
+      (check-option-specs! opts)
       (make-!getopt
         opts
         (if (null? cmds) []

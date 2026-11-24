@@ -341,6 +341,10 @@
         "-q" => [#t #f]
         "-q" "-q" "-l" "-l" => [#t #t]))
 
+    (test-case "duplicate option names within a command"
+      (check (getopt (flag 'verbose "-v") (option 'value "-v")) =>! contract-violation-error?)
+      (check (getopt (flag 'v "-v" "--verbose") (flag 'v "--verbose")) =>! contract-violation-error?))
 
-
-))
+    (test-case "shared scalar ids allow only one explicit default"
+      (check (getopt (flag 'x "-a" default: #f) (flag 'x "-b" default: #t))
+             =>! contract-violation-error?))))
