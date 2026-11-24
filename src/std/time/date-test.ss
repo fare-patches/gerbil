@@ -35,6 +35,12 @@
       (check (date->string d "%Y-%m-%d %H:%M:%S") => "2023-03-28 10:40:00")
       (check (date->string d "%A, %B %d") => "Tuesday, March 28"))
 
+    (test-case "string->date checks the entire UTF-8 input"
+      (check-function string->date
+        "2023-11-14" "%Y-%m-%d %H:%M:%S" =>! ContractViolation?
+        (string-append "2023-11-14" (string #\nul) "extra") "%Y-%m-%d" =>! ContractViolation?
+        "2023-11-14é" "%Y-%m-%d" =>! ContractViolation?))
+
     (test-case "test string->date parse failures"
       (check-exception (string->date "not a date") ContractViolation?)
       (check-exception

@@ -121,12 +121,13 @@
 (def (string->date (str : :string) (fmt : :string := "%Y-%m-%d %H:%M:%S"))
   => Date
   (using (date (tm) : Date)
-    (let* ((input (string->utf8 str))
+    ;; strptime requires a NUL-terminated byte string.
+    (let* ((input (string->c-string str))
            (consumed (___strptime input fmt date.body)))
       (cond
        ((negative? consumed)
         (raise-bad-argument string->date "date string does not match format" str fmt))
-       ((= consumed (u8vector-length input))
+       ((fx= consumed (fx1- (u8vector-length input)))
         date)
        (else
         (raise-bad-argument string->date "unparsed input at end of date string" str fmt))))))
