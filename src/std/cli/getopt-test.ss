@@ -285,6 +285,31 @@
         "--counter" "--verbose" => [#f "--verbose" "6" #f 0 []]
         "-c" "--" "x" => [#f "--" "6" #f 0 ["x"]]))
 
+    (test-case "a lone - is a positional argument"
+      ;; POSIX/GNU convention (e.g. "-" for stdin). Fails with the pre-extension getopt,
+      ;; which raises "Unknown option" for "-".
+      (check-function (apply parser (classic-getopt) classic-keys)
+        "-" => [#f #f "6" #f 0 ["-"]]
+        "-c" "5" "-" => [#f "5" "6" #f 0 ["-"]]
+        "-v" "-" "x" => [#t #f "6" #f 0 ["-" "x"]]
+        "-" "x" => [#f #f "6" #f 0 ["-" "x"]]
+        ;; it ends option parsing like any positional word
+        "-" "-v" => [#f #f "6" #f 0 ["-" "-v"]]
+        "-" "--" "-c" => [#f #f "6" #f 0 ["-" "--" "-c"]]
+        ;; still a positional after --, and still a value for an option expecting one
+        "--" "-" => [#f #f "6" #f 0 ["-"]]
+        "-c" "-" => [#f "-" "6" #f 0 []])
+      (def gopt (getopt (flag 'verbose "-v")
+                        (argument 'in)
+                        (optional-argument 'out default: "OUT")))
+      (check-function (parser gopt 'verbose 'in 'out)
+        "-" => [#f "-" "OUT"]
+        "-v" "-" => [#t "-" "OUT"]
+        "x" "-" => [#f "x" "-"]
+        "-" "-" => [#f "-" "-"]
+        "-v" "-" "-" => [#t "-" "-"]
+        "-" "-" "-" =>! getopt-error?))
+
     (test-case "unknown option and missing value are errors"
       (check-function (apply parser (classic-getopt) classic-keys)
         "-x" =>! getopt-error?
