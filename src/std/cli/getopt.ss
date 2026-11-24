@@ -334,6 +334,8 @@
          (cond
           ((equal? "--" hd)             ; end of options
            (end rest*))
+          ((equal? "-" hd)              ; a positional argument, e.g. stdin
+           (end rest))
           ((hash-get names hd)
            => (lambda (opt)
                 (cond
