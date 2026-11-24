@@ -534,14 +534,15 @@
   (display-help-rows
    (map (match <>
           ((!option id help short long _ default optional)
-           ;; an option with an optional value is shown as --long[=<id>]
-           [(option-label short long
-                          (if optional
-                            (string-append "[=<" (as-string id) ">]")
-                            (string-append " <" (as-string id) ">")))
-            (or help "?")
-            (maybe-help-part "if no value" optional)
-            (maybe-help-part "default" default)])
+           (let (arg (string-append "<" (as-string id) ">"))
+             [(if optional
+                (string-join
+                 (filter values [(and short (string-append short "[" arg "]"))
+                                 (and long (string-append long "[=" arg "]"))]) " ")
+                (option-label short long (string-append " " arg)))
+              (or help "?")
+              (maybe-help-part "if no value" optional)
+              (maybe-help-part "default" default)]))
           ((!flag _ help short long _ default)
            [(option-label short long "") (or help "?")
             (maybe-help-part "default" default)]))

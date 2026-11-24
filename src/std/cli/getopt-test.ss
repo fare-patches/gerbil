@@ -642,6 +642,11 @@
         (check cmd => 'go)
         (check (hash-ref opts 'inc) => '("a" "b"))))
 
+    (test-case "short optional value help matches its attached syntax"
+      (def g (getopt (option 'n "-n" optional-value: #f parse: string->number)))
+      (check (contains? (help-string g) "-n[<n>]") => #t)
+      (check-function (parser g 'n) "-n3" => [3]))
+
     (test-case "flag default:"
       (def gopt (getopt (flag 'quiet "-q" default: 'no)
                         (flag 'loud "-l")))
