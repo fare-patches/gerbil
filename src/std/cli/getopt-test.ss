@@ -251,6 +251,12 @@
         (check (hash-key? h 'o) => #t)
         (check (hash-get h 'o) => #f)))
 
+    (test-case "omitted options preserve the function keyword default"
+      (def g (getopt (option 'color "--color" parse: (lambda (_) #f))))
+      (def (color color: (value 'auto)) value)
+      (check (call-with-getopt-parse g (getopt-parse g []) color) => 'auto)
+      (check (call-with-getopt-parse g (getopt-parse g ["--color=off"]) color) => #f))
+
     (test-case "end of options, empty words, positional words"
       (check-function (apply parser (classic-getopt) classic-keys)
         "--" "-v" "x" => [#f #f "6" #f 0 ["-v" "x"]]
@@ -306,6 +312,28 @@
         "stop" "x" =>! getopt-error?
         "run" "-q" "x" =>! getopt-error?))
 
+    (test-case "an exact registered name takes precedence"
+      ;; Pre-existing getopt allows any word as a "short" name, e.g. "-cv".
+      ;; It must keep matching exactly, not as "-c" with attached value "v".
+      (def gopt (getopt (option 'c "-c") (flag 'cv "-cv") (option 'xy "-xy=1")))
+      (check-function (parser gopt 'c 'cv 'xy)
+        "-cv" => [#f #t #f]
+        "-c" "v" => ["v" #f #f]
+        "-xy=1" "z" => [#f #f "z"]))
+
+    (test-case "--long=value with a classic spec (no optional-value: used)"
+      (check-function (apply parser (classic-getopt) classic-keys)
+        "--counter=5" => [#f "5" "6" #f 0 []]
+        "--number=7" => [#f #f "6" #f 7 []]
+        "--window=w" "a" => [#f #f "6" "w" 0 ["a"]]
+        "--verbose=yes" =>! getopt-error?))
+
+    (test-case "attached short values with a classic spec"
+      (check-function (apply parser (classic-getopt) classic-keys)
+        "-c5" => [#f "5" "6" #f 0 []]
+        "-n42" "a" => [#f #f "6" #f 42 ["a"]]
+        "-vc" =>! getopt-error?))
+
     (test-case "parse: default is identity; flags store #t"
       (def gopt (getopt (flag 'f "-f") (option 'o "-o") (argument 'a)))
       (check-function (parser gopt 'f 'o 'a)
@@ -319,6 +347,13 @@
       (check-function (parser gopt 'counter 'a 'b 'r)
         "-c" "1" "x" "2" "3" => [1 'x 2 [3]]
         "--" "y" => [#f 'y #f []]))
+
+    (test-case "closed spec keywords accept interleaved positionals and reject typos"
+      (let (gopt (getopt (option 'n "-n" parse: string->number "--number" default: #f)))
+        (check-function (parser gopt 'n)
+          => [#f]
+          "--number=3" => [3]))
+      (check (apply flag ['v "-v" typo: #f]) =>! true))
 
     (test-case "parse: and value: together are an error"
       (check (option 'o "-o" parse: identity value: identity) =>! true)

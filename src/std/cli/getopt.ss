@@ -139,6 +139,8 @@
 ;; The aliases keep these calls on the runtime dispatcher.
 (def flag make-flag-spec)
 
+;; An option with a value: as the next word (-c 5, --counter 5), attached to
+;; the long name after = (--counter=5) or to a two-character short name (-c5).
 (def (make-option-spec id (short :? :string) (long :? :string := #f)
              help: (help :? :string := #f)
              parse: (parse absent-value)
@@ -255,6 +257,11 @@
 
 ;; Parse the options at the head of the words in rest, then call K with the remaining words.
 ;; Option parsing ends at "--" (dropped) or at the first word not starting with "-".
+;; A word naming a registered option exactly takes precedence; otherwise
+;; --name=value attaches a value after the first =, and -cVALUE attaches a value
+;; to the two-character short name -c. Both forms are errors for flags.
+;; TODO: short-flag clustering (-bv as -b -v), at least for flags.
+;; TODO: opt-in GNU-style permutation, allowing options after positional arguments.
 (def (getopt-parse-opts! ht opts rest show-help K)
   (def names (make-hash-table))
   (for-each (lambda (opt)
@@ -274,6 +281,21 @@
             ((!opt-default opt) => (lambda (default) (hash-put! ht id (Some-value default))))))))
      opts)
     (K rest))
+
+  ;; hd is not a registered name: try --name=value or -cVALUE.
+  (def (attached-value! hd)
+    (let* ((len (string-length hd))
+           (long? (and (fx> len 1) (eqv? (string-ref hd 1) #\-)))
+           (split (if long? (string-index hd #\=) (and (fx> len 2) 2)))
+           (entry (and split (hash-get names (substring hd 0 split)))))
+      (cond
+       ((not entry)
+        (raise-getopt-error "Unknown option" hd))
+       ((!flag? entry)
+        (raise-getopt-error "Unexpected value for flag" hd))
+       (else
+        (store! entry ((!opt-parse entry)
+                       (substring hd (if long? (fx+ split 1) split) len)))))))
 
   (let lp ((rest rest))
     (match rest
@@ -299,7 +321,9 @@
                      (lp rest*))
                     (else
                      (raise-getopt-error "Missing value for option" hd)))))))
-          (else (raise-getopt-error "Unknown option" hd))))
+          (else
+           (attached-value! hd)
+           (lp rest*))))
         (else                           ; doesn't look like an option
          (end rest))))
       (else                             ; we run out of arguments
