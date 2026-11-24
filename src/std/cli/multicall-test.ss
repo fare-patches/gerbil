@@ -8,52 +8,56 @@
         "./exit-test-support")
 (export multicall-test)
 
-;;; Test entry points. They are registered globally, hence the unique prefix.
-;;; Each returns its arguments and (current-program), so dispatch is observable.
+(def (install-test-entries!)
+  (define-entry-point (multicall-test-default)
+    (help: "test: default entry point"
+     getopt: [])
+    (list 'default (current-program)))
 
-(define-entry-point (multicall-test-default)
-  (help: "test: default entry point"
-   getopt: [])
-  (list 'default (current-program)))
+  (define-entry-point (multicall-test-search . args)
+    (help: "test: rest arguments"
+     getopt: [(rest-arguments 'args)])
+    (list 'search args (current-program)))
 
-(define-entry-point (multicall-test-search . args)
-  (help: "test: rest arguments"
-   getopt: [(rest-arguments 'args)])
-  (list 'search args (current-program)))
+  (define-entry-point (multicall-test-greet (name #f))
+    (help: "test: optional argument"
+     getopt: [(optional-argument 'name)])
+    (list 'greet name (current-program)))
 
-(define-entry-point (multicall-test-greet (name #f))
-  (help: "test: optional argument"
-   getopt: [(optional-argument 'name)])
-  (list 'greet name (current-program)))
+  (define-entry-point (multicall-test-browse (url #f) window: (window #f))
+    (help: "test: option and optional argument"
+     getopt: [(option 'window "-w" "--window")
+              (optional-argument 'url)])
+    (list 'browse url window (current-program)))
 
-(define-entry-point (multicall-test-browse (url #f) window: (window #f))
-  (help: "test: option and optional argument"
-   getopt: [(option 'window "-w" "--window")
-            (optional-argument 'url)])
-  (list 'browse url window (current-program)))
+  ;; Each form of getopt: other than a list: none, a count, a getopt object.
+  (define-entry-point (multicall-test-raw . args)
+    (help: "test: no getopt:, arguments passed through")
+    (list 'raw args))
 
-;; Each form of getopt: other than a list: none, a count, a getopt object.
-(define-entry-point (multicall-test-raw . args)
-  (help: "test: no getopt:, arguments passed through")
-  (list 'raw args))
+  (define-entry-point (multicall-test-pair a b)
+    (help: "test: two positional arguments"
+     getopt: 2)
+    (list 'pair a b))
 
-(define-entry-point (multicall-test-pair a b)
-  (help: "test: two positional arguments"
-   getopt: 2)
-  (list 'pair a b))
-
-(register-entry-point (lambda (x) (list 'object x))
-                      id: 'multicall-test-object
-                      help: "test: getopt object"
-                      getopt: (getopt (argument 'x)))
+  (register-entry-point (lambda (x) (list 'object x))
+                        id: 'multicall-test-object
+                        help: "test: getopt object"
+                        getopt: (getopt (argument 'x))))
 
 ;; Entry points and multicall settings are global: save and restore them.
 (def (call-with-saved-multicall-settings thunk)
-  (let ((saved-default multicall-default) (saved-fallback? multicall-fallback?))
+  (let ((saved-entries (hash->list entry-points))
+        (saved-default multicall-default) (saved-fallback? multicall-fallback?))
     (unwind-protect
       (parameterize ((current-program ["prog"]))
+        (install-test-entries!)
         (thunk))
-      (set-default-entry-point! saved-default fallback: saved-fallback?))))
+      (begin
+        (hash-clear! entry-points)
+        (for-each (lambda (binding) (hash-put! entry-points (car binding) (cdr binding)))
+                  saved-entries)
+        (set-default-entry-point! saved-default fallback: saved-fallback?)))))
 
 (defrule (with-saved-multicall-settings body ...)
   (call-with-saved-multicall-settings (lambda () body ...)))
