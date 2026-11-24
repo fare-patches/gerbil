@@ -62,3 +62,10 @@ A grammar with a single command level keeps returning a symbol. If any command h
 Returns the options followed by the commands or positional arguments, preserving
 the order within each group. Multicall uses these specifiers to include an
 entry's parser tree in its help display.
+
+### call-with-getopt-topic
+
+`(call-with-getopt-topic parser topic program proc)` walks the command names in
+`topic` and calls `proc` with the deepest recognized parser, its full program
+name, and the remaining topic symbols. An empty remainder means the entire
+topic matched.
