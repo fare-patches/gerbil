@@ -149,10 +149,9 @@
               (spec-parser id parse value)
               (value->option default absent-value)))
 
-;; TODO: remove the flag and option aliases once the compiler handles interleaved
-;; positional and keyword arguments to typed procedures. The compiler fix was
-;; dropped from PR #1519: https://git.cons.io/mighty-gerbils/gerbil/pulls/1519
-;; The aliases keep these calls on the runtime dispatcher.
+;; make-flag-spec and make-option-spec carry the closed, typed signatures.
+;; Keep the aliases so interleaved positional and keyword arguments go
+;; through the runtime dispatcher until the compiler handles those calls.
 (def flag make-flag-spec)
 
 ;; An option with a value: as the next word (-c 5, --counter 5), attached to
