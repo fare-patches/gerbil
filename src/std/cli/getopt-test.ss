@@ -1,5 +1,6 @@
 ;;; :std/cli/getopt tests
 (import :std/test
+        :std/source
         (only-in :std/error contract-violation-error?)
         ./getopt
         "./exit-test-support")
@@ -622,6 +623,13 @@
         "--number=3" "-n2" "-n" "3" => [[3 2 3]])
       (check (getopt (multioption 'n "-n") (flag 'n "--none"))
              =>! contract-violation-error?))
+
+    (test-case "fresh interpreter loads the getopt source with omitted keywords"
+      (def source (path-expand "getopt.ss" (path-directory (this-source-file))))
+      (check (gxi-exit-code `(import ,source)
+                            '(def opts (getopt-parse (getopt (flag 'f "-f" default: #f)) '()))
+                            '(exit (if (eq? (hash-ref opts 'f) #f) 0 1)))
+             => 0))
 
     (test-case "flag default:"
       (def gopt (getopt (flag 'quiet "-q" default: 'no)
