@@ -217,7 +217,7 @@ An option `id` with a value (see [Command-line syntax](#command-line-syntax)).
 If `optional-value:` is passed, its value, of any type (`#f` and `""` included),
 is yielded as given, without `parse:`, by a bare option, which then never
 consumes the next word. Without it, a value is required.
-The help shows such an option as `--long[=<id>]`, with its optional value.
+The help shows such an option as `-s[<id>]` and `--long[=<id>]`.
 
 ### multioption
 
