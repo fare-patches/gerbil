@@ -216,6 +216,17 @@
           (rest-arguments 'args)))
 (def classic-keys '(verbose counter digits window number args))
 
+;; oathtool-like: options with attached values and optional values.
+(def (oath-getopt)
+  (getopt (flag 'verbose "-v" "--verbose")
+          (option 'counter "-c" "--counter" value: string->number)
+          (option 'window #f "--window")
+          (option 'digits "-d" "--digits" default: "6")
+          (option 'totp #f "--totp" optional-value: "SHA1")
+          (option 'mode "-m" "--mode" optional-value: "x")
+          (rest-arguments 'args)))
+(def oath-keys '(verbose counter window digits totp mode args))
+
 (def getopt-test
   (test-suite "test :std/cli/getopt"
 
@@ -321,6 +332,33 @@
         "-c" "v" => ["v" #f #f]
         "-xy=1" "z" => [#f #f "z"]))
 
+    (test-case "--long=value for options"
+      (check-function (apply parser (oath-getopt) oath-keys)
+        "--counter=5" => [#f 5 #f "6" #f #f []]
+        "--window=3" => [#f #f "3" "6" #f #f []]
+        "--digits=8" "-v" "k" => [#t #f #f "8" #f #f ["k"]]
+        ;; the value is everything after the first =
+        "--window=a=b" => [#f #f "a=b" "6" #f #f []]
+        "--window==" => [#f #f "=" "6" #f #f []]
+        "--window=" => [#f #f "" "6" #f #f []]
+        ;; the next word is not consumed
+        "--window=3" "4" => [#f #f "3" "6" #f #f ["4"]]
+        "--window=3" "--digits" "7" => [#f #f "3" "7" #f #f []]
+        ;; a value that looks like an option
+        "--window=-v" => [#f #f "-v" "6" #f #f []]
+        "--window=--" "x" => [#f #f "--" "6" #f #f ["x"]]
+        ;; both forms mix; the last occurrence wins
+        "--digits" "7" "--digits=9" => [#f #f #f "9" #f #f []]))
+
+    (test-case "--long=value errors"
+      (check-function (apply parser (oath-getopt) oath-keys)
+        "--verbose=x" =>! getopt-error?
+        "--verbose=" =>! getopt-error?
+        "--unknown=x" =>! getopt-error?
+        "--=x" =>! getopt-error?
+        ;; the converter applies to the =value: string->number of "" is #f, not an error
+        "--counter=" => [#f #f #f "6" #f #f []]))
+
     (test-case "--long=value with a classic spec (no optional-value: used)"
       (check-function (apply parser (classic-getopt) classic-keys)
         "--counter=5" => [#f "5" "6" #f 0 []]
@@ -328,11 +366,190 @@
         "--window=w" "a" => [#f #f "6" "w" 0 ["a"]]
         "--verbose=yes" =>! getopt-error?))
 
+    (test-case "attached short values"
+      (check-function (apply parser (oath-getopt) oath-keys)
+        "-c5" => [#f 5 #f "6" #f #f []]
+        "-c" "5" => [#f 5 #f "6" #f #f []]
+        "-d8" "x" => [#f #f #f "8" #f #f ["x"]]
+        "-dabc" => [#f #f #f "abc" #f #f []]
+        ;; everything after the short name is the value, including - and =
+        "-d-1" => [#f #f #f "-1" #f #f []]
+        "-d=8" => [#f #f #f "=8" #f #f []]
+        ;; the next word is not consumed
+        "-d8" "9" => [#f #f #f "8" #f #f ["9"]]
+        "-v" "-c12" "-d" "7" => [#t 12 #f "7" #f #f []]))
+
+    (test-case "attached short values errors"
+      (check-function (apply parser (oath-getopt) oath-keys)
+        ;; no short-flag clustering
+        "-vc" =>! getopt-error?
+        "-vv" =>! getopt-error?
+        "-v5" =>! getopt-error?
+        ;; unknown short option with something attached
+        "-x5" =>! getopt-error?
+        ;; missing value still an error
+        "-c" =>! getopt-error?))
+
     (test-case "attached short values with a classic spec"
       (check-function (apply parser (classic-getopt) classic-keys)
         "-c5" => [#f "5" "6" #f 0 []]
         "-n42" "a" => [#f #f "6" #f 42 ["a"]]
         "-vc" =>! getopt-error?))
+
+    (test-case "optional-value long option"
+      (check-function (apply parser (oath-getopt) oath-keys)
+        "--totp" => [#f #f #f "6" "SHA1" #f []]
+        "--totp=SHA256" => [#f #f #f "6" "SHA256" #f []]
+        "--totp=" => [#f #f #f "6" "" #f []]
+        "--totp=a=b" => [#f #f #f "6" "a=b" #f []]
+        ;; the next word is never consumed
+        "--totp" "KEY" => [#f #f #f "6" "SHA1" #f ["KEY"]]
+        "--totp" "SHA256" => [#f #f #f "6" "SHA1" #f ["SHA256"]]
+        "--totp" "-v" => [#t #f #f "6" "SHA1" #f []]
+        "--totp" "--" "-v" => [#f #f #f "6" "SHA1" #f ["-v"]]
+        "-v" "--totp=SHA512" "-c" "3" "KEY" => [#t 3 #f "6" "SHA512" #f ["KEY"]]))
+
+    (test-case "optional-value option with a short name"
+      (check-function (apply parser (oath-getopt) oath-keys)
+        "-m" => [#f #f #f "6" #f "x" []]
+        "-mfoo" => [#f #f #f "6" #f "foo" []]
+        "--mode" => [#f #f #f "6" #f "x" []]
+        "--mode=bar" => [#f #f #f "6" #f "bar" []]
+        ;; the next word is never consumed
+        "-m" "foo" => [#f #f #f "6" #f "x" ["foo"]]
+        "--mode" "foo" => [#f #f #f "6" #f "x" ["foo"]]
+        "-m" "-c" "1" => [#f 1 #f "6" #f "x" []]))
+
+    (test-case "optional-value absent option gets its default"
+      (let (h (getopt-parse (oath-getopt) []))
+        (check (hash-key? h 'totp) => #f)
+        (check-function hash-get
+          h 'totp => #f
+          h 'mode => #f))
+      (def gopt (getopt (option 'totp #f "--totp" optional-value: "SHA1" default: "none")))
+      (check-function (parser gopt 'totp)
+        => ["none"]
+        "--totp" => ["SHA1"]
+        "--totp=SHA256" => ["SHA256"]))
+
+    (test-case "optional-value with a converter"
+      ;; optional-value: is post-parse, like default: the converter applies only to
+      ;; explicit values (--opt=X, -oX); the optional value is stored as given.
+      (def gopt (getopt (option 'totp #f "--totp" optional-value: 'sha1
+                                parse: string->symbol default: 'none)
+                        (option 'level "-l" "--level" optional-value: 1
+                                value: string->number)
+                        (option 'raw "-r" optional-value: "1"
+                                value: string->number)
+                        (rest-arguments 'args)))
+      (check-function (parser gopt 'totp 'level 'raw 'args)
+        ;; the default is not converted, as for other options
+        => ['none #f #f []]
+        "--totp" => ['sha1 #f #f []]
+        "--totp=SHA256" => ['SHA256 #f #f []]
+        "-l" => ['none 1 #f []]
+        "-l3" => ['none 3 #f []]
+        "--level=5" "7" => ['none 5 #f ["7"]]
+        "--level" "7" => ['none 1 #f ["7"]]
+        ;; a string optional value is not converted either
+        "-r" => ['none #f "1" []]
+        "-r2" => ['none #f 2 []]))
+
+    (test-case "optional-value may be any Scheme value"
+      (def gopt (getopt (option 'sym "-s" optional-value: 'x)
+                        (option 'num "-n" optional-value: 42)
+                        (option 'lst "-l" optional-value: '(a . b))
+                        (rest-arguments 'args)))
+      (check-function (parser gopt 'sym 'num 'lst 'args)
+        => [#f #f #f []]
+        "-s" "-n" "-l" "w" => ['x 42 '(a . b) ["w"]]
+        "-sy" "-n7" "-lz" => ["y" "7" "z" []]))
+
+    (test-case "optional-value may be the empty string"
+      (def gopt (getopt (option 'tag "-t" "--tag" optional-value: "")
+                        (rest-arguments 'args)))
+      (check-function (parser gopt 'tag 'args)
+        => [#f []]
+        "--tag" => ["" []]
+        "-t" => ["" []]
+        "-t" "x" => ["" ["x"]]
+        "-tx" => ["x" []]
+        "--tag=y" => ["y" []]))
+
+    (test-case "optional-value inside a command"
+      (def gopt (getopt (command 'gen
+                          (option 'totp #f "--totp" optional-value: "SHA1")
+                          (option 'counter "-c" "--counter")
+                          (argument 'key))))
+      (check-function (command-parser gopt 'totp 'counter 'key)
+        "gen" "K" => ['gen #f #f "K"]
+        "gen" "--totp" "K" => ['gen "SHA1" #f "K"]
+        "gen" "--totp=SHA256" "--counter=4" "K" => ['gen "SHA256" "4" "K"]
+        "gen" "-c7" "K" => ['gen #f "7" "K"]
+        "gen" "--totp" =>! getopt-error?))
+
+    (test-case "without optional-value: a value is required"
+      ;; Not passing optional-value: at all is distinct from passing optional-value: #f.
+      (def gopt (getopt (option 'w "-w" "--width")
+                        (option 'e "-e" optional-value: "")
+                        (rest-arguments 'args)))
+      (check-function (parser gopt 'w 'e 'args)
+        => [#f #f []]
+        ;; a value is required, and a separate word is consumed as usual
+        "-w" "3" "x" => ["3" #f ["x"]]
+        "--width" "3" => ["3" #f []]
+        "--width=4" => ["4" #f []]
+        "-w5" => ["5" #f []]
+        "-w" =>! getopt-error?
+        "--width" =>! getopt-error?
+        ;; "": an optional value; a separate word is not consumed
+        "-e" "3" => [#f "" ["3"]]
+        "-e" => [#f "" []]))
+
+    (test-case "optional-value: #f is a legitimate optional value"
+      (def gopt (getopt (option 'x "-x" "--x" optional-value: #f parse: string->symbol
+                                default: 'absent)
+                        (option 'y "-y" optional-value: #f)
+                        (rest-arguments 'args)))
+      (check-function (parser gopt 'x 'y 'args)
+        => ['absent #f []]
+        ;; bare: #f is stored, not parsed; the next word is not consumed
+        "--x" => [#f #f []]
+        "-x" "v" => [#f #f ["v"]]
+        ;; explicit values are parsed
+        "--x=v" => ['v #f []]
+        "-xw" => ['w #f []]
+        "-y" "z" => ['absent #f ["z"]]
+        "-yz" => ['absent "z" []])
+      ;; the key is present after a bare occurrence, even though the value is #f
+      (check (hash-key? (getopt-parse gopt ["-y"]) 'y) => #t)
+      (check (hash-get (getopt-parse gopt ["-y"]) 'y) => #f)
+      (check (hash-get (getopt-parse gopt ["--x"]) 'x) => #f))
+
+    (test-case "parse: on every kind of spec"
+      (def gopt (getopt (flag 'verbose "-v" parse: (lambda (x) (list 'seen x)))
+                        (option 'counter "-c" "--counter" parse: string->number)
+                        (option 'level #f "--level" optional-value: 'one parse: string->number)
+                        (argument 'a parse: string->symbol)
+                        (optional-argument 'b parse: string->number default: 0)
+                        (rest-arguments 'r parse: string->number)))
+      (check-function (parser gopt 'verbose 'counter 'level 'a 'b 'r)
+        "x" => [#f #f #f 'x 0 []]
+        ;; a flag's parse: receives #t
+        "-v" "x" => [['seen #t] #f #f 'x 0 []]
+        "-c" "5" "x" "2" => [#f 5 #f 'x 2 []]
+        "--counter=6" "x" => [#f 6 #f 'x 0 []]
+        "-c7" "x" => [#f 7 #f 'x 0 []]
+        ;; the optional value is not parsed
+        "--level" "x" => [#f #f 'one 'x 0 []]
+        "--level=9" "x" => [#f #f 9 'x 0 []]
+        "x" "2" "3" "4" => [#f #f #f 'x 2 [3 4]])
+      ;; the default is not parsed
+      (check (hash-get (getopt-parse (getopt (option 'n "-n" parse: string->number default: "d")) [])
+                       'n)
+             => "d")
+      ;; an absent flag without default: is not stored, even with parse:
+      (check (hash-key? (getopt-parse gopt ["x"]) 'verbose) => #f))
 
     (test-case "parse: default is identity; flags store #t"
       (def gopt (getopt (flag 'f "-f") (option 'o "-o") (argument 'a)))
@@ -382,4 +599,32 @@
 
     (test-case "shared scalar ids allow only one explicit default"
       (check (getopt (flag 'x "-a" default: #f) (flag 'x "-b" default: #t))
-             =>! contract-violation-error?))))
+             =>! contract-violation-error?))
+
+    (test-case "shared ids: oathtool-style mode and encoding"
+      (def gopt (getopt (flag 'mode "--hotp" parse: (lambda (_) 'hotp))
+                        (option 'mode #f "--totp" optional-value: '(totp . sha1)
+                                parse: (lambda (s) (cons 'totp (string->symbol s))))
+                        (flag 'encoding "-b" "--base32" parse: (lambda (_) 'base32))
+                        (flag 'encoding #f "--hex" parse: (lambda (_) 'hex))
+                        (rest-arguments 'args)))
+      (check-function (parser gopt 'mode 'encoding 'args)
+        => [#f #f []]
+        "--hotp" => ['hotp #f []]
+        "--totp" => [(cons 'totp 'sha1) #f []]
+        "--totp" "--hotp" => ['hotp #f []]
+        "--hotp" "--totp=SHA256" => [(cons 'totp 'SHA256) #f []]
+        "--hotp" "--totp" "KEY" => [(cons 'totp 'sha1) #f ["KEY"]]
+        "-b" => [#f 'base32 []]
+        "-b" "--hex" => [#f 'hex []]
+        "--hex" "-b" => [#f 'base32 []]
+        "--hex" "--base32" "--totp=SHA512" "K" => [(cons 'totp 'SHA512) 'base32 ["K"]])
+      ;; only flags without default: share 'encoding, so it is not stored when absent
+      (check (hash-key? (getopt-parse gopt []) 'encoding) => #f)
+      ;; each spec is listed in the help
+      (let (out (help-string gopt))
+        (check-function contains?
+          out "--hotp" => #t
+          out "--totp" => #t
+          out "--base32" => #t
+          out "--hex" => #t)))))

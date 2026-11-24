@@ -46,7 +46,7 @@
   final: #t)
 ;; A supplied default or optional value is wrapped so it can itself be #f.
 (defstruct (!opt !top) (short long parse default))
-(defstruct (!option !opt) ())
+(defstruct (!option !opt) (optional))
 (defstruct (!flag !opt) ()
   final: #t)
 (defstruct (!arg !top) (parse))
@@ -141,15 +141,20 @@
 
 ;; An option with a value: as the next word (-c 5, --counter 5), attached to
 ;; the long name after = (--counter=5) or to a two-character short name (-c5).
+;; If optional-value: is passed (any value, even #f or ""), a bare option yields
+;; that value as given, not parsed, like default:, and never consumes the next word;
+;; an explicit value is then only given as --opt=X or -oX, and is parsed.
 (def (make-option-spec id (short :? :string) (long :? :string := #f)
              help: (help :? :string := #f)
              parse: (parse absent-value)
              value: (value absent-value)
-             default: (default absent-value))
+             default: (default absent-value)
+             optional-value: (optional absent-value))
   => !option
   (make-!option id help short long
                 (spec-parser id parse value)
-                (value->option default absent-value)))
+                (value->option default absent-value)
+                (value->option optional absent-value)))
 
 ;; Same compiler workaround as flag above.
 (def option make-option-spec)
@@ -314,6 +319,10 @@
                  ((!flag? opt)
                   (store! opt ((!opt-parse opt) #t))
                   (lp rest*))
+                 ((!option-optional opt)  ; bare: the optional value, not parsed
+                  => (lambda (optional)
+                       (store! opt (Some-value optional))
+                       (lp rest*)))
                  (else
                   (match rest*
                     ([val . rest*]
