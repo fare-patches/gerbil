@@ -38,10 +38,16 @@
   (begin (def (id . formals) body ...)
          (register-entry-point id id: 'id options ...)))
 
+;; Name of the entry point to call when there are no arguments (with no arguments),
+;; and, with fallback: #t, for an unrecognized first argument (passing all arguments).
+;; The stock default diagnoses unknown commands and displays general help.
 (defmutable multicall-default 'help : :symbol)
 
-(def set-default-entry-point!
-  multicall-default-set!)
+(defmutable multicall-fallback? #f : :boolean)
+
+(def (set-default-entry-point! (name : :symbol) fallback: (fallback? : :boolean := #f))
+  (multicall-default-set! name)
+  (multicall-fallback?-set! fallback?))
 
 (def (raise-unknown-command command (program (current-program-string)))
   (raise (string-append program ": Unknown command " (as-string command) ".\n")))
@@ -84,14 +90,35 @@
      (parameterize ((current-program (cons (symbol->string name) (current-program))))
        (call-with-processed-command-line getopt args fun)))))
 
+;; Dispatch the command-line args to an entry point and return its result:
+;; no args calls multicall-default with no args; a first arg naming a registered
+;; entry point calls it with the rest. Applications opt into forwarding unknown commands.
+;; An unregistered multicall-default raises "Unknown command".
+(def (dispatch-entry-point . args)
+  (match args
+    ([] (call-entry-point/internal multicall-default []))
+    ([command . rest]
+     (cond
+      ((hash-key? entry-points (make-symbol command))
+       (call-entry-point/internal command rest))
+      ((eq? multicall-default 'help)
+       (display (current-program-string) (current-error-port))
+       (display ": " (current-error-port))
+       (write command (current-error-port))
+       (display " is not a recognized subcommand.\n" (current-error-port))
+       (call-entry-point/internal 'help [])
+       (values))
+      (multicall-fallback? (call-entry-point/internal multicall-default args))
+      (else (raise-unknown-command command))))))
+
+;; Dispatch as dispatch-entry-point, then print the result and exit accordingly
+;; (see begin-print-exit in :std/cli/print-exit).
 (def (call-entry-point . args)
-  (begin-print-exit
-   (match args
-     ([] (call-entry-point/internal multicall-default []))
-     ([command . args] (call-entry-point/internal command args)))))
+  (begin-print-exit (apply dispatch-entry-point args)))
 
 (defrules define-multicall-main ()
-  ((_ ctx) (with-id ctx (main) (define main call-entry-point)))
+  ((_ ctx) (with-id ((main ctx "main"))
+             (def main call-entry-point)))
   ((d) (d d)))
 
 ;; Call function with the arguments of command-line as processed by processor:

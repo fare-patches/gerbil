@@ -139,7 +139,6 @@ module.exports = {
                             "cli/",
                             "cli/shell",
                             "cli/print-exit",
-                            "cli/multicall",
                         ]
                       },
 
