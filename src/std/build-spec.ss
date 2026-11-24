@@ -211,6 +211,7 @@
     "crypto/pkey"
     "crypto/kdf"
     "crypto/hmac"
+    "crypto/otp/core"
 
     ,(cond-expand
       (darwin
