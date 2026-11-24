@@ -49,9 +49,9 @@
     (let (args (if (null? .args) ["."] .args))
       (exit
        (if (or .?isolate .?parallel .?cgroup)
-         (run-isolated-tests args .run .features .verbosity .?global-env
+         (run-isolated-tests args .?run .features .verbosity .?global-env
                              (or .?parallel 1) .?cgroup)
-         (run-tests args .run .features .verbosity))))))
+         (run-tests args .?run .features .verbosity))))))
 
 (def (parse-parallelism (value : :string))
   => :fixnum
