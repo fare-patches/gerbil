@@ -631,6 +631,10 @@
                             '(exit (if (eq? (hash-ref opts 'f) #f) 0 1)))
              => 0))
 
+    (test-case "reject non-procedure converters at construction"
+      (check (flag 'v "-v" parse: #f) =>! contract-violation-error?)
+      (check (argument 'a value: 42) =>! contract-violation-error?))
+
     (test-case "flag default:"
       (def gopt (getopt (flag 'quiet "-q" default: 'no)
                         (flag 'loud "-l")))
