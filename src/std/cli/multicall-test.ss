@@ -186,31 +186,45 @@
            (check (get-output-string err) => "prog: \"typo\" is not a recognized subcommand.\n")
            (check (output "-w" "3") => help)))))
 
-    (test-case "help follows a nested command path without invoking the command"
-      (register-entry-point (lambda args (error "unexpected invocation"))
-        name: "multicall-test-tree"
-        getopt: [(command 'group (command 'leaf help: "Leaf details"))])
-      (unwind-protect
-        (with-saved-multicall-settings
-         (def (output . topics)
-           (with-output-to-string (lambda () (apply dispatch-entry-point "help" topics))))
-         (let (leaf (output "multicall-test-tree" "group" "leaf"))
-           (check (string-contains leaf "prog multicall-test-tree group leaf: Leaf details") ? integer?)
-           (let (unknown (output "multicall-test-tree" "group" "leaf" "extra"))
-             (check (string-contains unknown "prog multicall-test-tree group leaf: Unknown command extra.\nprog multicall-test-tree group leaf: Leaf details") ? integer?))))
-        (hash-remove! entry-points 'multicall-test-tree)))
-
-    (test-case "help with a known topic, unknown topic raises"
+    (test-case "dispatch and help follow a registered parser tree"
       (with-saved-multicall-settings
-       (check (string-contains
-               (with-output-to-string
-                 (lambda () (dispatch-entry-point "help" "multicall-test-greet")))
-               "multicall-test-greet")
-              ? fixnum?)
-       (with-output-to-string
-         (lambda ()
-           (check (dispatch-entry-point "help" "multicall-test-no-such-command")
-                  =>! unknown-command-error?)))))
+       (def tree (getopt (command 'group
+                           (command 'leaf (option 'count "-n" parse: string->number)
+                                          (argument 'x)))))
+       (register-entry-point
+        (lambda (path opts) (list path (hash-ref opts 'x) (hash-ref opts 'count)))
+        name: "tree" getopt: tree)
+       (check (dispatch-entry-point "tree" "group" "leaf" "-n3" "value")
+              => '((group leaf) "value" 3))
+       (check (string-contains (with-output-to-string (lambda () (help "version")))
+                               "Usage: prog version") ? integer?)
+       (let (direct (with-output-to-string (lambda () (help "tree" "group" "leaf"))))
+         (check (string-contains direct "Usage: prog tree group leaf") ? integer?)
+         (check (with-output-to-string
+                  (lambda () (dispatch-entry-point "help" "tree" "group" "leaf")))
+                => direct))))
+
+    (test-case "direct help reports unknown topics from the current program"
+      (with-saved-multicall-settings
+       (let (err (open-output-string))
+         (parameterize ((current-error-port err))
+           (check (call/values (lambda () (help "missing")) list) => []))
+         (check (get-output-string err) => "prog: Unknown command missing.\n"))))
+
+    (test-case "main reports unknown help topics on stderr at every depth"
+      (def (run topics stream)
+        (gxi-exit-output
+         (lambda (file)
+           ['(import :std/cli/multicall)
+            '(define-multicall-main)
+            `(parameterize ((current-program '("demo"))
+                            (,stream (open-output-file ,file)))
+               (main "help" ,@topics))])))
+      (check-function run
+        '("bad") 'current-output-port => (cons 1 "")
+        '("bad") 'current-error-port => (cons 1 "demo: Unknown command bad.\n")
+        '("version" "bad") 'current-output-port => (cons 1 "")
+        '("version" "bad") 'current-error-port => (cons 1 "demo version: Unknown command bad.\n")))
 
     ;; Without getopt:, the function gets the arguments as given, options included.
     (test-case "entry point without getopt: gets its arguments unparsed"

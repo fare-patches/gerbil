@@ -4,7 +4,10 @@ The `:std/cli/multicall` module builds a single binary whose first command-line
 argument selects one of several registered _entry points_ (subcommands),
 like the `gerbil` binary itself, `git`, or `busybox`.
 An entry point can supply a help string and a `:std/cli/getopt` specification
-for parsing its arguments and displaying help.
+for parsing its arguments and displaying help. With a fixed command tree, an
+application can use getopt directly. Multicall adds a registry so that each
+module can contribute its command and handler when imported. The executable
+selects the modules and can configure a default entry point.
 
 ```scheme
 (import :std/cli/multicall)
@@ -100,7 +103,10 @@ Registers `function` as the entry point named `(make-symbol name)`, or if no
 `getopt` is any spec accepted by `->getopt-spec`: a list of getopt specifiers,
 a `getopt` parser, a natural number, or `#f` (the default) to pass the command
 line to `function` unparsed. It parses the command line for dispatch and
-describes the entry point in `help`.
+describes the entry point in `help`. For a parser with subcommands, the
+handler receives two arguments: the selected path (a list of symbols relative
+to the entry point) and the parsed options hash, including positional arguments
+by id. For example, `tree leaf x` gives the `tree` handler the path `(leaf)`.
 
 ### multicall-default and set-default-entry-point!
 
@@ -165,7 +171,8 @@ separated by spaces, for usage and help messages.
 ```
 
 Parses the list of strings `command-line` with `processor` and calls
-`function` with the corresponding arguments, as `call-with-getopt-parse` does
+`function` with the selected path and parsed hash for a command tree, or with the
+corresponding positional and keyword arguments for a leaf
 (see [getopt](getopt.md)). `processor` is a getopt parser, or a spec for
 `->getopt-spec` to make one from, except that `#f` calls `function` with
 `command-line` itself, unparsed, options included.
@@ -178,7 +185,7 @@ Parses the list of strings `command-line` with `processor` and calls
 
 The list of getopt specifiers for the `getopt:` of an entry point, to
 `(apply getopt ...)` or `(apply command ...)`: a list is flattened; a getopt
-parser without commands gives its specifiers (see `getopt->specifiers`); a
+parser gives its specifiers (see `getopt->specifiers`); a
 natural number `n` gives `n` positional `argument`s `arg1` ... `argn`; `#f`
 gives a `rest-arguments` named `rest`, which describes the unparsed arguments
 in `help`. Anything else is an error.
@@ -193,6 +200,8 @@ in `help`. Anything else is an error.
 
 Predefined entry points: `help` prints the build manifest and help for all
 entry points or the deepest recognized command in the topic path. An unknown
-first topic raises an "Unknown command" error; `meta` prints the space-separated names of all
+topic at any depth prints the recognized path and first unknown token on
+stderr and returns zero values (exit 1 through `main`). A direct call to
+`help` uses the current program as its root. `meta` prints the space-separated names of all
 entry points, for shell completion; `version` prints the build manifest head,
 all layers (`-a`), or the given layer (`-l`).
