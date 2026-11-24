@@ -1,7 +1,8 @@
 ;;; -*- Gerbil -*-
 ;;; © vyzo
 ;;; time related OS provided functionality
-(import :std/ffi
+(import :std/error
+        :std/ffi
         ./error)
 (export #t)
 
@@ -22,6 +23,26 @@
 
 (def-C-struct timespec)
 (def-C-struct timeval)
+
+;; Construct a normalized timespec, rejecting values the platform cannot represent.
+(def (seconds+nseconds->timespec (sec : :integer) (nsec : :integer))
+  => timespec
+  (unless (<= 0 nsec 999999999)
+    (raise-bad-argument seconds+nseconds->timespec
+                        "nanoseconds between 0 and 999999999" nanoseconds: nsec))
+  (unless (<= -9223372036854775808 sec 9223372036854775807)
+    (raise-bad-argument seconds+nseconds->timespec "seconds representable as int64" seconds: sec))
+  (let (ts (make-timespec))
+    (unless (___timespec-fill! (raw-c-struct-body ts) sec nsec)
+      (raise-bad-argument seconds+nseconds->timespec "seconds representable as time_t" seconds: sec))
+    ts))
+
+(def-C-lambda (___timespec-fill! (ts : scheme-object) (sec : int64) (nsec : long))
+  => bool
+  "struct timespec *ts = ___U8VECTOR_AS(struct timespec*,___arg1);
+   ts->tv_sec = (time_t)___arg2;
+   ts->tv_nsec = ___arg3;
+   ___result = ((___arg2 >= 0 || (time_t)-1 < (time_t)0) && (int64_t)ts->tv_sec == ___arg2);")
 
 (def (timespec-tv_sec (ts : timespec))
   => :integer

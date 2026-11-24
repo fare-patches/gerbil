@@ -23,6 +23,10 @@
   acyclic: #t
   final: #t)
 
+(def (seconds+nseconds->precise-time (sec : :integer) (nsec : :integer))
+  => PreciseTime
+  (PreciseTime (seconds+nseconds->timespec sec nsec)))
+
 (def (current-time-coarse) => CoarseTime
   (CoarseTime (current-system-time-coarse)))
 
