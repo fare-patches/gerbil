@@ -28,7 +28,8 @@
         rest-arguments
         call-with-getopt
         getopt-parse->function-arguments
-        call-with-getopt-parse)
+        call-with-getopt-parse
+        getopt->specifiers)
 
 (def current-getopt-parser
   (make-parameter #f))
@@ -99,6 +100,11 @@
        (let (opts (reverse opts))
          (check-option-specs! opts)
          (make-!getopt opts (reverse cmds) (reverse args) help))))))
+
+;; Return the options followed by the commands or positional arguments.
+(def (getopt->specifiers gopt)
+  (with ((!getopt opts cmds args) gopt)
+    (append opts cmds args)))
 
 ;; Option spellings are unique within each command. Scalar aliases may share
 ;; one default. A list-valued id can only be shared by other multioptions.
