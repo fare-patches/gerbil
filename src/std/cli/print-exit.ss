@@ -5,15 +5,15 @@
 
 (import
   :std/error
-  :std/list/list
-  :std/misc/ports)
+  :std/list/list)
 
 (def value-printer (make-parameter write))
 
 (def (print-values . vs)
   (unless (equal? vs [(void)])
     (for-each (value-printer) vs))
-  (ignore-errors (force-current-outputs))
+  (ignore-errors (force-output (current-output-port)))
+  (ignore-errors (force-output (current-error-port)))
   (void))
 
 ;; Print resulting values, and exit with an according value.
@@ -29,11 +29,9 @@
 
 ;; Execute a function, print the result (if applicable), and exit with an according value.
 ;;
-;; (void) prints nothing and counts as false. #f is printed and counts as false.
-;; (values) prints nothing and counts as true. All other values are printed and count as true.
-;; If you want to print #f and return true, then print it then return (values).
-;;
-;; True is returned as exit code 0, false as exit code 1.
+;; (void) is silent success (0), and zero values are silent failure (1).
+;; A single #f is printed and exits 1. Other results are printed and exit 0.
+;; To print #f and succeed, print it explicitly and return (void).
 ;; Any uncaught exception will be printed then trigger an exit with code 2.
 (def (call-print-exit fun)
   (with-exit-on-error (call/values fun print-exit)))

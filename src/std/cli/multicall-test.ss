@@ -255,4 +255,37 @@
          (check (caddr (dispatch-entry-point "foo"))
                 => ["multicall-test-search" "sub" "prog"])
          (check (current-program-string (caddr (dispatch-entry-point "foo")))
-                => "prog sub multicall-test-search"))))))
+                => "prog sub multicall-test-search"))))
+
+    ;; print-exit (multicall's main ends in it) and exit-with-error have no test files
+    ;; of their own. Gambit's exit only flushes its console ports: each exit path must
+    ;; flush a parameterized file port before exiting.
+    (test-case "print-exit flushes current-output-port before exiting"
+      (def (print-exit-output . vs)
+        (gxi-exit-output
+         (lambda (file)
+           ['(import :std/cli/print-exit)
+            `(def port (open-output-file ,file))
+            `(parameterize ((current-output-port port))
+               (print-exit ,@vs))])))
+      (check-function print-exit-output
+        42 => (cons 0 "42")
+        "x" => (cons 0 "\"x\"")
+        #f => (cons 1 "#f")
+        => (cons 1 "")))
+
+    (test-case "exit-with-error flushes the current outputs before exiting"
+      (def (exit-with-error-output param)
+        (gxi-exit-output
+         (lambda (file)
+           ['(import :std/error)
+            `(def port (open-output-file ,file))
+            `(parameterize ((,param port))
+               (display "partial" (current-output-port))
+               (exit-with-error (with-catch (lambda (e) e) (lambda () (error "boom")))))])))
+      ;; Output pending on current-output-port when the error happened.
+      (check (exit-with-error-output 'current-output-port) => (cons 2 "partial"))
+      ;; The error message on current-error-port.
+      (let (result (exit-with-error-output 'current-error-port))
+        (check (car result) => 2)
+        (check (and (cdr result) (string-contains (cdr result) "boom")) ? fixnum?)))))

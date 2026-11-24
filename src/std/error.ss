@@ -376,6 +376,7 @@
 (def (exit-with-error e)
   (def port (current-error-port))
   (defrules ignore-errors () ((_ body ...) (with-catch void (lambda () body ...))))
+  (ignore-errors (force-output (current-output-port)))
   (ignore-errors (force-output port))
   (ignore-errors (display-build-manifest (build-manifest) port))
   (ignore-errors (newline port))
