@@ -661,4 +661,10 @@
           out "--hotp" => #t
           out "--totp" => #t
           out "--base32" => #t
-          out "--hex" => #t)))))
+          out "--hex" => #t)))
+
+    (test-case "getopt->specifiers"
+      (def specs [(flag 'v "-v") (argument 'x)])
+      (check (getopt->specifiers (apply getopt specs)) => specs)
+      (let (go (command 'go))
+        (check (getopt->specifiers (getopt go)) => [go])))))

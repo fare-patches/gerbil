@@ -52,3 +52,13 @@ A grammar with a single command level keeps returning a symbol. If any command h
 ### call-with-getopt-dispatch
 
 `(call-with-getopt-dispatch table argv program: name spec ...)` parses a grammar containing commands and invokes the selected leaf handler. It accepts the same `help:` and `exit-on-error:` keywords as `call-with-getopt`. With `exit-on-error: #t`, a parse or dispatch error prints the diagnostic and the selected command’s help to stderr and exits with status 1. With `exit-on-error: #f`, the caller receives the exception. Exceptions raised by the leaf handler propagate to its caller in either mode.
+
+### getopt->specifiers
+
+```text
+(getopt->specifiers getopt) => list
+```
+
+Returns the options followed by the commands or positional arguments, preserving
+the order within each group. Multicall uses these specifiers to include an
+entry's parser tree in its help display.
