@@ -214,6 +214,7 @@
     "crypto/otp/core"
     "crypto/otp/keyring"
     "crypto/otp/cli"
+    "crypto/otp"
 
     ,(cond-expand
       (darwin
