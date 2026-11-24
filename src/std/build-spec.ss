@@ -213,6 +213,7 @@
     "crypto/hmac"
     "crypto/otp/core"
     "crypto/otp/keyring"
+    "crypto/otp/cli"
 
     ,(cond-expand
       (darwin
