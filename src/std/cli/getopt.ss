@@ -213,19 +213,8 @@
                      value: (value absent-value))
   (make-!rest id help (spec-parser id parse value)))
 
-;; Only leaves have an arrow. Select the table shape during expansion.
-(defrules defgetopt-dispatch (=>)
-  ((_ name (key => handler) ...)
-   (defcommand-table name (key => handler) ...))
-  ((_ name (key target ...) ...)
-   (defmulti-command-table name (key target ...) ...)))
-
 ;; Delay lookup so a handler can be defined after the dispatch table.
-(defrules defcommand-table (=>)
-  ((_ name (key => handler) ...)
-   (def name (delay-atomic (hash-eq (key handler) ...)))))
-
-(defrule (defmulti-command-table name (key target ...) ...)
+(defrule (defgetopt-dispatch name (key target ...) ...)
   (def name (delay-atomic (hash-eq (key (dispatch-target target ...)) ...))))
 
 (defrules dispatch-target (=>)
