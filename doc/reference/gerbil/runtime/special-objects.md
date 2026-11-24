@@ -5,14 +5,33 @@
 (def absent-obj)
 ```
 
-Special object used by Gambit primitives to signal absent optional values.
+Gambit primitives use `#!absent` to signal an omitted optional argument.
+Take care when using it as a parameter default in Gerbil. For example:
+
+```scheme
+(def (received x) (eq? x absent-obj))
+(def (forward (x absent-obj)) (received x))
+```
+
+When loaded from source, `(forward)` raises a wrong-arity error: the
+interpreter treats the forwarded argument as missing. Compiling the same
+module with `gxc` gives `#t`. Even a procedure that only compares its
+optional parameter with `eq?` can encounter this problem. Use
+`absent-value` for an omission marker in Gerbil code.
 
 ## absent-value
 ```
 (def absent-value)
 ```
 
-Special object used to denote missing hash values.
+Gerbil uses this sentinel for missing hash entries and omitted keyword
+arguments. It is an ordinary value that can be passed between procedures
+in both interpreted and compiled code. Use it when `#f` is a valid
+argument and omission has a different meaning. Passing `absent-value`
+explicitly to a keyword parameter selects its default.
+
+See [`value->option`](https://git.cons.io/mighty-gerbils/gerbil/src/branch/v0.19-staging/src/std/struct/option.md)
+for an example that distinguishes omission from an explicit `#f`.
 
 ## true
 ``` scheme
