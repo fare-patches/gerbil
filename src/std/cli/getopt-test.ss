@@ -148,9 +148,9 @@
                          help: "Choose the name" default: "dev"))
          "demo" out)
         (let (usage (get-output-string out))
-          (check (string-contains usage "  -d\n    Enable debugging\n") ? integer?)
+          (check (string-contains usage " -d  Enable debugging\n") ? integer?)
           (check (string-contains usage
-                   "  --a-long-option-that-will-not-fit-in-one-column <name>\n    Choose the name [default: dev]\n")
+                   "  --a-long-option-that-will-not-fit-in-one-column <name>  Choose the name [default: \"dev\"]\n")
                  ? integer?))))
 
     (test-case "help is recognized only in command or option position"
@@ -231,6 +231,8 @@
 (def getopt-test
   (test-suite "test :std/cli/getopt"
 
+    ;;; 4. Backward compatibility: these pass with the pre-extension getopt.
+
     (test-case "flags and options with separate values"
       (check-function (apply parser (classic-getopt) classic-keys)
         => [#f #f "6" #f 0 []]
@@ -249,7 +251,7 @@
     (test-case "defaults"
       (let (h (getopt-parse (classic-getopt) []))
         (check-function hash-key?
-          ;; an option without a default or init has no entry
+          ;; an option without a default has no entry
           h 'counter => #f
           h 'digits => #t
           ;; an absent flag is not in the table
@@ -358,6 +360,8 @@
         "-c" "v" => ["v" #f #f]
         "-xy=1" "z" => [#f #f "z"]))
 
+    ;;; 1. --long=value
+
     (test-case "--long=value for options"
       (check-function (apply parser (oath-getopt) oath-keys)
         "--counter=5" => [#f 5 #f "6" #f #f []]
@@ -392,6 +396,8 @@
         "--window=w" "a" => [#f #f "6" "w" 0 ["a"]]
         "--verbose=yes" =>! getopt-error?))
 
+    ;;; 2. Attached short values
+
     (test-case "attached short values"
       (check-function (apply parser (oath-getopt) oath-keys)
         "-c5" => [#f 5 #f "6" #f #f []]
@@ -421,6 +427,8 @@
         "-c5" => [#f "5" "6" #f 0 []]
         "-n42" "a" => [#f #f "6" #f 42 ["a"]]
         "-vc" =>! getopt-error?))
+
+    ;;; 3. Optional-value options
 
     (test-case "optional-value long option"
       (check-function (apply parser (oath-getopt) oath-keys)
@@ -552,6 +560,8 @@
       (check (hash-get (getopt-parse gopt ["-y"]) 'y) => #f)
       (check (hash-get (getopt-parse gopt ["--x"]) 'x) => #f))
 
+    ;;; 6. parse: keyword
+
     (test-case "parse: on every kind of spec"
       (def gopt (getopt (flag 'verbose "-v" parse: (lambda (x) (list 'seen x)))
                         (option 'counter "-c" "--counter" parse: string->number)
@@ -681,12 +691,86 @@
           out "--base32" => #t
           out "--hex" => #t)))
 
+    (test-case "help shows optional values"
+      (let (out (help-string (oath-getopt)))
+        (check-function contains?
+          out "--totp" => #t
+          out "--mode" => #t
+          out "[=" => #t))
+      (let (out (help-string (getopt (option 'totp #f "--totp" optional-value: "SHA1"))))
+        (check-function contains?
+          out "--totp" => #t
+          out "[=" => #t))
+      ;; a normal option is not shown with an optional value
+      (let (out (help-string (getopt (option 'counter "-c" "--counter")
+                                     (option 'window #f "--window"))))
+        (check-function contains?
+          out "--counter" => #t
+          out "--window" => #t
+          out "[=" => #f)))
+
+    ;; Each section aligns its help texts 2 columns after its own widest label.
+    (test-case "help aligns commands to the widest command name"
+      (let (out (help-string (getopt (command 'run help: "Run it")
+                                     (command 'restart help: "Restart it")
+                                     (command 'qr help: "Show a QR code"))))
+        (check-function contains?
+          out "\n run      Run it\n" => #t
+          out "\n restart  Restart it\n" => #t
+          out "\n qr       Show a QR code\n" => #t)))
+
+    (test-case "help aligns options and commands independently"
+      (let (out (help-string (getopt (flag 'verbose "-v" "--verbose" help: "Verbose")
+                                     (option 'count "-n" "--count" help: "Count" default: 1)
+                                     (command 'go help: "Go"))))
+        (check-function contains?
+          out "\n -v --verbose        Verbose\n" => #t
+          out "\n -n --count <count>  Count [default: 1]\n" => #t
+          out "\n go  Go\n" => #t)))
+
+    ;; A label longer than the 30-column cap gets a 2-space gap, and does not
+    ;; widen the column of the others.
+    (test-case "help gives overlong labels a 2-space gap"
+      (let (out (help-string (getopt (flag 'quiet "-q" help: "Quiet")
+                                     (flag 'long #f "--a-very-long-option-name-indeed"
+                                           help: "Long"))))
+        (check-function contains?
+          out "\n -q  Quiet\n" => #t
+          out "\n  --a-very-long-option-name-indeed  Long\n" => #t)))
+
+    (test-case "help aligns arguments to the widest argument name"
+      (let (out (help-string (getopt (argument 'in help: "Input")
+                                     (optional-argument 'out help: "Output" default: "OUT")
+                                     (rest-arguments 'more help: "More"))))
+        (check-function contains?
+          out "\n in    Input\n" => #t
+          out "\n out   Output [default: \"OUT\"]\n" => #t
+          out "\n more  More\n" => #t)))
+
+    (test-case "help with string ids"
+      (let (out (help-string (getopt (argument "in" help: "Input")
+                                     (rest-arguments "rest" help: "More"))))
+        (check-function contains?
+          out "\n in    Input\n" => #t
+          out "\n rest  More\n" => #t)))
+
     (test-case "getopt->specifiers"
       (def specs [(flag 'v "-v") (argument 'x)])
       (check (getopt->specifiers (apply getopt specs)) => specs)
       (let (go (command 'go))
         (check (getopt->specifiers (getopt go)) => [go])))
 
+    (test-case "help usage lines separate their words"
+      (check-function contains?
+        (help-string (getopt (flag 'v "-v") (argument 'in)))
+        "Usage: prog [option ...] <in>\n" => #t
+        (help-string (getopt (flag 'v "-v") (command 'go)))
+        "Usage: prog [option ...] <command> command-arg ...\n" => #t))
+
+    ;;; 6. Exit on error
+
+    ;; The help goes to current-error-port, then the process exits with status 2.
+    ;; Gambit's exit only flushes its console ports: a file port must be flushed first.
     (test-case "exit-on-error flushes the help before exiting"
       (let (result (gxi-exit-output
                     (lambda (file)

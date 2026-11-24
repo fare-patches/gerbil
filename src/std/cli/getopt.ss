@@ -486,62 +486,86 @@
             (display-option-help opts port))
           (newline)
           (displayln "Commands:")
-          (for-each (match <>
-                      ((!command key help)
-                       (displayln " " key " " (tabs key) " " (or help "?"))))
-                    cmds))))))
+          (display-help-rows (map (match <>
+                                    ((!command key help)
+                                     [(as-string key) (or help "?")]))
+                                  cmds)
+                             port))))))
 
 (def (display-args args port)
   (parameterize ((current-output-port port))
     (for-each (match <>
                 ((!reqarg key)
-                 (display* " <" key ">"))
+                 (display* " <" (as-string key) ">"))
                 ((!optarg key)
-                 (display* " [<" key ">]"))
+                 (display* " [<" (as-string key) ">]"))
                 ((!rest key)
-                 (display* " <" key "> ...")))
+                 (display* " <" (as-string key) "> ...")))
               args)
     (newline)))
 
+;; Help texts start 2 columns after the widest label of their section, among
+;; the labels of at most help-label-cap characters; longer labels get a 2-space gap.
+(def help-label-cap 30)
+
+;; Display each row [label help-part ...] as " label", padding, then the help
+;; parts, aligned as above.
+(def (display-help-rows rows port)
+  (let (width (foldl (lambda (row width)
+                       (let (n (string-length (car row)))
+                         (if (fx<= n help-label-cap) (fxmax n width) width)))
+                     0 rows))
+    (parameterize ((current-output-port port))
+      (for-each (lambda (row)
+                  (let (label (car row))
+                    (apply displayln " " label
+                           (make-string (fx+ 2 (fxmax 0 (fx- width (string-length label))))
+                                        #\space)
+                           (cdr row))))
+                rows))))
+
+;; " [name: value]" for the maybe-value maybe of a keyword, as displayed;
+;; "" if the keyword was not passed (maybe is #f).
+(def (maybe-help-part name (maybe :? Some))
+  (if maybe
+    (string-append " [" name ": " (object->string (Some-value maybe)) "]")
+    ""))
+
+;; The label of an option or flag: its names, then its value, if any.
+(def (option-label short long value)
+  (string-append (or short "") (if long " " "") (or long "") value))
+
 (def (display-option-help opts port)
-  (parameterize ((current-output-port port))
-    (for-each
-     (lambda (opt)
-       (with ((!opt key help short long) opt)
-         (display "  ")
-         (when short (display short))
-         (when (and short long) (display " "))
-         (when long (display long))
-         (when (!option? opt) (display* " <" key ">"))
-         (newline)
-         (display* "    " (or help "?"))
-         (when (!opt-default opt) (display* " [default: " (Some-value (!opt-default opt)) "]"))
-         (newline)))
-     opts)))
+  (display-help-rows
+   (map (match <>
+          ((!option id help short long _ default optional)
+           ;; an option with an optional value is shown as --long[=<id>]
+           [(option-label short long
+                          (if optional
+                            (string-append "[=<" (as-string id) ">]")
+                            (string-append " <" (as-string id) ">")))
+            (or help "?")
+            (maybe-help-part "if no value" optional)
+            (maybe-help-part "default" default)])
+          ((!flag _ help short long _ default)
+           [(option-label short long "") (or help "?")
+            (maybe-help-part "default" default)]))
+        opts)
+   port))
 
 (def (display-arg-help args port)
-  (parameterize ((current-output-port port))
-    (for-each (match <>
-                ((!reqarg key help)
-                 (displayln " " key " " (tabs key) " " (or help "?")))
-                ((!optarg key help _ default)
-                 (displayln " " key " " (tabs key) " " (or help "?")
-                            " [default: " default "]"))
-                ((!rest key help)
-                 (displayln " " key " " (tabs key) " " (or help "?"))))
-              args)))
-
-(def (tabs . strs)
-  (def tablen 31)
-  (def (string-e str)
-    (if (symbol? str)
-      (symbol->string str)
-      str))
-
-  (let* (len (foldl + 0 (map string-length (map string-e strs))))
-    (if (fx< len tablen)
-      (make-string (fx- tablen len) #\space)
-      "")))
+  (display-help-rows
+   (map (match <>
+          ((!reqarg key help)
+           [(as-string key) (or help "?")])
+          ((!optarg key help _ default)
+           (if default
+             [(as-string key) (or help "?") " [default: " (object->string default) "]"]
+             [(as-string key) (or help "?")]))
+          ((!rest key help)
+           [(as-string key) (or help "?")]))
+        args)
+   port))
 
 (def help-flag (flag 'help "-h" "--help" help: "display help"))
 (def help-command
