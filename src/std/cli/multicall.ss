@@ -26,8 +26,6 @@
     (apply command name help: (entry-point-help e)
            (->getopt-spec (entry-point-getopt e)))))
 
-;; TODO: allow registering a getopt: structure and/or other command information,
-;; so we can show detailed help and automatically parse arguments?
 ;; TODO: also allow a preprocess: function to further process the result of getopt (if specified)
 ;; or the raw arguments (if no getopt specified).
 (def (register-entry-point function
@@ -36,7 +34,6 @@
   (let (name (make-symbol (or name (string-filter easy-shell-character? (as-string id)))))
     (hash-put! entry-points name (make-entry-point name function help getopt))))
 
-;; TODO: syntax to specify not just help, but getopt, etc.
 (defrule (define-entry-point (id . formals) (options ...) body ...)
   (begin (def (id . formals) body ...)
          (register-entry-point id id: 'id options ...)))
@@ -90,16 +87,28 @@
   ((_ ctx) (with-id ctx (main) (define main call-entry-point)))
   ((d) (d d)))
 
+;; Call function with the arguments of command-line as processed by processor:
+;; a getopt parser, or a getopt: spec for ->getopt-spec, except that #f passes
+;; command-line through unparsed, options included.
 (def (call-with-processed-command-line processor command-line function)
   (cond
    ((getopt? processor)
     (call-with-getopt-parse processor (getopt-parse processor command-line) function))
-   ((list? processor)
-    (call-with-processed-command-line (apply getopt processor) command-line function))))
+   ((not processor)
+    (apply function command-line))
+   (else
+    (call-with-processed-command-line (apply getopt (->getopt-spec processor))
+                                      command-line function))))
 
+;; For help, #f describes the raw arguments as one rest argument.
+;; The list of getopt specifiers for the getopt: spec of an entry point: a list,
+;; flattened; a getopt parser without commands, its specifiers; a natural n, the
+;; positional arguments arg1 ... argn; #f, rest arguments named rest.
 (def (->getopt-spec spec)
   (cond
    ((list? spec) (flatten spec))
-   ((fixnum? spec) (for/collect ((i (in-range 1 (1+ spec)))) (argument (format "arg%d" i))))
-   ((not spec) (rest-arguments "rest"))
-   (else (error "Bad getopt spec"))))
+   ((getopt? spec) (getopt->specifiers spec))
+   ((and (fixnum? spec) (fx>= spec 0))
+    (for/collect ((i (in-range 1 (1+ spec)))) (argument (make-symbol "arg" i))))
+   ((not spec) [(rest-arguments 'rest)])
+   (else (error "Bad getopt spec: expected a list, a getopt parser, a natural or #f" spec))))
