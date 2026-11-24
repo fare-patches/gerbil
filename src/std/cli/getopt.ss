@@ -16,6 +16,7 @@
         getopt-parse
         getopt-display-help
         getopt-display-help-topic
+        call-with-getopt-topic
         option
         multioption
         flag
@@ -421,7 +422,10 @@
     (display-help-getopt (!command-parser obj) (command-program (!top-key obj) program) port))
    ((getopt-error? obj)
     (parameterize ((current-output-port port))
-      (displayln "Error: " (error-message obj))
+      (displayln (if (getopt-error-e obj)
+                   (foldl command-program program (reverse (cdr (getopt-error-e obj))))
+                   program)
+                 ": Error: " (error-message obj))
       (unless (null? (error-irritants obj))
         (display "Irritants:")
         (for-each (lambda(x) (display* " " x))
@@ -438,14 +442,22 @@
   => :string
   (string-append program " " (symbol->string key)))
 
-(def (getopt-display-help-topic gopt topic program (port (current-output-port)))
+(def (call-with-getopt-topic gopt topic program proc)
   (let loop ((node gopt) (program program)
              (path (cond ((symbol? topic) [topic]) ((list? topic) topic) (else []))))
     (cond
      ((and (pair? path) (find-command (!getopt-cmds node) (symbol->string (car path))))
       => (lambda (cmd)
            (loop (!command-parser cmd) (command-program (!top-key cmd) program) (cdr path))))
-     (else (display-help-getopt node program port)))))
+     (else (proc node program path)))))
+
+(def (getopt-display-help-topic gopt topic program (port (current-output-port)))
+  (call-with-getopt-topic gopt topic program
+    (lambda (node program remaining)
+      (when (pair? remaining)
+        (display (string-append program ": Unknown command "
+                                (symbol->string (car remaining)) ".\n") port))
+      (display-help-getopt node program port))))
 
 (def (display-help-getopt obj program port)
   (parameterize ((current-output-port port))
@@ -576,7 +588,8 @@
              ((not exit?) (raise e))
              ((getopt-error? e)
               (getopt-display-help e program (current-error-port))
-              (exit 1))
+              (ignore-errors (force-output (current-error-port)))
+              (exit 2))
              (else (exit-with-error e))))))
        proc))))
 

@@ -1,7 +1,8 @@
 ;;; :std/cli/getopt tests
 (import :std/test
         (only-in :std/error contract-violation-error?)
-        ./getopt)
+        ./getopt
+        "./exit-test-support")
 (export getopt-test nested-getopt-test)
 
 (def inspect-cmd
@@ -631,6 +632,23 @@
       (check (getopt (flag 'verbose "-v") (option 'value "-v")) =>! contract-violation-error?)
       (check (getopt (flag 'v "-v" "--verbose") (flag 'v "--verbose")) =>! contract-violation-error?))
 
+    (test-case "topic callback receives the matched parser, program and remaining path"
+      (def x (argument 'x))
+      (def b (command 'b x))
+      (def g (getopt (command 'a b)))
+      (def (inspect node program remaining)
+        (list (getopt->specifiers node) program remaining))
+      (check-function call-with-getopt-topic
+        g '(a b) "p" inspect => (list [x] "p a b" [])
+        g '(a x y) "p" inspect => (list [b] "p a" '(x y))))
+
+    (test-case "unknown help topic writes diagnostic and usage to the requested port"
+      (let ((out (open-output-string)) (err (open-output-string)))
+        (parameterize ((current-error-port err))
+          (getopt-display-help-topic (getopt (command 'client)) '(client typo) "demo" out))
+        (check (contains? (get-output-string out) "demo client: Unknown command typo.\nUsage: demo client") => #t)
+        (check (get-output-string err) => "")))
+
     (test-case "shared scalar ids allow only one explicit default"
       (check (getopt (flag 'x "-a" default: #f) (flag 'x "-b" default: #t))
              =>! contract-violation-error?))
@@ -667,4 +685,16 @@
       (def specs [(flag 'v "-v") (argument 'x)])
       (check (getopt->specifiers (apply getopt specs)) => specs)
       (let (go (command 'go))
-        (check (getopt->specifiers (getopt go)) => [go])))))
+        (check (getopt->specifiers (getopt go)) => [go])))
+
+    (test-case "exit-on-error flushes the help before exiting"
+      (let (result (gxi-exit-output
+                    (lambda (file)
+                      ['(import :std/cli/getopt)
+                       `(def port (open-output-file ,file))
+                       `(parameterize ((current-error-port port))
+                          (call-with-getopt void '("--no-such-option")
+                                            program: "prog"
+                                            (flag 'verbose "-v")))])))
+        (check (car result) => 2)
+        (check (and (cdr result) (string-contains (cdr result) "Unknown option")) ? fixnum?)))))
