@@ -37,9 +37,9 @@
   (let-hash opt
     (cond
      ((null? .args)
-      (run-tests ["."] .run .features .verbosity))
+      (run-tests ["."] .?run .features .verbosity))
      (else
-      (run-tests .args .run .features .verbosity)))))
+      (run-tests .args .?run .features .verbosity)))))
 
 (def (run-tests args filter features verbosity)
   (def import-errors [])

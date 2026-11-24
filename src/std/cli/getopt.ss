@@ -1,7 +1,8 @@
 ;;; -*- Gerbil -*-
 ;;; (C) vyzo
 ;;; Command-line option and command argument parsing
-(import :std/error
+(import (only-in :std/struct/option Some Some-value value->option)
+        :std/error
         :std/format
         :std/iter
         :std/hash/misc
@@ -43,18 +44,25 @@
 (defstruct !top (key help))
 (defstruct (!command !top) (parser)
   final: #t)
-(defstruct (!opt !top) (short long))
-(defstruct (!option !opt) (value default)
-  final: #t)
+;; A supplied default or optional value is wrapped so it can itself be #f.
+(defstruct (!opt !top) (short long parse default))
+(defstruct (!option !opt) ())
 (defstruct (!flag !opt) ()
   final: #t)
-(defstruct (!arg !top) (value))
+(defstruct (!arg !top) (parse))
 (defstruct (!reqarg !arg) ()
   final: #t)
 (defstruct (!optarg !arg) (default)
   final: #t)
 (defstruct (!rest !arg) ()
   final: #t)
+
+(def (spec-parser id parse value)
+  (cond
+   ((eq? parse absent-value)
+    (if (eq? value absent-value) identity value))
+   ((eq? value absent-value) parse)
+   (else (error "Illegal specifier; parse: and its alias value: are mutually exclusive" id))))
 
 (def (getopt help: (help #f) . args)
   (let lp ((rest args) (opts []) (cmds []) (args []))
@@ -86,36 +94,64 @@
         (else
          (error "Illegal argument; must be a getopt-object" hd))))
       (else
-       (make-!getopt (reverse opts) (reverse cmds) (reverse args) help)))))
+       (let (opts (reverse opts))
+         (make-!getopt opts (reverse cmds) (reverse args) help))))))
 
-(def (flag id short (long #f)
-           help: (help #f))
-  (make-!flag id help short long))
+(def (make-flag-spec id (short :? :string) (long :? :string := #f)
+           help: (help :? :string := #f)
+           parse: (parse absent-value)
+           value: (value absent-value)
+           default: (default absent-value))
+  => !flag
+  (make-!flag id help short long
+              (spec-parser id parse value)
+              (value->option default absent-value)))
 
-(def (option id short (long #f)
-             help: (help #f)
-             value: (value-e identity)
-             default: (default #f))
-  (make-!option id help short long value-e default))
+;; TODO: remove the flag and option aliases once the compiler handles interleaved
+;; positional and keyword arguments to typed procedures. The compiler fix was
+;; dropped from PR #1519: https://git.cons.io/mighty-gerbils/gerbil/pulls/1519
+;; The aliases keep these calls on the runtime dispatcher.
+(def flag make-flag-spec)
+
+(def (make-option-spec id (short :? :string) (long :? :string := #f)
+             help: (help :? :string := #f)
+             parse: (parse absent-value)
+             value: (value absent-value)
+             default: (default absent-value))
+  => !option
+  (make-!option id help short long
+                (spec-parser id parse value)
+                (value->option default absent-value)))
+
+;; Same compiler workaround as flag above.
+(def option make-option-spec)
 
 (def (command id help: (help #f) . args)
   (make-!command id help (apply getopt help: help args)))
 
+;; A required positional argument, converted with parse: (alias value:).
 (def (argument id
                help: (help #f)
-               value: (value-e identity))
-  (make-!reqarg id help value-e))
+               parse: (parse absent-value)
+               value: (value absent-value))
+  (make-!reqarg id help (spec-parser id parse value)))
 
+;; An optional positional argument, converted with parse: (alias value:);
+;; default: (not converted) when absent.
 (def (optional-argument id
                         help: (help #f)
-                        value: (value-e identity)
+                        parse: (parse absent-value)
+                        value: (value absent-value)
                         default: (default #f))
-  (make-!optarg id help value-e default))
+  (make-!optarg id help (spec-parser id parse value)
+                default))
 
+;; All remaining positional arguments, each converted with parse: (alias value:).
 (def (rest-arguments id
                      help: (help #f)
-                     value: (value-e identity))
-  (make-!rest id help value-e))
+                     parse: (parse absent-value)
+                     value: (value absent-value))
+  (make-!rest id help (spec-parser id parse value)))
 
 ;; Only leaves have an arrow. Select the table shape during expansion.
 (defrules defgetopt-dispatch (=>)
@@ -186,30 +222,32 @@
                (else (raise-getopt-error "Unknown command" (car rest)))))))))))
 
 (def (find-command (cmds : :list) (name : :string))
-  ;; As with duplicate option spellings, the last declaration wins.
+  ;; For duplicate command names, the last declaration wins.
   (foldl (lambda (cmd previous)
            (if (string=? name (symbol->string (!top-key cmd))) cmd previous))
          #f cmds))
 
+;; Parse the options at the head of the words in rest, then call K with the remaining words.
+;; Option parsing ends at "--" (dropped) or at the first word not starting with "-".
 (def (getopt-parse-opts! ht opts rest show-help K)
-  (def (end rest)
-    ;; check for options with default values
-    (for-each (match <>
-               ((!option key _ _ _ _ default)
-                (unless (hash-key? ht key)
-                  (hash-put! ht key default)))
-               (else (void)))
-              opts)
-    (K rest))
-
-  (def optht (make-hash-table))
+  (def names (make-hash-table))
   (for-each (lambda (opt)
-              (with ((!opt _ _ short long) opt)
-                (when short
-                  (hash-put! optht short opt))
-                (when long
-                  (hash-put! optht long opt))))
+              (when (!opt-short opt) (hash-put! names (!opt-short opt) opt))
+              (when (!opt-long opt) (hash-put! names (!opt-long opt) opt)))
             opts)
+
+  (def (store! opt value)
+    (hash-put! ht (!top-key opt) value))
+
+  (def (end rest)
+    (for-each
+     (lambda (opt)
+       (let (id (!top-key opt))
+         (unless (hash-key? ht id)
+           (cond
+            ((!opt-default opt) => (lambda (default) (hash-put! ht id (Some-value default))))))))
+     opts)
+    (K rest))
 
   (let lp ((rest rest))
     (match rest
@@ -221,22 +259,21 @@
          (cond
           ((equal? "--" hd)             ; end of options
            (end rest*))
-          ((hash-get optht hd)
+          ((hash-get names hd)
            => (lambda (opt)
-                (match opt
-                  ((? (cut eq? <> help-flag)) (show-help))
-                  ((!option key _ _ _ value-e)
-                   (match rest*
-                     ([val . rest*]
-                      (hash-put! ht key (value-e val))
-                      (lp rest*))
-                     (else
-                      (raise-getopt-error "Missing value for option" hd))))
-                  ((!flag key)
-                   (hash-put! ht key #t)
-                   (lp rest*)))))
-          (else
-           (raise-getopt-error "Unknown option" hd))))
+                (cond
+                 ((eq? opt help-flag) (show-help))
+                 ((!flag? opt)
+                  (store! opt ((!opt-parse opt) #t))
+                  (lp rest*))
+                 (else
+                  (match rest*
+                    ([val . rest*]
+                     (store! opt ((!opt-parse opt) val))
+                     (lp rest*))
+                    (else
+                     (raise-getopt-error "Missing value for option" hd)))))))
+          (else (raise-getopt-error "Unknown option" hd))))
         (else                           ; doesn't look like an option
          (end rest))))
       (else                             ; we run out of arguments
@@ -270,15 +307,20 @@
          (raise-getopt-error "Unexpected arguments" rest))
        ht))))
 
+;; The ids of the positional arguments of gopt, in order, and the id of its rest
+;; arguments or #f. Each id appears once, at its first declaration, so that ids
+;; shared by several specs do not yield duplicate positional parameters.
 (def (getopt->positional-names gopt)
   (def rest-name #f)
-  (def argkey !top-key)
+  (def seen (make-hash-table-eq))
   (def names (with-list-builder (c)
                (for-each (lambda (arg)
-                           (cond
-                            ((or (!reqarg? arg) (!optarg? arg))
-                             (c (argkey arg)))
-                            ((!rest? arg) (set! rest-name (argkey arg)))))
+                           (let (key (!top-key arg))
+                             (unless (hash-key? seen key)
+                               (hash-put! seen key #t)
+                               (if (!rest? arg)
+                                 (set! rest-name key)
+                                 (c key)))))
                          (!getopt-args gopt))))
   (values names rest-name))
 
@@ -372,7 +414,7 @@
          (when (!option? opt) (display* " <" key ">"))
          (newline)
          (display* "    " (or help "?"))
-         (when (!option? opt) (display* " [default: " (!option-default opt) "]"))
+         (when (!opt-default opt) (display* " [default: " (Some-value (!opt-default opt)) "]"))
          (newline)))
      opts)))
 
@@ -409,15 +451,16 @@
 (def (with-automatic-help (parser : !getopt))
   => !getopt
   (with ((!getopt opts cmds args help) parser)
-    (make-!getopt
-     (append opts [help-flag])
-     (if (null? cmds) []
-       (append (map (lambda (cmd)
-                      (make-!command (!top-key cmd) (!top-help cmd)
-                                     (with-automatic-help (!command-parser cmd))))
-                    cmds)
-               [help-command]))
-     args help)))
+    (let (opts (append opts [help-flag]))
+      (make-!getopt
+        opts
+        (if (null? cmds) []
+          (append (map (lambda (cmd)
+                         (make-!command (!top-key cmd) (!top-help cmd)
+                                        (with-automatic-help (!command-parser cmd))))
+                       cmds)
+                  [help-command]))
+        args help))))
 
 (def (call-with-getopt proc args
                        program: program
