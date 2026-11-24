@@ -45,15 +45,15 @@
 
 (defstruct !getopt (opts cmds args help))
 (defstruct !top (key help))
-(defstruct (!command !top) (parser)
+(defstruct (!command !top) ((parser : !getopt))
   final: #t)
 ;; A supplied default or optional value is wrapped so it can itself be #f.
-(defstruct (!opt !top) (short long parse default))
-(defstruct (!option !opt) (optional))
+(defstruct (!opt !top) (short long (parse : :procedure) (default :? Some)))
+(defstruct (!option !opt) ((optional :? Some)))
 (defstruct (!multioption !option) () final: #t)
 (defstruct (!flag !opt) ()
   final: #t)
-(defstruct (!arg !top) (parse))
+(defstruct (!arg !top) ((parse : :procedure)))
 (defstruct (!reqarg !arg) ()
   final: #t)
 (defstruct (!optarg !arg) (default)
@@ -62,11 +62,15 @@
   final: #t)
 
 (def (spec-parser id parse value)
-  (cond
-   ((eq? parse absent-value)
-    (if (eq? value absent-value) identity value))
-   ((eq? value absent-value) parse)
-   (else (error "Illegal specifier; parse: and its alias value: are mutually exclusive" id))))
+  => :procedure
+  (let (converter
+        (cond
+         ((eq? parse absent-value) (if (eq? value absent-value) identity value))
+         ((eq? value absent-value) parse)
+         (else (error "Illegal specifier; parse: and its alias value: are mutually exclusive" id))))
+    (unless (procedure? converter)
+      (raise-contract-violation getopt "procedure for parse: or value:" id: id value: converter))
+    converter))
 
 (def (getopt help: (help #f) . args)
   (let lp ((rest args) (opts []) (cmds []) (args []))
