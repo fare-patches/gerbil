@@ -52,18 +52,25 @@
 (def (raise-unknown-command command (program (current-program-string)))
   (raise (string-append program ": Unknown command " (as-string command) ".\n")))
 
-;; Raises "Unknown command" when command isn't a registered entry point.
-(define-entry-point (help . topics)
-  (help: "Print help about available commands"
-   getopt: [(rest-arguments 'topics help: "subcommand path for which to display help")])
-  ;; Dispatch pushes "help" onto the path. A direct call at the root has no parent prefix.
-  (when (and (pair? topics) (not (hash-key? entry-points (make-symbol (car topics)))))
-    (raise-unknown-command (car topics) (current-program-string (cdr (current-program)))))
-  (display-build-manifest (build-manifest/head))
-  (newline)
-  (def gopt (apply getopt (entry-points-getopt-spec)))
-  (def program (current-program-string (cdr (current-program))))
-  (getopt-display-help-topic gopt (map make-symbol topics) program))
+(def (help . topics)
+  (call-with-getopt-topic (apply getopt (entry-points-getopt-spec))
+                          (map make-symbol topics) (current-program-string)
+    (lambda (node program remaining)
+      (if (pair? remaining)
+        (begin
+          (fprintf (current-error-port) "%a: Unknown command %a.\n" program (car remaining))
+          (silent-exit #f))
+        (begin
+          (display-build-manifest (build-manifest/head))
+          (newline)
+          (getopt-display-help node program))))))
+
+(register-entry-point
+ (lambda topics
+   (parameterize ((current-program (cdr (current-program))))
+     (apply help topics)))
+ id: 'help help: "Print help about available commands"
+ getopt: [(rest-arguments 'topics help: "subcommand path for which to display help")])
 
 ;; TODO: also handle getopt specifications?
 (define-entry-point (meta)
@@ -84,8 +91,11 @@
 ;; Call the entry point named by command (a string or symbol) with args,
 ;; pushing its name, as a string, on current-program; raise if there is none.
 (def (call-entry-point/internal command args)
-  (match (hash-get entry-points (make-symbol command))
-    (#f (raise-unknown-command command))
+  (invoke-entry-point (or (hash-get entry-points (make-symbol command))
+                          (raise-unknown-command command)) args))
+
+(def (invoke-entry-point entry args)
+  (match entry
     ((entry-point name fun _help getopt)
      (parameterize ((current-program (cons (symbol->string name) (current-program))))
        (call-with-processed-command-line getopt args fun)))))
@@ -99,15 +109,13 @@
     ([] (call-entry-point/internal multicall-default []))
     ([command . rest]
      (cond
-      ((hash-key? entry-points (make-symbol command))
-       (call-entry-point/internal command rest))
+      ((hash-get entry-points (make-symbol command))
+       => (lambda (entry) (invoke-entry-point entry rest)))
       ((eq? multicall-default 'help)
-       (display (current-program-string) (current-error-port))
-       (display ": " (current-error-port))
-       (write command (current-error-port))
-       (display " is not a recognized subcommand.\n" (current-error-port))
+       (fprintf (current-error-port) "%a: %s is not a recognized subcommand.\n"
+                (current-program-string) command)
        (call-entry-point/internal 'help [])
-       (values))
+       (silent-exit #f))
       (multicall-fallback? (call-entry-point/internal multicall-default args))
       (else (raise-unknown-command command))))))
 
@@ -132,7 +140,11 @@
 (def (call-with-processed-command-line processor command-line function)
   (cond
    ((getopt? processor)
-    (call-with-getopt-parse processor (getopt-parse processor command-line) function))
+    (call/values (lambda () (getopt-parse processor command-line))
+      (case-lambda
+        ((opts) (call-with-getopt-parse processor opts function))
+        ((selected opts)
+         (function (if (symbol? selected) [selected] selected) opts)))))
    ((not processor)
     (apply function command-line))
    (else
@@ -141,7 +153,7 @@
 
 ;; For help, #f describes the raw arguments as one rest argument.
 ;; The list of getopt specifiers for the getopt: spec of an entry point: a list,
-;; flattened; a getopt parser without commands, its specifiers; a natural n, the
+;; flattened; a getopt parser, its specifiers; a natural n, the
 ;; positional arguments arg1 ... argn; #f, rest arguments named rest.
 (def (->getopt-spec spec)
   (cond
