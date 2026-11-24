@@ -13,7 +13,7 @@
   :std/list/list
   :std/string/misc)
 
-(def current-program (make-parameter []))
+(def current-program (make-parameter [(car (command-line))]))
 (def entry-points (make-hash-table))
 
 (def (current-program-string (program (current-program)))
@@ -43,16 +43,21 @@
 (def set-default-entry-point!
   multicall-default-set!)
 
-(define-entry-point (help (command #f))
+(def (raise-unknown-command command (program (current-program-string)))
+  (raise (string-append program ": Unknown command " (as-string command) ".\n")))
+
+;; Raises "Unknown command" when command isn't a registered entry point.
+(define-entry-point (help . topics)
   (help: "Print help about available commands"
-   getopt: [(optional-argument 'command help: "subcommand for which to display help")])
+   getopt: [(rest-arguments 'topics help: "subcommand path for which to display help")])
+  ;; Dispatch pushes "help" onto the path. A direct call at the root has no parent prefix.
+  (when (and (pair? topics) (not (hash-key? entry-points (make-symbol (car topics)))))
+    (raise-unknown-command (car topics) (current-program-string (cdr (current-program)))))
   (display-build-manifest (build-manifest/head))
   (newline)
   (def gopt (apply getopt (entry-points-getopt-spec)))
   (def program (current-program-string (cdr (current-program))))
-  (if command
-    (getopt-display-help-topic gopt (make-symbol command) program)
-    (getopt-display-help gopt program)))
+  (getopt-display-help-topic gopt (map make-symbol topics) program))
 
 ;; TODO: also handle getopt specifications?
 (define-entry-point (meta)
@@ -70,11 +75,13 @@
                                 (else (build-manifest/head))))
   (newline))
 
+;; Call the entry point named by command (a string or symbol) with args,
+;; pushing its name, as a string, on current-program; raise if there is none.
 (def (call-entry-point/internal command args)
   (match (hash-get entry-points (make-symbol command))
-    (#f (raise (format "Unknown command %s. Try command help.\n" command)))
-    ((entry-point _name fun _help getopt)
-     (parameterize ((current-program (cons command (current-program))))
+    (#f (raise-unknown-command command))
+    ((entry-point name fun _help getopt)
+     (parameterize ((current-program (cons (symbol->string name) (current-program))))
        (call-with-processed-command-line getopt args fun)))))
 
 (def (call-entry-point . args)
