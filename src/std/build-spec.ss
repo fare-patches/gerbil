@@ -212,6 +212,7 @@
     "crypto/kdf"
     "crypto/hmac"
     "crypto/otp/core"
+    "crypto/otp/keyring"
 
     ,(cond-expand
       (darwin
