@@ -268,7 +268,7 @@ $ cat hello/lib.ss
   (displayln greeting ", " who))
 ```
 
-And in the generated `hello/main.ss` file, we add a [getopt](/reference/std/cli/getopt.md) option for a single argument and implement `hello-main/options` to greet:
+And in the generated `hello/main.ss` file, we add a [getopt](https://git.cons.io/mighty-gerbils/gerbil/src/branch/v0.19-staging/src/std/cli/getopt.md) option for a single argument and implement `hello-main/options` to greet:
 ```scheme
 $ cat hello/main.ss
 ;;; -*- Gerbil -*-
