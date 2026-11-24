@@ -635,6 +635,13 @@
       (check (flag 'v "-v" parse: #f) =>! contract-violation-error?)
       (check (argument 'a value: 42) =>! contract-violation-error?))
 
+    (test-case "multioption collects across the selected command path"
+      (def inc (multioption 'inc "-I"))
+      (let-values (((cmd opts) (getopt-parse (getopt inc (command 'go inc))
+                                            '("-Ia" "go" "-Ib"))))
+        (check cmd => 'go)
+        (check (hash-ref opts 'inc) => '("a" "b"))))
+
     (test-case "flag default:"
       (def gopt (getopt (flag 'quiet "-q" default: 'no)
                         (flag 'loud "-l")))

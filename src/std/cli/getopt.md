@@ -74,7 +74,8 @@ A repeated flag or ordinary option keeps its last value. An omitted one
 has no entry unless a specifier supplies a `default:`. Use `hash-key?` to
 test presence and `hash-get` when absence should yield `#f`.
 
-Use `multioption` to collect parsed values in command-line order.
+Use `multioption` to collect parsed values in command-line order across the selected
+command path.
 For example, `(multioption 'include "-I" "--include")` gives
 `("a" "b")` for `-Ia --include b`, and the empty list when omitted.
 

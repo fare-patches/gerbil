@@ -247,16 +247,18 @@
 
 (def (parse-command-line gopt args show-help (finish values))
   (let ((ht (make-hash-table-eq))
+        (collected (make-hash-table-eq))
         (nested? (ormap (lambda (cmd) (pair? (!getopt-cmds (!command-parser cmd))))
                         (!getopt-cmds gopt))))
     (let parse ((node gopt) (path []) (rest args))
       (parameterize ((current-getopt-parser (cons node path)))
         (with ((!getopt opts cmds args) node)
-          (getopt-parse-opts! ht opts rest
+          (getopt-parse-opts! ht collected opts rest
             (lambda () (show-help (reverse path)))
             (lambda (rest)
               (cond
                ((null? cmds)
+                (hash-for-each (lambda (id items) (hash-put! ht id (reverse items))) collected)
                 (getopt-parse-args! ht args rest)
                 (cond
                  ((eq? node (!command-parser help-command))
@@ -283,9 +285,8 @@
 ;; to the two-character short name -c. Both forms are errors for flags.
 ;; TODO: short-flag clustering (-bv as -b -v), at least for flags.
 ;; TODO: opt-in GNU-style permutation, allowing options after positional arguments.
-(def (getopt-parse-opts! ht opts rest show-help K)
+(def (getopt-parse-opts! ht collected opts rest show-help K)
   (def names (make-hash-table))
-  (def collected (make-hash-table-eq))
   (for-each (lambda (opt)
               (when (!opt-short opt) (hash-put! names (!opt-short opt) opt))
               (when (!opt-long opt) (hash-put! names (!opt-long opt) opt)))
@@ -295,10 +296,11 @@
     (let (id (!top-key opt))
       (if (!multioption? opt)
         (hash-put! collected id (cons value (hash-ref collected id [])))
-        (hash-put! ht id value))))
+        (begin
+          (hash-remove! collected id)
+          (hash-put! ht id value)))))
 
   (def (end rest)
-    (hash-for-each (lambda (id items) (hash-put! ht id (reverse items))) collected)
     (for-each
      (lambda (opt)
        (let (id (!top-key opt))
