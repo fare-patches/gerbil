@@ -57,8 +57,7 @@ while `otp help`, `otp version` and `otp add ...` remain subcommands:
   ...)
 
 ;; `otp` alone = `otp keys`, showing all codes; `otp github` = `otp keys github`.
-(set-default-entry-point! 'keys fallback: #t)
-(define-multicall-main)
+(define-multicall-main default: 'keys fallback: #t)
 ```
 
 `otp help` still runs the `help` subcommand. A key literally named like a
@@ -137,10 +136,15 @@ exiting with status 2 (see `:std/cli/print-exit`).
 ### define-multicall-main
 
 ```text
-(define-multicall-main)
+(define-multicall-main [ctx] [default: name [fallback: boolean]])
 ```
 
-Defines `main` as `call-entry-point` in the current module.
+Defines `main` as `call-entry-point`. An optional context identifier `ctx`
+supplies the lexical context for the generated name.
+
+With `default:`, module initialization calls `set-default-entry-point!` with
+the given name. An omitted `fallback:` then defaults to `#f`. The bare form
+preserves the current dispatch settings.
 
 ### current-program and current-program-string
 
