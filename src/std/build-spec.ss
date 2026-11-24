@@ -136,6 +136,7 @@
     "time/timeout"
     "time/precise"
     "time/instant"
+    "time/parse"
     (gxc: "time/date" "-cc-options" "-D _GNU_SOURCE")
 
     "sync/atom"
