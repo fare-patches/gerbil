@@ -58,6 +58,33 @@
 
 (def multicall-test
   (test-suite "test :std/cli/multicall"
+    (test-case "help follows a nested command path without invoking the command"
+      (register-entry-point (lambda args (error "unexpected invocation"))
+        name: "multicall-test-tree"
+        getopt: [(command 'group (command 'leaf help: "Leaf details"))])
+      (unwind-protect
+        (with-saved-multicall-settings
+         (def (output . topics)
+           (with-output-to-string (lambda () (apply invoke "help" topics))))
+         (let (leaf (output "multicall-test-tree" "group" "leaf"))
+           (check (string-contains leaf "prog multicall-test-tree group leaf: Leaf details") ? integer?)
+           (let (unknown (output "multicall-test-tree" "group" "leaf" "extra"))
+             (check (string-contains unknown "prog multicall-test-tree group leaf: Unknown command extra.\nprog multicall-test-tree group leaf: Leaf details") ? integer?))))
+        (hash-remove! entry-points 'multicall-test-tree)))
+
+    (test-case "help with a known topic, unknown topic raises"
+      (with-saved-multicall-settings
+       (check (string-contains
+               (with-output-to-string
+                 (lambda () (invoke "help" "multicall-test-greet")))
+               "multicall-test-greet")
+              ? fixnum?)
+       (with-output-to-string
+         (lambda ()
+           (check (invoke "help" "multicall-test-no-such-command")
+                  =>! unknown-command-error?)))))
+
+    ;; Without getopt:, the function gets the arguments as given, options included.
     (test-case "entry point without getopt: gets its arguments unparsed"
       (with-saved-multicall-settings
        (check-function invoke
