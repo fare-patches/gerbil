@@ -4,6 +4,11 @@
 ;;; build-spec: see documentation in doc/reference/make.md
 
 (import :gerbil/compiler
+        (only-in :gerbil/compiler/base
+          module-id->path-string pending-compile-jobs)
+        (only-in :gerbil/compiler/driver
+          source-build-outputs source-build-native-jobs
+          execute-native-compile-job! queue-native-compile-job!)
         :gerbil/expander
         :std/sync/completion
         :std/sync/channel
@@ -48,29 +53,44 @@ TODO:
 
 ;;; Functions that should be better moved some library...
 (def (force-outputs)
+  => :void
   (force-output (current-error-port))
   (force-output))
 
 (def __output-mx (make-mutex))
 
 (def (message . lst)
+  => :void
   (do-with-lock __output-mx
     (apply displayln lst)
     (force-outputs)))
 
-(def (prefix/ prefix path)
+(def (prefix/ (prefix :? :string)
+              (path : :string))
+  => :string
   (if prefix
     (string-append prefix "/" path)
     path))
 
 ;;; Settings: see details in doc/reference/make.md
 (defstruct settings
-  (srcdir libdir bindir prefix force optimize debug verbose build-deps
-   libdir-prefix parallelize
-   full-program-optimization
-   build-release
-   build-optimized
-   target)
+  ((srcdir                    : :string)
+   (libdir                    : :string)
+   (bindir                    : :string)
+   (prefix                    :? :string)
+   (force                     : :boolean)
+   (optimize                  : :boolean)
+   (debug                     :~ (? (or boolean? symbol?)))
+   (verbose                   :~ (? (or boolean? real?)))
+   (build-deps                : :string)
+   (libdir-prefix             : :string)
+   (parallelize               : :integer)
+   (processes                 : :boolean)
+   (dependency-processes      :~ (? (or boolean? symbol?)))
+   (full-program-optimization : :boolean)
+   (build-release             : :boolean)
+   (build-optimized           : :boolean)
+   (target                    : :symbol))
   transparent: #t constructor: :init!)
 
 (defmethod {:init! settings}
@@ -82,6 +102,8 @@ TODO:
       target: (target 'C)
       verbose: (verbose_ #f) build-deps: (build-deps_ #f)
       parallelize: (parallelize_ #t)
+      processes: (processes #t)
+      dependency-processes: (dependency-processes #f)
       full-program-optimization: (full-program-optimization #f)
       build-release: (build-release #f)
       build-optimized: (build-optimized #f))
@@ -104,14 +126,28 @@ TODO:
        (debug_)
        ((getenv "GERBIL_BUILD_DEBUG" #f) #t)
        (else #f)))
-    (struct-instance-init!
-      self
-      srcdir libdir bindir prefix force? optimize debug verbose build-deps
-      libdir-prefix parallelize
-      full-program-optimization
-      build-release
-      build-optimized
-      target)))
+    ;; #t isolates the whole graph, retaining import reuse inside one child.
+    ;; 'module and 'package bound each child's cache to one source or package
+    ;; directory. #f discovers in the coordinator.
+    (unless (memq dependency-processes '(#f #t module package))
+      (error "invalid dependency discovery policy" dependency-processes))
+    (set! self.srcdir srcdir)
+    (set! self.libdir libdir)
+    (set! self.bindir bindir)
+    (set! self.prefix prefix)
+    (set! self.force force?)
+    (set! self.optimize optimize)
+    (set! self.debug debug)
+    (set! self.verbose verbose)
+    (set! self.build-deps build-deps)
+    (set! self.libdir-prefix libdir-prefix)
+    (set! self.parallelize parallelize)
+    (set! self.processes processes)
+    (set! self.dependency-processes dependency-processes)
+    (set! self.full-program-optimization full-program-optimization)
+    (set! self.build-release build-release)
+    (set! self.build-optimized build-optimized)
+    (set! self.target target)))
 
 (def (gerbil-build-cores (cpu-count-spec #t))
   ;; TODO: for the default (catch) case, use something like
@@ -124,11 +160,14 @@ TODO:
     (: (string->number (getenv "GERBIL_BUILD_CORES" "0")) :integer))
    (else 0)))
 
-(def (settings-verbose>=? settings level)
-  (def verbose (settings-verbose settings))
+(def (settings-verbose>=? (config : settings)
+                          level)
+  => :boolean
+  (def verbose (settings-verbose config))
   (and (real? level) (real? verbose) (>= verbose level)))
 
-(def (read-package-prefix srcdir)
+(def (read-package-prefix (srcdir : :string))
+  => (Maybe :string)
   (let (plist (with-catch false (lambda () (call-with-input-file (path-expand "gerbil.pkg" srcdir) read))))
     (alet (pkg (pgetq package: plist)) (and (symbol? pkg) (symbol->string pkg)))))
 
@@ -140,31 +179,37 @@ TODO:
     ([(? keyword? type) . _] type)
     (else (error "Bad buildspec" spec))))
 
-(def (spec-file spec settings)
+(def (spec-file spec
+                (config : settings))
+  => :string
   (match spec
     ((? string? modf)
-     (source-path modf ".ss" settings))
+     (source-path modf ".ss" config))
     ([gxc: modf . opts]
-     (source-path modf ".ss" settings))
+     (source-path modf ".ss" config))
     ([gsc: modf . opts]
-     (source-path modf ".scm" settings))
+     (source-path modf ".scm" config))
     ([ssi: modf . deps]
-     (source-path modf ".ssi" settings))
+     (source-path modf ".ssi" config))
     ([(or exe: static-exe: optimized-exe: optimized-static-exe:)  modf . opts]
-     (source-path modf ".ss" settings))
+     (source-path modf ".ss" config))
     ([static-include: file]
-     (static-file-path file settings))
+     (static-file-path file config))
     ([copy: file]
      file)
     (else
      (error "Bad buildspec" spec))))
 
-(def (spec-inputs spec settings)
-  [(spec-file spec settings)
-   (spec-extra-inputs spec settings) ...
-   (append-map (cut spec-inputs <> settings) (spec-submodules spec)) ...])
+(def (spec-inputs spec
+                  (config : settings))
+  => :list
+  [(spec-file spec config)
+   (spec-extra-inputs spec config) ...
+   (append-map (cut spec-inputs <> config) (spec-submodules spec)) ...])
 
-(def (spec-extra-inputs spec settings)
+(def (spec-extra-inputs spec
+                        (config : settings))
+  => :list
   (match spec
     ([gxc: . _] (pgetq extra-inputs: (spec-plist spec) []))
     ([gsc: . _] (pgetq extra-inputs: (spec-plist spec) []))
@@ -181,73 +226,367 @@ TODO:
     ([(? (cut member <> '(gxc: gsc:))) _ [plist ...] . _] plist)
     (_ [])))
 
-(def (spec-outputs spec settings)
+(def (spec-outputs spec
+                   (config : settings))
+  => :list
   (match spec
-    ((? string? modf) (gxc-outputs modf #f settings))
-    ([gxc: modf . opts] (gxc-outputs modf opts settings))
-    ([gsc: modf . opts] [(gsc-c-path modf settings)])
-    ([ssi: modf . submodules] [(library-path modf ".ssi" settings)
-                               (append-map (cut spec-outputs <> settings) submodules) ...])
+    ((? string? modf) (gxc-outputs modf #f config))
+    ([gxc: modf . opts] (gxc-outputs modf opts config))
+    ([gsc: modf . opts] [(gsc-c-path modf config)])
+    ([ssi: modf . submodules] [(library-path modf ".ssi" config)
+                               (append-map (cut spec-outputs <> config) submodules) ...])
     ([(or exe: static-exe: optimized-exe: optimized-static-exe:) modf . opts]
-     [(binary-path modf opts settings)
-      (static-path modf settings)])
-    ([static-include: file] [(static-file-path file settings)])
-    ([copy: file] [(library-path file #f settings)])
+     [(binary-path modf opts config)
+      (static-path modf config)])
+    ([static-include: file] [(static-file-path file config)])
+    ([copy: file] [(library-path file #f config)])
     (else (error "unknwon buildspec" spec))))
 
+;; Workers own compiler/expander state. With dependency-processes enabled the
+;; parent retains only dependency names and scheduling state.
+(defstruct ProcessBuild
+  ((directory :- :string) (mx :- :mutex) (active :- HashTable)
+   (jobs :- :list) (pending :- :list) (failed? :- :boolean))
+  final: #t)
+
+(def current-process-build (make-parameter #f))
+(def current-build-module-id (make-parameter #f))
+(def current-build-provider? (make-parameter #f))
+
+(defstruct DependencyJob
+  ((index : :fixnum) (paths : :list))
+  final: #t)
+
+(def (build-marker (id : :symbol)
+                   (config : settings))
+  => :string
+  (path-expand (string-append (module-id->path-string id) ".pending")
+               (path-expand ".make/pending" (settings-libdir config))))
+
+(def (start-process-build (config : settings))
+  => ProcessBuild
+  (let loop ()
+    (let (directory (path-expand (string-append ".make/run-" (number->string (random-integer 4294967296)))
+                                 (settings-libdir config)))
+      (if (file-exists? directory)
+        (loop)
+        (begin
+          (create-directory* directory)
+          (ProcessBuild directory (make-mutex 'make-processes) (make-hash-table-eq) [] [] #f))))))
+
+(def (signal-build-processes (processes : :list)
+                             (signal : :string))
+  => :void
+  (let (pids (filter-map
+              (lambda (process)
+                (with-catch false
+                  (lambda () (and (not (process-status process 0 #f))
+                                  (number->string (process-pid process))))))
+              processes))
+    (unless (null? pids)
+      ;; No Scheme thread is interrupted while it may hold a lock.
+      (let (process (open-process
+                      [path: "/bin/sh"
+                       arguments: ["-c" "make_signal=$1; shift; kill -\"$make_signal\" \"$@\" 2>/dev/null || :"
+                                   "gerbil-make-cancel" signal pids ...]
+                       stdout-redirection: #f stderr-redirection: #f]))
+        (process-status process)
+        (close-port process)))))
+
+(def (stop-process-build! (state : ProcessBuild))
+  => :void
+  (let (processes (with-lock state.mx
+                   (lambda ()
+                     (set! state.failed? #t)
+                     (hash-keys state.active))))
+    (signal-build-processes processes "TERM")
+    (let (deadline (seconds->time (+ (time->seconds (current-time)) 2)))
+      (for-each (lambda (process) (with-catch false (cut process-status process deadline #f))) processes))
+    (signal-build-processes processes "KILL")))
+
+(def (show-process-output (source : :string)
+                          (log : :string)
+                          (status : :fixnum))
+  => :void
+  (when (or (not (zero? status))
+            (and (file-exists? log) (> (file-info-size (file-info log)) 0)))
+    (with-lock __output-mx
+      (lambda ()
+        (let (output (current-error-port))
+          (parameterize ((current-output-port output))
+            (displayln "... compiler output: " source " (process status " status ")"))
+          (when (file-exists? log)
+            (call-with-input-file log
+              (lambda (input)
+                (let ((buffer (make-string 4096)))
+                  (let loop ()
+                    (let (count (read-substring buffer 0 4096 input))
+                      (unless (zero? count)
+                        (write-substring buffer 0 count output)
+                        (loop))))))))
+          (force-output output))))))
+
+(def (compiler-process-command (paths : :list)
+                               (arguments : :list))
+  => :list
+  ["env" (string-append "GERBIL_LOADPATH=" (string-join paths ":"))
+   (gerbil-gxc) arguments ...])
+
+;; Both compiler modes share ownership, cancellation, logs and result files.
+;; Commands are argv lists, never interpolated shell programs.
+(def (run-worker-process (srcpath : :string)
+                         (stem : :string)
+                         (command : :list)
+                         (state : ProcessBuild))
+  (def log (string-append stem ".log"))
+  (def result-file (string-append stem ".result"))
+  (create-directory* (path-directory stem))
+  (let (process
+         (with-lock state.mx
+           (lambda ()
+             (when state.failed? (error "build cancelled" srcpath))
+             (let (process (open-process
+                            [path: "/bin/sh"
+                             arguments: ["-c" "make_log=$1; shift; exec \"$@\" < /dev/null >\"$make_log\" 2>&1"
+                                         "gerbil-make-worker" log
+                                         command ...]
+                             stdin-redirection: #f stdout-redirection: #f stderr-redirection: #f]))
+               (hash-put! state.active process [srcpath log])
+               process))))
+    (try
+     (let (status (process-status process))
+       (show-process-output srcpath log status)
+       (unless (zero? status)
+         (error "source compiler process failed" srcpath status log))
+       (call-with-input-file result-file read))
+     (finally
+      (with-lock state.mx (lambda () (hash-remove! state.active process)))
+      (close-port process)))))
+
+(def (compile-in-process (srcpath : :string)
+                         (opts : :list)
+                         (config : settings)
+                         (state : ProcessBuild))
+  (def id (current-build-module-id))
+  (def stem (path-expand (module-id->path-string id) state.directory))
+  (def libdir (path-expand (settings-libdir config)))
+  (def srcdir (path-expand (settings-srcdir config)))
+  (def paths
+    (cons libdir
+      (filter (lambda (path) (not (member (path-expand path) [srcdir libdir])))
+        (load-path))))
+  (def arguments
+    ["-compile-source" "-o" (string-append stem ".result")
+     "-d" libdir "-target" (symbol->string (settings-target config))
+     (if (pgetq optimize: opts) ["-O"] []) ...
+     (if (pgetq debug: opts) ["-g"] []) ...
+     (if (pgetq verbose: opts) ["-V"] []) ...
+     (foldr (lambda (option rest) ["-gsc-flag" option rest ...])
+       [] (or (pgetq gsc-options: opts) [])) ...
+     srcpath])
+  (def result
+    (run-worker-process srcpath stem
+      (compiler-process-command paths arguments) state))
+  (def outputs (source-build-outputs result))
+  (def jobs (source-build-native-jobs result))
+  (unless (andmap file-exists? outputs)
+    (error "source compiler did not finish its outputs" srcpath outputs))
+  (call-with-output-file (build-marker id config) (cut write result <>))
+  ;; A dependent macro may execute this module, including native-only FFI
+  ;; and Gambit macros supplied by its gsc options. Publish it only when ready.
+  (if (current-build-provider?)
+    (for-each execute-native-compile-job! jobs)
+    (with-lock state.mx
+      (lambda () (set! state.jobs (append jobs state.jobs))))))
+
+;; Each batch uses one compiler process; only the graph packet returns.
+(def (discover-graph-in-process (paths : :list)
+                                (index : :fixnum)
+                                (config : settings)
+                                (state : ProcessBuild))
+  => :list
+  (def stem (path-expand (string-append "dependency-" (number->string index)) state.directory))
+  (def packet
+    (run-worker-process (car paths) stem
+      (compiler-process-command (load-path)
+        ["-deps" "-target" (symbol->string (settings-target config))
+         "-o" (string-append stem ".result") paths ...])
+      state))
+  (let (modules (dependency-graph-modules packet))
+    (unless (= (length paths) (length modules))
+      (error "incomplete dependency graph from worker" packet))
+    modules))
+
+;; Source directories are the package batching boundary. This requires no
+;; expansion in the coordinator; explicit package/namespace names do not affect
+;; dependency correctness. Preserve specification order within and across batches.
+(def (dependency-batches (paths : :list)
+                         policy)
+  => :list
+  (cond
+   ((null? paths) [])
+   ((eq? policy 'module) (map list paths))
+   ((eq? policy 'package)
+    (let ((groups (make-hash-table)) (order []))
+      (for-each
+        (lambda (path)
+          (let* ((key (path-directory path)) (group (hash-get groups key)))
+            (unless group
+              (set! order (cons key order)))
+            (hash-put! groups key (cons path (or group [])))))
+        paths)
+      (map (lambda (key) (reverse! (hash-ref groups key)))
+        (reverse! order))))
+   (else [paths])))
+
+;; Forward literal setting keywords through the ordinary variadic entry.
+;; make-build checks the build specification after make-settings consumes them.
 (def (make buildspec . rest)
   (def settings (apply make-settings rest))
   (parameterize ((current-directory (settings-srcdir settings))
+                 (current-expander-module-prelude
+                  (make-prelude-context (import-module ':gerbil/base)))
                  (current-expander-compiling? #t))
     (add-load-path! (settings-srcdir settings))
-    (make-build buildspec settings))
-  (when (> (settings-parallelize settings) 1)
-    (execute-pending-compile-jobs!)))
+    (using (state (start-process-build settings) :- ProcessBuild)
+      (parameterize ((current-process-build state))
+        (try
+         (make-build buildspec settings)
+         ;; Complete independent leaf jobs after the source workers have exited.
+         (for-each (if (> (settings-parallelize settings) 1)
+                     queue-native-compile-job!
+                     execute-native-compile-job!)
+                   (reverse state.jobs))
+         (execute-pending-compile-jobs! (max 1 (settings-parallelize settings)))
+         (for-each (lambda (marker)
+                     (when (file-exists? marker) (delete-file marker)))
+                   state.pending)
+         (delete-file-or-directory state.directory #t)
+         (catch (e)
+           (stop-process-build! state)
+           ;; In-process targets may have queued native work before source failed.
+           ;; These threads have not started; do not carry them into the next build.
+           (pending-compile-jobs)
+           (parameterize ((current-output-port (current-error-port)))
+             (displayln "Build diagnostics retained in " state.directory))
+           (raise e)))))))
 
-(def (make-build buildspec-in settings)
-  (parameterize ((current-compilation-target (settings-target settings)))
+(def (make-build (buildspec-in : :list)
+                 (config : settings))
+  => :void
+  (parameterize ((current-compilation-target (settings-target config)))
     (def buildspec (normalize-buildspec buildspec-in))
     ;; detect and report duplicate files in the buildspec up front
     (let (file-counts (make-hash-table))
       (for (spec buildspec)
-        (let (f (spec-file spec settings))
+        (let (f (spec-file spec config))
           (hash-put! file-counts f (+ 1 (hash-ref file-counts f 0)))))
       (let (dups (filter-map (lambda (kv) (and (> (cdr kv) 1) (car kv)))
                              (hash->list file-counts)))
         (unless (null? dups)
           (error "Duplicate files in buildspec" dups))))
-    ;; mutex for imports
-    (def import-mx (make-mutex 'import))
+    ;; Plain discovery results, indexed by source path; never module contexts.
+    (def modules (make-hash-table))
     ;; mute for dependency timestamps (mauling of load-path)
     (def dependency-mx (make-mutex 'dependency))
     ;; table of module id -> completion, indicating completion of a build
     (def completions (make-hash-table-eq))
+    (def imported (make-hash-table-eq))
     ;; the build coordinator barrier
     (def build-barrier
       (make-barrier (length buildspec)))
     ;; channel of compilation work ready to be performed
     (def workch (make-channel))
+    (def failure-mx (make-mutex 'make-failure))
+    (def failure #f)
+    (def (failed?) (with-lock failure-mx (lambda () failure)))
+    (def (complete! id)
+      (with-lock failure-mx
+        (lambda ()
+          (unless failure (completion-post! (hash-ref completions id) 'done)))))
+    (def (fail-build! exn)
+      (when (with-lock failure-mx
+              (lambda ()
+                (and (not failure)
+                     (begin
+                       (set! failure exn)
+                       (channel-close workch)
+                       ;; Wake dependency waiters normally; they observe failure
+                       ;; before dispatching any further work.
+                       (for-each (lambda (completion)
+                                   (unless (completion-ready? completion)
+                                     (completion-post! completion 'cancelled)))
+                                 (hash-values completions))
+                       (barrier-error! build-barrier exn)
+                       #t))))
+        (stop-process-build! (current-process-build))))
     ;; the build workers
     (def build-worker-count
-      (max 1 (settings-parallelize settings)))
-    ;; import with mutex
-    (def (import/mx mod)
-      (with-lock import-mx (cut import-module mod #f #f)))
+      (max 1 (settings-parallelize config)))
+    (def (module-info spec)
+      (hash-ref modules (spec-file spec config)))
     ;; spec module id
     (def (module-id spec)
-      (let* ((file (spec-file spec settings))
-             (ext (path-extension file)))
-        (case ext
-          ((".ss" ".ssi")
-           (expander-context-id (import/mx file)))
-          (else
-           (string->symbol file)))))
+      (ModuleDependencies-id (module-info spec)))
+
+    ;; Bound discovery concurrency just like compilation concurrency. No source
+    ;; jobs start until every module name and dependency edge has been collected.
+    (def (discover-modules!)
+      (def policy (settings-dependency-processes config))
+      (def paths
+        (reverse!
+          (foldl
+            (lambda (spec paths)
+              (let (file (spec-file spec config))
+                (if (member (path-extension file) '(".ss" ".ssi"))
+                  (cons file paths)
+                  (begin
+                    (hash-put! modules file (module-build-dependencies file))
+                    paths))))
+            [] buildspec)))
+      (let* ((batches (dependency-batches paths policy))
+             (pending batches) (index 0) (mx (make-mutex 'make-discovery)))
+        (def (next!)
+          (with-lock mx
+            (lambda ()
+              (and (pair? pending)
+                   (let (paths (car pending))
+                     (set! pending (cdr pending))
+                     (set! index (+ index 1))
+                     (DependencyJob index paths))))))
+        (def (worker)
+          (try
+           (let loop ()
+             (unless (failed?)
+               (alet (item (next!))
+                 (let* ((paths (DependencyJob-paths item))
+                        (infos
+                         (if policy
+                           (discover-graph-in-process paths (DependencyJob-index item)
+                             config (current-process-build))
+                           (map module-build-dependencies paths))))
+                   (with-lock mx
+                     (lambda ()
+                       (for-each (lambda (path info) (hash-put! modules path info))
+                         paths infos))))
+                 (loop))))
+           (catch (e) (fail-build! e))))
+        (if (memq policy '(module package))
+          (let (workers
+                 (map (lambda (i) (spawn/name `(discover ,i) worker))
+                   (iota (min build-worker-count (length batches)))))
+            (for-each thread-join! workers))
+          (worker))
+        (when failure
+          (raise failure))))
 
     ;; does the spec need building?
     (def (build? spec)
-      (let ((inputs (spec-inputs spec settings))
-            (outputs (spec-outputs spec settings)))
-        (or (ormap (lambda (f) (not (file-exists? f)))
+      (let ((inputs (spec-inputs spec config))
+            (outputs (spec-outputs spec config)))
+        (or (settings-force config)
+            (file-exists? (build-marker (module-id spec) config))
+            (ormap (lambda (f) (not (file-exists? f)))
                    outputs)
             (ormap
              (lambda (input)
@@ -255,24 +594,16 @@ TODO:
                       outputs))
              inputs))))
     ;; does the spec needs building because of newer dependencies?
-    (def (build-dependent? spec mod)
-      (def outputs (spec-outputs spec settings))
-      (def (newer? in)
-        (cond
-         ((or (module-context? in) (prelude-context? in))
-          (let* ((id (expander-context-id in))
-                 (ts (and id (with-catch false (lambda () (dependency-timestamp id))))))
-            (and id
-                 ;; Imports from this file are not external build dependencies.
-                 (not (eq? (module-strip-nesting id) (expander-context-id mod)))
-                 (if ts
-                   (ormap (lambda (output) (> ts (file-timestamp output))) outputs)
-                   #t))))
-         ((module-import? in)   (newer? (module-import-source in)))
-         ((module-export? in)   (newer? (module-export-context in)))
-         ((import-set? in)      (newer? (import-set-source in)))
-         (error "unexpected import" in)))
-      (ormap newer? (module-context-import mod)))
+    (def (build-dependent? spec)
+      (def outputs (spec-outputs spec config))
+      (ormap
+        (lambda (id)
+          (let (ts (with-catch false (cut dependency-timestamp id)))
+            (if ts
+              (ormap (lambda (output) (> ts (file-timestamp output)))
+                outputs)
+              #t)))
+        (ModuleDependencies-imports (module-info spec))))
 
     (def (dependency-timestamp id)
       (with-lock dependency-mx
@@ -282,8 +613,8 @@ TODO:
                      (dynamic-wind
                          (lambda ()
                            (set-load-path!
-                            (cons (settings-libdir settings)
-                                  (filter (lambda (p) (not (equal? p (settings-srcdir settings))))
+                            (cons (settings-libdir config)
+                                  (filter (lambda (p) (not (equal? p (settings-srcdir config))))
                                           current-load-path))))
                          (lambda () (library-timestamp id))
                          (lambda () (set-load-path! current-load-path)))))))
@@ -292,70 +623,79 @@ TODO:
     (def (build-worker)
       (try
        (for (spec workch)
-         (build spec settings)
-         (completion-post! (hash-ref completions (module-id spec)) 'done))
+         (unless (failed?)
+           (let* ((id (module-id spec))
+                  (marker (build-marker id config)))
+             ;; Keep the marker until native compilation succeeds as well.
+             ;; This also repairs interrupted builds when processes: is disabled.
+             (create-directory* (path-directory marker))
+             (call-with-output-file marker (cut write ['build-incomplete id] <>))
+             (using (state (current-process-build) :- ProcessBuild)
+               (with-lock state.mx
+                 (lambda () (set! state.pending (cons marker state.pending)))))
+             (parameterize ((current-build-module-id id)
+                            (current-build-provider? (hash-get imported id)))
+               (build spec config))
+             (complete! id))))
        (catch (e)
-         (barrier-error! build-barrier e)
-         (raise e))))
+         (fail-build! e))))
 
     ;; the build coordinator
     (def (build-coordinator spec)
-      (let* ((file (spec-file spec settings))
-             (mod (import/mx file)))
-        (for (in (module-context-import mod))
-          (consider in (expander-context-id mod)))
-        (if (or (build? spec)
-                (build-dependent? spec mod))
-          ;; it needs to be built, put it to the work channel
-          (channel-put workch spec)
-          ;; no need to build, unblock dependents
-          (completion-post! (hash-ref completions (module-id spec)) 'done))
+      (try
+       (let (info (module-info spec))
+        (for-each
+          (lambda (id)
+            (alet (completion (hash-get completions id))
+              (completion-wait! completion)))
+          (ModuleDependencies-imports info))
+        (unless (failed?)
+          (if (or (build? spec)
+                  (build-dependent? spec))
+            ;; it needs to be built, put it to the work channel
+            (channel-put workch spec)
+            ;; no need to build, unblock dependents
+            (complete! (module-id spec))))
         ;; clear the barrrier
-        (barrier-post! build-barrier)))
-
-    (def (consider in self)
-      (cond
-       ((module-context? in)  (wait-for in self))
-       ((prelude-context? in) (wait-for in self))
-       ((module-import? in)   (consider (module-import-source in) self))
-       ((module-export? in)   (consider (module-export-context in) self))
-       ((import-set? in)      (consider (import-set-source in) self))
-       (else
-        (error "unexpected import" in))))
-
-    (def (wait-for ctx self)
-      (alet* ((id (expander-context-id ctx)) ; :<root> prelude has no id
-              ;; Nested modules are built with their enclosing file.
-              (id (module-strip-nesting id)))
-        ;; A module may import its own nested modules; never wait on itself.
-        (unless (eq? id self)
-          (alet (completion (hash-get completions id))
-            (completion-wait! completion)))))
+        (barrier-post! build-barrier))
+       (catch (e) (fail-build! e))))
 
     ;; prepare the build
-    (create-directory* (settings-bindir settings))
-    (create-directory* (settings-libdir settings))
-    (create-directory* (path-expand "static" (settings-libdir settings)))
+    (create-directory* (settings-bindir config))
+    (create-directory* (settings-libdir config))
+    (create-directory* (path-expand "static" (settings-libdir config)))
+
+    (let (start (time->seconds (current-time)))
+      (discover-modules!)
+      (when (settings-verbose>=? config 1)
+        (message "... dependency discovery: " (length buildspec) " modules, "
+                 (- (time->seconds (current-time)) start) "s, processes: "
+                 (settings-dependency-processes config))))
 
     ;; prepare the completion table
     (for (spec buildspec)
+      (for-each (cut hash-put! imported <> #t)
+        (ModuleDependencies-imports (module-info spec)))
       (let (id (module-id spec))
         (hash-put! completions id (make-completion `(build ,id)))))
 
     ;; spawn a thread for each spec that waits for the dependency completions
     ;; and pushes to the work channel if necessary.
-    (for (spec buildspec)
-      (spawn/name `(build ,(spec-file spec settings)) build-coordinator spec))
-
-    ;; spawn the workers and wait
-    (let (workers (map (lambda (i) (spawn/name `(worker ,i) build-worker))
-                       (iota build-worker-count)))
+    (let* ((coordinators
+            (map (lambda (spec)
+                   (spawn/name `(build ,(spec-file spec config)) build-coordinator spec))
+                 buildspec))
+           (workers (map (lambda (i) (spawn/name `(worker ,i) build-worker))
+                         (iota build-worker-count))))
       ;; wait for the coordinators to complete
-      (barrier-wait! build-barrier)
+      (with-catch fail-build! (cut barrier-wait! build-barrier))
       ;; close the channel (no more work)
       (channel-close workch)
-      ;; and wait for the workers to complete
-      (for-each thread-join! workers))))
+      ;; No thread termination: every waiter is released and every worker reaped.
+      (for-each thread-join! coordinators)
+      (for-each thread-join! workers)
+      (when failure
+        (raise failure)))))
 
 ;; Dependencies may have been rebuilt since an earlier freshness check, including
 ;; in this invocation. Always observe the current file and library timestamps.
@@ -367,15 +707,9 @@ TODO:
   => :flonum
   (file-timestamp (core-resolve-library-module-path (library-symbol id))))
 
-(def (module-strip-nesting id)
-  (let (name (symbol->string id))
-    (cond
-     ((string-index name #\~)
-      => (lambda (ix) (string->symbol (substring name 0 ix))))
-     (else id))))
-
-(def (library-symbol id)
-  (make-symbol ":" (module-strip-nesting id)))
+(def (library-symbol (id : :symbol))
+  => :symbol
+  (make-symbol ":" (module-file-id id)))
 
 (def (make-clean . args)
   (defvalues (positionals keywords) (separate-keyword-arguments args #t))
@@ -391,7 +725,8 @@ TODO:
 
 ;; Normalize-buildspec : buildspec -> buildspec
 ;; Groups the gsc: and static-include: and copy: specs inside the immediately following ssi:
-(def (normalize-buildspec buildspec)
+(def (normalize-buildspec (buildspec : :list))
+  => :list
   (def submodules '())
   (def (get-submodules)
     (begin0 (reverse submodules) (set! submodules '())))
@@ -409,7 +744,7 @@ TODO:
                        (c
                         (match spec
                           ([gxc: name (? pair? plist) . args]
-                           [gxc: name (psetq plist submodules: (append (pgetq plist submodules:) s))])
+                           [gxc: name (psetq plist submodules: (append (pgetq submodules: plist []) s)) . args])
                           ([gxc: name . args]
                            [gxc: name [submodules: s] . args])
                           ((? string? spec)
@@ -420,7 +755,7 @@ TODO:
          (else (error "Unrecognized spec type" spec)))))
     (no-submodules #!eof)))
 
-(def (shell-config cmd . args)
+(def (shell-config (cmd : :string) . args)
   (let* ((proc (open-input-process [path: cmd arguments: args]))
          (status (process-status proc)))
     (unless (zero? status)
@@ -428,6 +763,7 @@ TODO:
     (read-line proc)))
 
 (def (env-ldflags)
+  => :procedure
   (cond
    ((getenv "LDFLAGS" #f)
     => (lambda (flags)
@@ -437,6 +773,7 @@ TODO:
     identity)))
 
 (def (env-cppflags)
+  => :procedure
   (cond
    ((getenv "CPPFLAGS" #f)
     => (lambda (flags)
@@ -448,6 +785,7 @@ TODO:
     identity)))
 
 (def (include-gambit-sharp)
+  => :list
   (let* ((gambit-sharp
           (path-expand "lib/_gambit#.scm"
                        (getenv "GERBIL_BUILD_PREFIX" (gerbil-home))))
@@ -460,78 +798,96 @@ TODO:
      (else
       `("-e" ,include-gambit-sharp)))))
 
-(def (build spec settings)
+(def (build spec
+            (config : settings))
   (match spec
     ((? string? modf)
-     (gxc-compile modf #f settings #t))
-    ([gxc: modf [submodules: submodules . _] . opts]
-     (for-each (cut build <> settings) submodules)
-     (gxc-compile modf opts settings #t))
+     (gxc-compile modf #f config #t))
     ([gxc: modf . opts]
-     (gxc-compile modf opts settings #t))
+     (for-each (cut build <> config) (spec-submodules spec))
+     (gxc-compile modf opts config #t))
     ([gsc: modf . opts]
-     (gsc-compile modf opts settings))
+     (gsc-compile modf opts config))
     ([ssi: modf . submodules]
-     (for-each (cut build <> settings) submodules)
-     (compile-ssi modf '() settings))
+     (for-each (cut build <> config) submodules)
+     (compile-ssi modf '() config))
     ([exe:  modf . opts]
-     (compile-exe/context modf opts settings))
+     (compile-exe/context modf opts config))
     ([static-exe:  modf . opts]
-     (compile-exe/static-linkage modf opts settings))
+     (compile-exe/static-linkage modf opts config))
     ([optimized-exe: modf . opts]
-     (compile-optimized-exe modf opts settings))
+     (compile-optimized-exe modf opts config))
     ([optimized-static-exe: modf . opts]
-     (compile-optimized-exe/static-linkage modf opts settings))
+     (compile-optimized-exe/static-linkage modf opts config))
     ([static-include: file]
-     (copy-target file settings)
-     (copy-static file settings))
+     (copy-target file config)
+     (copy-static file config))
     ([copy: file]
-     (copy-compiled file settings))
+     (copy-compiled file config))
     (else
      (error "Bad buildspec" spec))))
 
-(def (gxc-outputs mod opts settings)
-  [(library-path mod ".ssi" settings)
-   (static-path mod settings)])
+(def (gxc-outputs (mod : :string)
+                  (opts :? :list)
+                  (config : settings))
+  => :list
+  [(library-path mod ".ssi" config)
+   (static-path mod config)])
 
-(def (gsc-compile-opts opts)
+(def (gsc-compile-opts (opts :? :list))
+  => :list
   (match opts
     ([[plist ...] . rest] (listify rest))
     (_ (listify opts))))
 
 ;; TODO: split that (and more?) into many action. See :gerbil/compiler/driver
-(def (gxc-compile mod opts settings (invoke-gsc? #t))
+(def (gxc-compile (mod : :string)
+                  (opts :? :list)
+                  (config : settings)
+                  (invoke-gsc? : :boolean := #t))
   (message "... compile " mod)
   (def gsc-opts (gsc-compile-opts opts))
-  (def srcpath (source-path mod ".ss" settings))
+  (def srcpath (source-path mod ".ss" config))
   (let (gxc-opts
         [invoke-gsc: invoke-gsc?
-         target: (settings-target settings)
+         target: (settings-target config)
          keep-scm: (not invoke-gsc?)
-         output-dir: (settings-libdir settings)
-         optimize: (settings-optimize settings)
-         debug: (settings-debug settings)
+         output-dir: (settings-libdir config)
          generate-ssxi: #t
-         verbose: (settings-verbose>=? settings 9)
-         parallel: (> (settings-parallelize settings) 1)
+         optimize: (settings-optimize config)
+         debug: (settings-debug config)
+         verbose: (settings-verbose>=? config 9)
+         parallel: (and (not (current-build-provider?)) (> (settings-parallelize config) 1))
          (when/list gsc-opts [gsc-options: gsc-opts]) ...])
-      (compile-module srcpath gxc-opts)))
+    (if (and (settings-processes config)
+             (> (settings-parallelize config) 0)
+             (not (match opts
+                    ([[plist ...] . _] (pgetq foreground: plist))
+                    (else #f)))
+             invoke-gsc? (current-process-build))
+      (compile-in-process srcpath gxc-opts config (current-process-build))
+      (compile-module srcpath gxc-opts))))
 
-(def (gsc-libpath mod settings)
-  (def libdir-prefix (settings-libdir-prefix settings))
+(def (gsc-libpath (mod : :string)
+                  (config : settings))
+  => :string
+  (def libdir-prefix (settings-libdir-prefix config))
   (cond
    ((string-rindex mod #\/) => (lambda (ix) (path-expand (substring mod 0 ix) libdir-prefix)))
    (else libdir-prefix)))
 
-(def (gsc-base mod)
+(def (gsc-base (mod : :string))
+  => :string
   (cond
    ((string-rindex mod #\/)
     => (lambda (ix) (substring mod (fx1+ ix) (string-length mod))))
    (else mod)))
 
-(def (gsc-c-path modf settings)
+(def (gsc-c-path (modf : :string)
+                 (config : settings))
+  => (Maybe :string)
   (def mod (path-strip-extension modf))
-  (def libpath (gsc-libpath mod settings))
+  (def libpath (gsc-libpath mod config))
   (def base (gsc-base mod))
   (let lp ((n 1) (cpath #f))
     (let (next (path-expand (string-append base ".o" (number->string n))
@@ -540,10 +896,12 @@ TODO:
         (lp (fx1+ n) next)
         cpath))))
 
-(def (gsc-compile mod opts settings)
+(def (gsc-compile (mod : :string)
+                  (opts : :list)
+                  (config : settings))
   (def gsc-opts (gsc-compile-opts opts))
-  (def srcpath (source-path mod ".scm" settings))
-  (def libpath (gsc-libpath mod settings))
+  (def srcpath (source-path mod ".scm" config))
+  (def libpath (gsc-libpath mod config))
   (create-directory* libpath)
   (message "... compile foreign " mod)
   (let* ((proc (open-process [path: (gerbil-gsc)
@@ -554,7 +912,7 @@ TODO:
     (unless (zero? status)
       (error "Compilation error; gsc exited with nonzero status" status)))
   ;; just copy to libdir/static/ with properly mangled module name
-  (let (statpath (static-path mod settings))
+  (let (statpath (static-path mod config))
     (when (file-exists? statpath)
       (delete-file statpath))
     (copy-file srcpath statpath)))
@@ -564,84 +922,102 @@ TODO:
 (def (gerbil-gxc)
   (getenv "GERBIL_GXC" default-gerbil-gxc))
 
-(def (compile-ssi mod deps settings)
-  (def srcpath (source-path mod ".ssi" settings))
-  (def libpath (library-path mod ".ssi" settings))
-  (def prefix  (settings-prefix settings))
+(def (compile-ssi (mod : :string)
+                  (deps : :list)
+                  (config : settings))
+  (def srcpath (source-path mod ".ssi" config))
+  (def libpath (library-path mod ".ssi" config))
   (message "... copy ssi " mod)
   (create-directory* (path-directory libpath))
   (when (file-exists? libpath)
     (delete-file libpath))
   (copy-file srcpath libpath))
 
-(def (compile-exe-gsc-opts opts)
+(def (compile-exe-gsc-opts (opts : :list))
+  => :list
   (match opts
     ([(? keyword?) opt . rest]
      (compile-exe-gsc-opts rest))
     (else opts)))
 
-(def (compile-exe/context mod opts settings)
+(def (compile-exe/context (mod : :string)
+                          (opts : :list)
+                          (config : settings))
   (cond
-   ((or (settings-build-release settings)
+   ((or (settings-build-release config)
         (getenv "GERBIL_BUILD_RELEASE" #f))
     (cond
-     ((or (settings-build-optimized settings)
+     ((or (settings-build-optimized config)
           (getenv "GERBIL_BUILD_OPTIMIZED" #f))
-      (compile-optimized-exe/static-linkage mod opts settings))
+      (compile-optimized-exe/static-linkage mod opts config))
       (else
-       (compile-exe/static-linkage mod opts settings))))
-   ((or (settings-build-optimized settings)
+       (compile-exe/static-linkage mod opts config))))
+   ((or (settings-build-optimized config)
         (getenv "GERBIL_BUILD_OPTIMIZED" #f))
-    (compile-optimized-exe mod opts settings))
+    (compile-optimized-exe mod opts config))
    (else
-    (compile-exe mod opts settings))))
+    (compile-exe mod opts config))))
 
-(def (compile-exe mod opts settings)
-  (def srcpath (source-path mod ".ss" settings))
-  (def binpath (binary-path mod opts settings))
+(def (compile-exe (mod : :string)
+                  (opts : :list)
+                  (config : settings))
+  (def srcpath (source-path mod ".ss" config))
+  (def binpath (binary-path mod opts config))
   (def gsc-opts (compile-exe-gsc-opts opts))
   (def gxc-opts
     [invoke-gsc: #t
      output-file: binpath
-     verbose: (settings-verbose>=? settings 9)
-     debug: (settings-debug settings)
-     full-program-optimization: (settings-full-program-optimization settings)
-     parallel: (> (settings-parallelize settings) 1)
+     verbose: (settings-verbose>=? config 9)
+     debug: (settings-debug config)
+     full-program-optimization: (settings-full-program-optimization config)
+     parallel: (> (settings-parallelize config) 1)
      (when/list gsc-opts [gsc-options: gsc-opts]) ...])
-  (gxc-compile mod gsc-opts settings #f)
+  (gxc-compile mod gsc-opts config #f)
   (message "... compile exe " mod " -> " binpath)
   (gxc#compile-exe srcpath gxc-opts))
 
-(def (compile/static-linkage mod opts settings compile-e)
+(def (compile/static-linkage (mod : :string)
+                             (opts : :list)
+                             (config : settings)
+                             (compile-e : :procedure))
   (when (member "--enable-shared" (string-split (configure-command-string) #\'))
     (error "system is configured with --enable-shared and cannot build static executables"))
   (let (static-opts (append opts '("-cc-options" "-Bstatic" "-ld-options" "-static")))
-    (compile-e mod static-opts settings)))
+    (compile-e mod static-opts config)))
 
-(def (compile-exe/static-linkage mod opts settings)
-  (compile/static-linkage mod opts settings compile-exe))
+(def (compile-exe/static-linkage (mod : :string)
+                                 (opts : :list)
+                                 (config : settings))
+  (compile/static-linkage mod opts config compile-exe))
 
-(def (make-settings-optimized settings)
-  (def s (struct-copy settings))
+(def (make-settings-optimized (config : settings))
+  => settings
+  (def s (struct-copy config))
   (set! (settings-full-program-optimization s) #t)
   s)
 
-(def (compile-optimized-exe mod opts settings)
-  (compile-exe mod opts (make-settings-optimized settings)))
+(def (compile-optimized-exe (mod : :string)
+                            (opts : :list)
+                            (config : settings))
+  (compile-exe mod opts (make-settings-optimized config)))
 
-(def (compile-optimized-exe/static-linkage mod opts settings)
-  (compile/static-linkage mod opts settings compile-optimized-exe))
+(def (compile-optimized-exe/static-linkage (mod : :string)
+                                           (opts : :list)
+                                           (config : settings))
+  (compile/static-linkage mod opts config compile-optimized-exe))
 
-(def (copy-static file settings)
-  (def spath (static-file-path file settings))
+(def (copy-static (file : :string)
+                  (config : settings))
+  (def spath (static-file-path file config))
   (message "... copy static include " file)
   (when (file-exists? spath)
     (delete-file spath))
   (copy-file file spath))
 
-(def (copy-target file settings)
-  (let* ((libdir (settings-libdir-prefix settings))
-         (srcdir (settings-srcdir settings))
+(def (copy-target (file : :string)
+                  (config : settings))
+  (let* ((libdir (settings-libdir-prefix config))
+         (srcdir (settings-srcdir config))
          (spath (path-expand file srcdir))
          (tpath (path-expand file libdir)))
     (message "... copy static include to target directory " file)
@@ -650,22 +1026,33 @@ TODO:
       (delete-file tpath))
     (copy-file spath tpath)))
 
-(def (copy-compiled file settings)
-  (def srcpath (source-path file #f settings))
-  (def libpath (library-path file #f settings))
+(def (copy-compiled (file : :string)
+                    (config : settings))
+  (def srcpath (source-path file #f config))
+  (def libpath (library-path file #f config))
   (message "... copy std/" file)
+  (create-directory* (path-directory libpath))
   (when (file-exists? libpath)
     (delete-file libpath))
   (copy-file srcpath libpath))
 
-(def (source-path mod ext settings)
-  (path-expand (path-default-extension mod ext) (settings-srcdir settings)))
+(def (source-path (mod : :string)
+                  (ext :? :string)
+                  (config : settings))
+  => :string
+  (path-expand (path-default-extension mod ext) (settings-srcdir config)))
 
-(def (library-path mod ext settings)
-  (path-expand (path-force-extension mod ext) (settings-libdir-prefix settings)))
+(def (library-path (mod : :string)
+                   (ext :? :string)
+                   (config : settings))
+  => :string
+  (path-expand (path-force-extension mod ext) (settings-libdir-prefix config)))
 
-(def (binary-path mod opts settings)
-  (let* ((bindir (settings-bindir settings))
+(def (binary-path (mod : :string)
+                  (opts : :list)
+                  (config : settings))
+  => :string
+  (let* ((bindir (settings-bindir config))
          (_ (unless bindir (error "bindir must be specified")))
          (bin
           (cond
@@ -679,16 +1066,20 @@ TODO:
             (path-strip-extension bin))))
     (path-expand bin bindir)))
 
-(def (static-path mod settings)
-  (let* ((libdir (settings-libdir settings))
+(def (static-path (mod : :string)
+                  (config : settings))
+  => :string
+  (let* ((libdir (settings-libdir config))
          (staticdir (path-expand "static" libdir))
-         (mod (prefix/ (settings-prefix settings) mod))
+         (mod (prefix/ (settings-prefix config) mod))
          (base (string-join (string-split mod #\/) "__"))
          (scm (path-force-extension base ".scm")))
     (path-expand scm staticdir)))
 
-(def (static-file-path file settings)
-  (let* ((libdir (settings-libdir settings))
+(def (static-file-path (file : :string)
+                       (config : settings))
+  => :string
+  (let* ((libdir (settings-libdir config))
          (staticdir (path-expand "static" libdir))
          (filename (path-strip-directory file)))
     (path-expand filename staticdir)))
@@ -696,7 +1087,7 @@ TODO:
 ;; lib: library to ask configuration for
 ;; args: [<arg> ...]
 ;;  <arg>: additionnal arguments to pass to pkg-config
-(def (pkg-config lib . args)
+(def (pkg-config (lib : :string) . args)
   (apply shell-config "pkg-config" "--silence-errors" lib args))
 
 ;; calls pkg-config in order to return `ld-options`.
@@ -704,6 +1095,7 @@ TODO:
 ;; libs: [<lib> ...]
 ;;  <lib>: library to get ld-options for
 (def (pkg-config-libs . libs)
+  => :string
   (string-join (map (lambda (l) (pkg-config l "--libs")) libs) " "))
 
 ;; calls pkg-config in order to return `cc-options`.
@@ -711,17 +1103,22 @@ TODO:
 ;; libs: [<lib> ...]
 ;;  <lib>: library to get cc-options for
 (def (pkg-config-cflags . libs)
+  => :string
   (string-join (map (lambda (l) (pkg-config l "--cflags")) libs) " "))
 
 ;; tries pkg-config-libs with fallback to env-ldflags
-(def (ldflags lib flags)
+(def (ldflags (lib : :string)
+              (flags : :string))
+  => :string
   (try
    (pkg-config-libs lib)
    (catch (e)
      ((env-ldflags) flags))))
 
 ;; tries pkg-confg-cflags with fallback to env-cppflags
-(def (cppflags lib flags)
+(def (cppflags (lib : :string)
+               (flags : :string))
+  => :string
   (try
    (pkg-config-cflags lib)
    (catch (e)
@@ -729,11 +1126,13 @@ TODO:
 
 ;; appends flags together; useful for -cc-options and -ld-options
 (def (append-options . opts)
+  => :string
   (let (opts (filter (? (not string-empty?)) opts))
     (string-join opts " ")))
 
 ;; temporarily sets the load-path
-(def (with-cons-load-path thunk path)
+(def (with-cons-load-path (thunk : :procedure)
+                          (path : :string))
   (let (current-load-path (load-path))
     (dynamic-wind
         (cut add-load-path! path)
@@ -741,4 +1140,5 @@ TODO:
         (cut set-load-path! current-load-path))))
 
 (def (enable-shared?)
+  => (Maybe :pair)
   (member "--enable-shared" (string-split (configure-command-string) #\')))

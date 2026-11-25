@@ -24,6 +24,13 @@ It takes a *build-spec* argument, followed by keyword arguments.
 The *build-spec* is a list of individual target specifications, described below.
 The keyword arguments specify some configuration settings, also described below.
 
+With parallel source compilation, each ready Gerbil module runs in a fresh
+compiler process. Make compiles a provider’s native artifacts before releasing any targets
+that import it. Expansion-time code can then call foreign code and use Gambit
+macros supplied through compiler options. Native jobs for independent leaf
+modules run after the source workers finish. A failed build prints the
+directory containing the worker logs and marks unfinished targets for retry.
+
 A trivial wrapper is available for simple projects, in the `:std/build-script` library,
 exporting a macro `defbuild-script`.
 The macro takes a *build-spec* first followed by keyword settings,
@@ -207,6 +214,22 @@ the following keyword arguments, that may configure how your project is built.
     In the future, we may try to automatically estimate how many cores to use,
     and/or implement more robust handling of this failure mode.
     But for now, we disable parallelism. by default.
+
+  - `processes:` controls whether a positive `parallelize:` count uses separate
+    Gerbil source compiler processes. The default is `#t`. Set it to `#f` for
+    code that needs the build script’s compiler state. Native compilation still
+    follows the worker limit. `GERBIL_GXC` selects the worker executable and
+    defaults to `~~bin/gxc`.
+  - `dependency-processes:` controls where make discovers module imports,
+    including implicit preludes and imports in nested and phased modules.
+    The default, `#f`, uses the coordinator. Use `#t` to expand the graph in
+    one child, `'module` for one child per module, or `'package` to batch by
+    source directory. The last two modes run up to `parallelize:` children.
+    Source compilation and dependency discovery can be configured independently.
+
+To inspect the graph without compiling, run `gxc -deps file.ss other.ss`.
+The command writes one Scheme datum to stdout. Use `-o path` to write it to a
+file. Each module record contains its identifier and its direct dependency IDs.
 
 ## Interface
 
