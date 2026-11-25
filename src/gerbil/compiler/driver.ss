@@ -10,7 +10,13 @@ namespace: gxc
         "base"
         "compile"
         "optimize")
-(export compile-module compile-exe)
+(export compile-module compile-exe
+        compile-module-source source-build-outputs source-build-native-jobs
+        execute-native-compile-job! queue-native-compile-job!
+        compile-dependency-graph dependency-graph-modules
+        ModuleDependencies ModuleDependencies? ModuleDependencies-id ModuleDependencies-imports
+        module-build-dependencies module-dependencies->datum datum->module-dependencies
+        module-file-id)
 
 (extern namespace: #f gerbil-path) ;; needed until bootstrap re-generated
 
@@ -32,8 +38,131 @@ namespace: gxc
 
 (def scheme-file-settings '(permissions: #o644 char-encoding: UTF-8 eol-encoding: lf))
 
+(def current-compile-output-collector (make-parameter #f))
+(def current-compile-native-job-collector (make-parameter #f))
+
+(def (collect-compile-output! path)
+  (when (current-compile-output-collector)
+    ((current-compile-output-collector) path)))
+
 (def (with-output-to-scheme-file path fun)
-  (with-output-to-file [path: path . scheme-file-settings] fun))
+  (with-output-to-file [path: path . scheme-file-settings] fun)
+  (collect-compile-output! path))
+
+;; Only names cross the process boundary; no expansion contexts survive discovery.
+(defstruct ModuleDependencies ((id :- :symbol) (imports :- :list)) final: #t)
+
+(def (module-file-id (id : :symbol))
+  => :symbol
+  (let (name (symbol->string id))
+    (cond
+     ((string-index name #\~)
+      => (lambda (ix) (make-symbol (substring name 0 ix))))
+     (else id))))
+
+;; Expand the actual source, including macro-generated and phased imports. An
+;; import of a constituent depends on its owning file; imports between local
+;; constituents contribute their external dependencies without a self-edge.
+(def (module-build-dependencies (path : :string))
+  => ModuleDependencies
+  (if (member (path-extension path) '(".ss" ".ssi"))
+    (let* ((ctx (import-module path #f #f))
+           (id (expander-context-id ctx))
+           (seen (make-hash-table-eq))
+           (imports (make-hash-table-eq)))
+      (def (visit-module mod)
+        (unless (hash-get seen mod)
+          (hash-put! seen mod #t)
+          (alet (prelude (core-context-prelude mod))
+            (visit prelude))
+          (for-each visit (module-context-import mod))
+          ;; Find locally defined constituents in binding tables, including higher
+          ;; phases. Dependency edges themselves come from each module's imports.
+          (visit-bindings mod mod)))
+      (def (visit-bindings context owner)
+        (alet (table (expander-context-table context))
+          (hash-for-each
+            (lambda (_ binding)
+              (when (syntax-binding? binding)
+                (let (value (syntax-binding-e binding))
+                  (when (and (module-context? value)
+                             (eq? (phi-context-super value) owner))
+                    (visit-module value)))))
+            table))
+        (alet (up (phi-context-up context))
+          (visit-bindings up owner)))
+      (def (visit in)
+        (cond
+         ((or (module-context? in) (prelude-context? in))
+          (alet (dependency (expander-context-id in))
+            (let (owner (module-file-id dependency))
+              (if (eq? owner id)
+                (when (module-context? in)
+                  (visit-module in))
+                (hash-put! imports owner #t)))))
+         ((module-import? in) (visit (module-import-source in)))
+         ((module-export? in) (visit (module-export-context in)))
+         ((import-set? in) (visit (import-set-source in)))
+         (else (raise-compile-error "unexpected module import" in))))
+      (visit-module ctx)
+      (ModuleDependencies id
+        (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b)))
+          (hash-keys imports))))
+    (ModuleDependencies (make-symbol path) [])))
+
+(def (module-dependencies->datum (dependencies : ModuleDependencies))
+  => :list
+  ['module-dependencies 1
+   (ModuleDependencies-id dependencies)
+   (ModuleDependencies-imports dependencies)])
+
+;; A malformed worker result is a build failure, not an incomplete dependency
+;; graph that would allow a consumer to race its provider.
+(def (datum->module-dependencies datum)
+  (match datum
+    (['module-dependencies 1 (? symbol? id) (? list? imports)]
+     (unless (andmap symbol? imports)
+       (error "invalid module dependencies" datum))
+     (ModuleDependencies id imports))
+    (else (error "invalid module dependencies" datum))))
+
+;; Expand a batch in one compiler process. Its module cache is shared only for
+;; this process lifetime; the parent receives plain names and edges, never ASTs.
+;; No optimizer, code generation, output directories or native jobs are needed.
+(def (compile-dependency-graph (paths : :list) (opts []))
+  => :list
+  (parameterize ((current-compilation-target (or (pgetq target: opts) 'C))
+                 (current-expander-compiling? #t))
+    ['dependency-graph 1
+      (map (lambda (path)
+             (module-dependencies->datum (module-build-dependencies path)))
+        paths)]))
+
+(def (dependency-graph-modules packet)
+  (match packet
+    (['dependency-graph 1 (? list? records)]
+     (map datum->module-dependencies records))
+    (else (error "invalid dependency graph from worker" packet))))
+
+;; The result contains data only, so a source worker can write it for its parent.
+;; Collection finishes after the complete module, including all phases, is emitted.
+(def (compile-module-source (srcpath : :string) (opts []))
+  => :list
+  (let ((outputs []) (jobs []))
+    (parameterize ((current-compile-output-collector (lambda (path) (set! outputs (cons path outputs))))
+                   (current-compile-native-job-collector (lambda (job) (set! jobs (cons job jobs)))))
+      (compile-module srcpath [invoke-gsc: #f keep-scm: #t opts ...]))
+    ['source-build 1 (reverse outputs) (reverse jobs)]))
+
+(def (source-build-outputs result)
+  (match result
+    (['source-build 1 outputs _] (: outputs :list))
+    (else (error "invalid source build result" result))))
+
+(def (source-build-native-jobs result)
+  (match result
+    (['source-build 1 _ jobs] (: jobs :list))
+    (else (error "invalid source build result" result))))
 
 (def +gerbil-gsc+ #f)
 (def (gerbil-gsc)
@@ -694,7 +823,8 @@ namespace: gxc
         (delete-file scms))
       (if runtime-code?
         (copy-file scm0 scms)
-        (call-with-output-file scms void))))
+        (call-with-output-file scms void))
+      (collect-compile-output! scms)))
 
   (let (all-modules (cons ctx (lift-nested-modules ctx)))
     (for-each
@@ -795,13 +925,12 @@ namespace: gxc
           (extended-bindings)
           ,@(if phi? '((inlining-limit 200)) '())))
       (pretty-print code)))
-  (when (current-compile-invoke-gsc)
-    (let (compile-it
-          (lambda ()
-            (gsc-compile-file path phi?)))
-      (if (current-compile-parallel)
-        (add-compile-job! compile-it `(compile-file ,path))
-        (compile-it)))))
+  (when (or (current-compile-native-job-collector) (current-compile-invoke-gsc))
+    (let (job (make-native-compile-job path phi?))
+      (cond
+       ((current-compile-native-job-collector) => (cut <> job))
+       ((current-compile-parallel) (queue-native-compile-job! job))
+       (else (execute-native-compile-job! job))))))
 
 (def (gsc-link-options (phi? #f))
   (let lp ((rest (current-compile-gsc-options)) (opts []))
@@ -878,12 +1007,29 @@ namespace: gxc
 (def (not-string-empty? str)
   (not (string-empty? str)))
 
-(def (gsc-compile-file path phi?)
+(def (make-native-compile-job path phi?)
   (let ((gsc-link-opts (gsc-link-options phi?))
         (gsc-cc-opts (gsc-cc-options phi?))
         (gsc-ld-opts (gsc-ld-options phi?)))
-    (invoke (gerbil-gsc)
-            [gsc-cc-opts ... gsc-ld-opts ... gsc-link-opts ... path])))
+    ['gsc 1 path (current-directory) (gerbil-gsc)
+     [gsc-cc-opts ... gsc-ld-opts ... gsc-link-opts ...]]))
+
+(def (execute-native-compile-job! job)
+  => :void
+  (match job
+    (['gsc 1 path directory program options]
+     (parameterize ((current-directory directory))
+       (invoke program [options ... path])))
+    (else (error "invalid native compile job" job)))
+  (void))
+
+(def (queue-native-compile-job! job)
+  => :void
+  (add-compile-job! (cut execute-native-compile-job! job) job)
+  (void))
+
+(def (gsc-compile-file path phi?)
+  (execute-native-compile-job! (make-native-compile-job path phi?)))
 
 (def (compile-output-file ctx n ext)
   (def (module-relative-path ctx)

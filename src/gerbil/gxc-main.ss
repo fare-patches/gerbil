@@ -9,9 +9,11 @@
   (displayln " -h,--help                   display this help message and exit")
   (displayln " -d <dir>                    set compiler output directory; defaults to $GERBIL_PATH/lib")
   (displayln " -exe                        compile an executable")
+  (displayln " -deps                       write the dependency graph of the supplied modules")
+  (displayln " -compile-source             emit one module and write its outputs and deferred native jobs")
   (displayln " -target                     the compilation output target: C or js; defaults to C")
   (displayln " -l,--lang <lang>            set prelude language")
-  (displayln " -o <file>                   set executable output file")
+  (displayln " -o <file>                   set executable or build result output file")
   (displayln " -O                          optimize gerbil source")
   (displayln " -full-program-optimization  perform full program optimization")
   (displayln " -static                     link the executable's external library dependencies statically")
@@ -40,6 +42,8 @@
   (def generate-ssxi #t) ; enable by default (only when optimizing)
   (def gsc-options #f)
   (def compile-exe #f)
+  (def dependencies #f)
+  (def compile-source #f)
   (def outfile #f)
   (def lang 'gerbil/base)
 
@@ -50,7 +54,9 @@
         opt)))
 
   (def (make-opts)
-    [invoke-gsc: invoke-gsc
+    [dependencies: dependencies
+     compile-source: compile-source
+     invoke-gsc: invoke-gsc
      keep-scm: keep-scm
      target: target
      verbose: verbose
@@ -112,6 +118,12 @@
           (lp rest))
          (("-exe")
           (set! compile-exe #t)
+          (lp rest))
+         (("-deps")
+          (set! dependencies #t)
+          (lp rest))
+         (("-compile-source")
+          (set! compile-source #t)
           (lp rest))
          (("-o")
           (match rest
@@ -203,11 +215,47 @@
 (def (gxc-compile-file file opts)
   (compile-module file opts))
 
+(def (gxc-write-dependencies files opts)
+  (when (null? files)
+    (error "-deps requires at least one module"))
+  (gxc-write-build-result (lambda () (compile-dependency-graph files opts)) opts))
+
+(def (gxc-write-source files opts)
+  (match files
+    ([file]
+     (gxc-write-build-result (lambda () (compile-module-source file opts)) opts))
+    (else
+     (error "-compile-source requires exactly one module" files))))
+
+;; Build workers return data on stdout or in -o; expansion diagnostics go to stderr.
+(def (gxc-write-build-result compile opts)
+  (let (result
+        (parameterize ((current-output-port (current-error-port)))
+          (compile)))
+    (def (write-result port)
+      (write result port)
+      (newline port)
+      (force-output port))
+    (cond
+     ((pgetq output-file: opts)
+      => (lambda (path) (call-with-output-file path write-result)))
+     (else (write-result (current-output-port))))))
+
 (def (gxc-main . args)
   (let ((values compile-exe? lang opts files)
         (gxc-parse-args args))
+    (when (and compile-exe? (pgetq dependencies: opts))
+      (error "-deps and -exe cannot be combined"))
+    (when (and (pgetq compile-source: opts)
+               (or compile-exe? (pgetq dependencies: opts)))
+      (error "-compile-source cannot be combined with -deps or -exe"))
     (set-lang! lang)
-    (if compile-exe?
+    (cond
+     ((pgetq dependencies: opts)
+      (gxc-write-dependencies files opts))
+     ((pgetq compile-source: opts)
+      (gxc-write-source files opts))
+     (compile-exe?
       (let lp ((rest files))
         (match rest
           ([last]
@@ -217,5 +265,6 @@
            (lp rest))
           (else
            (gxc-print-usage!)
-           (exit 1))))
-      (for-each (cut gxc-compile-file <> opts) files))))
+           (exit 1)))))
+     (else
+      (for-each (cut gxc-compile-file <> opts) files)))))

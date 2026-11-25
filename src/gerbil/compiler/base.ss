@@ -304,12 +304,24 @@ namespace: gxc
     (mutex-unlock! __jobs-mx)
     result))
 
-(def (execute-pending-compile-jobs!)
-  (let loop ()
-    (let (pending (pending-compile-jobs))
-      (unless (null? pending)
+(def (execute-pending-compile-jobs! (cores #f))
+  (when (and cores (not (and (fixnum? cores) (> cores 0))))
+    (error "invalid native compilation concurrency" cores))
+  (let (pending (pending-compile-jobs))
+    (unless (null? pending)
+      (let ((saved-cores __available-cores) (failure #f))
+        ;; All jobs in the previous batch have been joined before changing slots.
+        (when cores (set! __available-cores cores))
         (for-each thread-start! pending)
-        (for-each join! pending)))))
+        ;; Reap every job before restoring the limit or reporting failure.
+        (for-each
+          (lambda (job)
+            (with-catch
+              (lambda (exn) (unless failure (set! failure (list exn))))
+              (cut join! job)))
+          pending)
+        (set! __available-cores saved-cores)
+        (when failure (raise (car failure)))))))
 
 (def (make-compile-job thunk name)
   (make-thread
@@ -322,12 +334,16 @@ namespace: gxc
            (mutex-unlock! __jobs-mx)
            (with-verbose-mutex
             (displayln "... execute compile job " name))
-           (unwind-protect
-             (thunk)
-             (mutex-lock! __jobs-mx)
-             (set! __available-cores (fx1+ __available-cores))
-             (condition-variable-signal! __jobs-cv)
-             (mutex-unlock! __jobs-mx)))
+           ;; An uncaught thread exception need not unwind dynamic-wind frames.
+           ;; Catch locally so the slot is returned before the thread fails.
+           (with-catch raise
+             (lambda ()
+               (unwind-protect
+                 (thunk)
+                 (mutex-lock! __jobs-mx)
+                 (set! __available-cores (fx1+ __available-cores))
+                 (condition-variable-signal! __jobs-cv)
+                 (mutex-unlock! __jobs-mx)))))
          (begin
            (mutex-unlock! __jobs-mx __jobs-cv)
            (loop)))))
