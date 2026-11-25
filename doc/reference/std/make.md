@@ -225,6 +225,8 @@ the following keyword arguments, that may configure how your project is built.
     The default, `#f`, uses the coordinator. Use `#t` to expand the graph in
     one child, `'module` for one child per module, or `'package` to batch by
     source directory. The last two modes run up to `parallelize:` children.
+    If a macro needs native code during discovery, make builds its providers
+    and retries discovery in a fresh child using their compiled interfaces.
     Source compilation and dependency discovery can be configured independently.
 
 To inspect the graph without compiling, run `gxc -deps file.ss other.ss`.

@@ -84,6 +84,7 @@ namespace: gxc
   (%#provide                 false-method)
   (%#extern                  false-method)
   (%#define-values           true-method)
+  (%#define-runtime          false-method)
   (%#define-syntax           false-method)
   (%#define-alias            false-method)
   (%#declare                 false-method)

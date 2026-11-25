@@ -14,7 +14,7 @@ namespace: gxc
         compile-module-source source-build-outputs source-build-native-jobs
         execute-native-compile-job! queue-native-compile-job!
         compile-dependency-graph dependency-graph-modules
-        ModuleDependencies ModuleDependencies? ModuleDependencies-id ModuleDependencies-imports
+        (struct-out ModuleDependencies) pending-module-dependencies?
         module-build-dependencies module-dependencies->datum datum->module-dependencies
         module-file-id)
 
@@ -50,7 +50,8 @@ namespace: gxc
   (collect-compile-output! path))
 
 ;; Only names cross the process boundary; no expansion contexts survive discovery.
-(defstruct ModuleDependencies ((id :- :symbol) (imports :- :list)) final: #t)
+(defstruct ModuleDependencies ((id :- :symbol) (imports :- :list)))
+(defstruct (pending-module-dependencies ModuleDependencies) () final: #t)
 
 (def (module-file-id (id : :symbol))
   => :symbol
@@ -63,7 +64,37 @@ namespace: gxc
 ;; Expand the actual source, including macro-generated and phased imports. An
 ;; import of a constituent depends on its owning file; imports between local
 ;; constituents contribute their external dependencies without a self-edge.
-(def (module-build-dependencies (path : :string))
+(def (module-build-dependencies (path : :string) (defer? #f) (seen (make-hash-table)))
+  => ModuleDependencies
+  ;; Reload source imports once per discovery batch. Installed interfaces can retain
+  ;; their identities across builds, but edited source must be read again.
+  (let ((import (current-expander-module-import))
+        (evaluate (current-expander-module-eval)) (providers []))
+    (def (fresh-import source reload?)
+      (if (and (string? source)
+               (or (equal? source path) (equal? ".ss" (path-extension source)))
+               (not (hash-get seen source)))
+        (begin0 (import source #t) (hash-put! seen source #t))
+        (import source reload?)))
+    (def (phase-eval mod)
+      (when (and defer? (module-context? mod))
+        (alet (source (module-source-path mod))
+          (when (equal? ".ss" (path-extension source))
+            (let (id (module-file-id (expander-context-id mod)))
+              (unless (memq id providers) (set! providers (cons id providers)))))))
+      (evaluate mod))
+    (with-catch
+      (lambda (exn)
+        (if (null? providers)
+          (raise exn)
+          (let-values (((_ id _ns _body) (core-read-module path)))
+            (make-pending-module-dependencies id (remq id providers)))))
+      (lambda ()
+        (parameterize ((current-expander-module-import fresh-import)
+                       (current-expander-module-eval phase-eval))
+          (expanded-module-dependencies path))))))
+
+(def (expanded-module-dependencies (path : :string))
   => ModuleDependencies
   (if (member (path-extension path) '(".ss" ".ssi"))
     (let* ((ctx (import-module path #f #f))
@@ -112,7 +143,7 @@ namespace: gxc
 
 (def (module-dependencies->datum (dependencies : ModuleDependencies))
   => :list
-  ['module-dependencies 1
+  [(if (pending-module-dependencies? dependencies) 'pending-dependencies 'module-dependencies) 1
    (ModuleDependencies-id dependencies)
    (ModuleDependencies-imports dependencies)])
 
@@ -120,10 +151,12 @@ namespace: gxc
 ;; graph that would allow a consumer to race its provider.
 (def (datum->module-dependencies datum)
   (match datum
-    (['module-dependencies 1 (? symbol? id) (? list? imports)]
+    ([(and tag (or 'module-dependencies 'pending-dependencies)) 1 (? symbol? id) (? list? imports)]
      (unless (andmap symbol? imports)
        (error "invalid module dependencies" datum))
-     (ModuleDependencies id imports))
+     (if (eq? tag 'pending-dependencies)
+       (make-pending-module-dependencies id imports)
+       (ModuleDependencies id imports)))
     (else (error "invalid module dependencies" datum))))
 
 ;; Expand a batch in one compiler process. Its module cache is shared only for
@@ -134,9 +167,10 @@ namespace: gxc
   (parameterize ((current-compilation-target (or (pgetq target: opts) 'C))
                  (current-expander-compiling? #t))
     ['dependency-graph 1
-      (map (lambda (path)
-             (module-dependencies->datum (module-build-dependencies path)))
-        paths)]))
+      (let ((seen (make-hash-table)) (defer? (eq? (pgetq dependencies: opts) 'build)))
+        (map (lambda (path)
+               (module-dependencies->datum (module-build-dependencies path defer? seen)))
+          paths))]))
 
 (def (dependency-graph-modules packet)
   (match packet
@@ -1014,12 +1048,12 @@ namespace: gxc
     ['gsc 1 path (current-directory) (gerbil-gsc)
      [gsc-cc-opts ... gsc-ld-opts ... gsc-link-opts ...]]))
 
-(def (execute-native-compile-job! job)
+(def (execute-native-compile-job! job (run invoke))
   => :void
   (match job
     (['gsc 1 path directory program options]
      (parameterize ((current-directory directory))
-       (invoke program [options ... path])))
+       (run program [options ... path])))
     (else (error "invalid native compile job" job)))
   (void))
 

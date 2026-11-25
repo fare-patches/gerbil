@@ -70,6 +70,12 @@
               (check (call-with-input-file output read) => graph))
             (check (file-exists? unused) => #f)
             (check (file-exists? (path-expand "owner.ssi" directory)) => #f))))
+      ;; Query the same path again after changing its imports in this process.
+      (write-source "added.ss" '((export added) (def added 1)))
+      (write-source "owner.ss" `((import ,(path-expand "added.ss" directory))))
+      (let (info (parameterize ((current-directory directory))
+                   (module-build-dependencies (path-expand "owner.ss" directory))))
+        (check (and (memq (make-symbol prefix "/added") (ModuleDependencies-imports info)) #t) => #t))
       (check-exception
         (datum->module-dependencies '(module-dependencies 1 owner (bad 17)))
         error?)
@@ -193,7 +199,7 @@
      (def (build)
        (with-output-to-string
          (lambda ()
-           (make '("join" "left" "right" "macros")
+           (make '("join" "left" "right" "macros" "extra")
                  srcdir: srcdir libdir: libdir
                  bindir: (path-expand "bin" directory) parallelize: 4
                  dependency-processes: dependency-processes))))
@@ -214,6 +220,7 @@
      (try
       (create-directory srcdir)
       (write-source "gerbil.pkg" `((package: ,(string->symbol prefix))))
+      (write-source "extra.ss" '((export extra) (defrule (extra) 0)))
       (write-source "macros.ss" (macro-source 7))
       (write-source "left.ss"
                     '((import ./macros)
@@ -229,12 +236,43 @@
       (thread-sleep! 1.1)
       ;; Both dependent workers must see the rebuilt provider in a fresh process.
       (write-source "macros.ss" (macro-source 42))
+      (write-source "extra.ss" '((export extra) (defrule (extra) 10)))
+      (write-source "right.ss"
+        '((import ./macros ./extra) (export right) (def right (+ (number) (extra)))))
       (build)
-      (check (answer) => 84)
+      (check (answer) => 94)
       (check (build) => "")
       (finally (set-load-path! saved-load-path)))
      directory))
   (void))
+
+;; Expanding the consumer calls native code from its phase-one import.
+(def (test-native-phase-provider policy (cores 2))
+  (call-with-temporary-directory
+   "gerbil-make-ffi-"
+   (lambda (directory)
+     (def saved (load-path))
+     (def libdir (path-expand "lib" directory))
+     (def (write-source name forms)
+       (call-with-output-file (path-expand name directory)
+         (lambda (port) (for-each (lambda (form) (write form port) (newline port)) forms))))
+     (try
+      (write-source "gerbil.pkg" `((package: ,(make-symbol (path-strip-directory directory)))))
+      (write-source "provider.ss"
+        '((import :std/ffi) (export native-number)
+          (def-C-lambda (native-number) => int "___result = 7;")))
+      (write-source "consumer.ss"
+        '((import (for-syntax ./provider))
+          (defsyntax (seven stx)
+            (unless (= (native-number) 7) (error "wrong native value"))
+            (datum->syntax #'seven 7))
+          (def answer (seven))))
+      (make '("consumer" "provider") srcdir: directory libdir: libdir
+            bindir: directory parallelize: cores dependency-processes: policy)
+      (check (file-exists? (path-expand
+                (string-append (path-strip-directory directory) "/consumer.ssi") libdir)) => #t)
+      (finally (set-load-path! saved)))
+     directory)))
 
 ;; A discovery failure must not start compilation or cache a broken expansion in
 ;; the coordinator. A repaired source is visible to the next graph worker.
@@ -341,7 +379,7 @@
      directory))
   (void))
 
-(def (test-process-cancellation (dependency-processes #f))
+(def (test-process-cancellation (dependency-processes #f) (native? #f))
   => :void
   (call-with-temporary-directory
    "gerbil-make-cancel-"
@@ -352,6 +390,7 @@
      (def diagnostics (open-output-string))
      (def saved-load-path (load-path))
      (def saved-gxc (getenv "GERBIL_GXC" #f))
+     (def saved-gsc (getenv "GERBIL_GSC" #f))
      (def saved-state (getenv "GERBIL_MAKE_TEST_STATE" #f))
      (try
       (create-directory srcdir)
@@ -362,13 +401,19 @@
        [["gerbil.pkg" . "(package: make-cancel-test)\n"]
         ["failure.ss" . "(export value) (def value 1)\n"]
         ["blocked.ss" . "(export other) (def other 2)\n"]
-        ["dependent.ss" . "(import ./failure) (def result value)\n"]])
+        ["dependent.ss" . "(import ./failure ./blocked) (def result value)\n"]])
       ;; Both children are running before failure. The blocked child ignores TERM
       ;; so cancellation must also exercise its bounded KILL/reap fallback.
       (with-output-to-file [path: wrapper permissions: #o755]
         (lambda ()
-          (display "#!/bin/sh\ncase \"$*\" in\n*failure.ss*)\n  while [ ! -f \"$GERBIL_MAKE_TEST_STATE/blocked.pid\" ]; do sleep 0.01; done\n  awk 'BEGIN { for (i=0; i<32768; i++) print \"worker output exceeds pipe capacity\" }'\n  echo 'final worker diagnostic' >&2\n  exit 17;;\n*)\n  trap '' TERM\n  echo $$ > \"$GERBIL_MAKE_TEST_STATE/blocked.pid\"\n  exec sleep 60;;\nesac\n")))
+          (display "#!/bin/sh\n")
+          (when native?
+            (display "case \"$*\" in *blocked.ss*) exec ")
+            (write (path-expand "~~bin/gxc"))
+            (display " \"$@\";; esac\n"))
+          (display "case \"$*\" in\n*failure.ss*)\n  while [ ! -f \"$GERBIL_MAKE_TEST_STATE/blocked.pid\" ]; do sleep 0.01; done\n  awk 'BEGIN { for (i=0; i<32768; i++) print \"worker output exceeds pipe capacity\" }'\n  echo 'final worker diagnostic' >&2\n  exit 17;;\n*)\n  trap '' TERM\n  echo $$ > \"$GERBIL_MAKE_TEST_STATE/blocked.pid\"\n  exec sleep 60;;\nesac\n")))
       (setenv "GERBIL_GXC" wrapper)
+      (when native? (setenv "GERBIL_GSC" wrapper))
       (setenv "GERBIL_MAKE_TEST_STATE" directory)
       (parameterize ((current-error-port diagnostics))
         (check-exception
@@ -385,6 +430,11 @@
         (check (> (string-length output) 1048576) => #t)
         (check (string-contains output "final worker diagnostic") ? number?))
       (check (file-exists? pidfile) => #t)
+      ;; Waiting for the child's 60-second sleep to finish would also reap it.
+      (check (< (- (time->seconds (current-time))
+                   (time->seconds (file-last-modification-time pidfile)))
+                45)
+             => #t)
       (let (process (open-process
                      [path: "/bin/sh"
                       arguments: ["-c" "kill -0 \"$1\" 2>/dev/null" "worker-probe"
@@ -394,6 +444,7 @@
          (finally (close-port process))))
       (finally
        (if saved-gxc (setenv "GERBIL_GXC" saved-gxc) (setenv "GERBIL_GXC"))
+       (if saved-gsc (setenv "GERBIL_GSC" saved-gsc) (setenv "GERBIL_GSC"))
        (if saved-state (setenv "GERBIL_MAKE_TEST_STATE" saved-state) (setenv "GERBIL_MAKE_TEST_STATE"))
        (set-load-path! saved-load-path)
        (close-port diagnostics)))
@@ -458,6 +509,11 @@
           peak))
       (check (peak-jobs 8) => 8)
       (check (peak-jobs 1) => 1))
+    (test-case "native jobs can enqueue another batch"
+      (let (finished? #f)
+        (add-compile-job! (lambda () (add-compile-job! (lambda () (set! finished? #t)))))
+        (execute-pending-compile-jobs! 1)
+        (check finished? => #t)))
     (test-case "native failure waits for every started job"
       (let (finished? #f)
         (add-compile-job! (lambda () (error "expected native job failure")) 'expected-failure)
@@ -487,6 +543,14 @@
       (test-process-phased-diamond))
     (test-case "isolated discovery preserves phased dependency ordering"
       (test-process-phased-diamond #t))
+    (test-case "native phase provider on a clean build"
+      (test-native-phase-provider #f))
+    (test-case "serial compilation loads the native phase provider"
+      (test-native-phase-provider #f 0))
+    (test-case "isolated discovery resumes after native compilation"
+      (test-native-phase-provider #t))
+    (test-case "source failure cancels a provider's native compiler"
+      (test-process-cancellation #f #t))
     (test-case "discovery failure admits a repaired source on retry"
       (test-discovery-failure-retry))
     (test-case "source process failure releases dependents and permits retry"

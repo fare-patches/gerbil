@@ -5,7 +5,7 @@
 
 (import :gerbil/compiler
         (only-in :gerbil/compiler/base
-          module-id->path-string pending-compile-jobs)
+          module-id->path-string pending-compile-jobs raise-compile-error)
         (only-in :gerbil/compiler/driver
           source-build-outputs source-build-native-jobs
           execute-native-compile-job! queue-native-compile-job!)
@@ -337,7 +337,8 @@ TODO:
 (def (run-worker-process (srcpath : :string)
                          (stem : :string)
                          (command : :list)
-                         (state : ProcessBuild))
+                         (state : ProcessBuild)
+                         (native? #f))
   (def log (string-append stem ".log"))
   (def result-file (string-append stem ".result"))
   (create-directory* (path-directory stem))
@@ -357,8 +358,10 @@ TODO:
      (let (status (process-status process))
        (show-process-output srcpath log status)
        (unless (zero? status)
-         (error "source compiler process failed" srcpath status log))
-       (call-with-input-file result-file read))
+         (if native?
+           (raise-compile-error "native compiler process failed" srcpath status log)
+           (error "source compiler process failed" srcpath status log)))
+       (unless native? (call-with-input-file result-file read)))
      (finally
       (with-lock state.mx (lambda () (hash-remove! state.active process)))
       (close-port process)))))
@@ -395,21 +398,29 @@ TODO:
   ;; A dependent macro may execute this module, including native-only FFI
   ;; and Gambit macros supplied by its gsc options. Publish it only when ready.
   (if (current-build-provider?)
-    (for-each execute-native-compile-job! jobs)
+    (for-each
+      (lambda (job)
+        (execute-native-compile-job! job
+          (lambda (program args)
+            (run-worker-process srcpath (string-append stem "-native")
+              (cons program args) state #t))))
+      jobs)
     (with-lock state.mx
       (lambda () (set! state.jobs (append jobs state.jobs))))))
 
-;; Each batch uses one compiler process; only the graph packet returns.
+;; A retry resolves phase imports from the providers completed in the preceding wave.
 (def (discover-graph-in-process (paths : :list)
                                 (index : :fixnum)
                                 (config : settings)
-                                (state : ProcessBuild))
+                                (state : ProcessBuild)
+                                (retry? #f) (defer? #t))
   => :list
   (def stem (path-expand (string-append "dependency-" (number->string index)) state.directory))
   (def packet
     (run-worker-process (car paths) stem
-      (compiler-process-command (load-path)
-        ["-deps" "-target" (symbol->string (settings-target config))
+      (compiler-process-command
+        (if retry? (cons (path-expand (settings-libdir config)) (load-path)) (load-path))
+        [(if defer? "-deps-for-build" "-deps") "-target" (symbol->string (settings-target config))
          "-o" (string-append stem ".result") paths ...])
       state))
   (let (modules (dependency-graph-modules packet))
@@ -451,7 +462,7 @@ TODO:
     (using (state (start-process-build settings) :- ProcessBuild)
       (parameterize ((current-process-build state))
         (try
-         (make-build buildspec settings)
+         (make-build (normalize-buildspec buildspec) settings)
          ;; Complete independent leaf jobs after the source workers have exited.
          (for-each (if (> (settings-parallelize settings) 1)
                      queue-native-compile-job!
@@ -471,11 +482,12 @@ TODO:
              (displayln "Build diagnostics retained in " state.directory))
            (raise e)))))))
 
-(def (make-build (buildspec-in : :list)
-                 (config : settings))
+(def (make-build (buildspec : :list)
+                 (config : settings)
+                 (retry? #f))
   => :void
   (parameterize ((current-compilation-target (settings-target config)))
-    (def buildspec (normalize-buildspec buildspec-in))
+    (def remaining [])
     ;; detect and report duplicate files in the buildspec up front
     (let (file-counts (make-hash-table))
       (for (spec buildspec)
@@ -561,10 +573,11 @@ TODO:
                (alet (item (next!))
                  (let* ((paths (DependencyJob-paths item))
                         (infos
-                         (if policy
+                         (if (or policy retry?)
                            (discover-graph-in-process paths (DependencyJob-index item)
-                             config (current-process-build))
-                           (map module-build-dependencies paths))))
+                             config (current-process-build) retry?)
+                           (let (seen (make-hash-table))
+                             (map (cut module-build-dependencies <> #t seen) paths)))))
                    (with-lock mx
                      (lambda ()
                        (for-each (lambda (path info) (hash-put! modules path info))
@@ -634,7 +647,7 @@ TODO:
                (with-lock state.mx
                  (lambda () (set! state.pending (cons marker state.pending)))))
              (parameterize ((current-build-module-id id)
-                            (current-build-provider? (hash-get imported id)))
+                            (current-build-provider? (or (pair? remaining) (hash-get imported id))))
                (build spec config))
              (complete! id))))
        (catch (e)
@@ -672,6 +685,41 @@ TODO:
                  (- (time->seconds (current-time)) start) "s, processes: "
                  (settings-dependency-processes config))))
 
+    ;; If phase evaluation needs native code, build its known prerequisites
+    ;; first. Rediscover the consumer from the installed interfaces so imports
+    ;; appearing later in its body still participate in scheduling.
+    (let (pending (filter (lambda (spec) (pending-module-dependencies? (module-info spec))) buildspec))
+      (unless (null? pending)
+        (let ((by-id (make-hash-table-eq)) (ready (make-hash-table-eq)))
+          (for-each (lambda (spec) (hash-put! by-id (module-id spec) spec)) buildspec)
+          (def (include-provider! id visiting)
+            (cond
+             ((hash-get ready id))
+             ((memq id visiting) (error "cyclic build dependency" id visiting))
+             ((hash-get by-id id)
+              => (lambda (spec)
+                   (let (info (module-info spec))
+                     (and (not (pending-module-dependencies? info))
+                          (andmap (cut include-provider! <> (cons id visiting))
+                            (ModuleDependencies-imports info))
+                          (begin (hash-put! ready id #t) #t)))))
+             (else #t)))
+          (for-each
+            (lambda (spec)
+              (for-each (cut include-provider! <> [])
+                (ModuleDependencies-imports (module-info spec))))
+            pending)
+          (if (zero? (hash-length ready))
+            ;; External providers may already be installed. Report the original
+            ;; expansion error if their interfaces still cannot satisfy the import.
+            (let (paths (map (cut spec-file <> config) pending))
+              (for-each (cut hash-put! modules <> <>) paths
+                (discover-graph-in-process paths 0 config (current-process-build) #t #f)))
+            (begin
+              (set! remaining (filter (lambda (spec) (not (hash-get ready (module-id spec)))) buildspec))
+              (set! buildspec (filter (lambda (spec) (hash-get ready (module-id spec))) buildspec))
+              (set! build-barrier (make-barrier (length buildspec))))))))
+
     ;; prepare the completion table
     (for (spec buildspec)
       (for-each (cut hash-put! imported <> #t)
@@ -695,7 +743,10 @@ TODO:
       (for-each thread-join! coordinators)
       (for-each thread-join! workers)
       (when failure
-        (raise failure)))))
+        (raise failure)))
+    (unless (null? remaining)
+      (with-cons-load-path (cut make-build remaining config #t)
+        (path-expand (settings-libdir config))))))
 
 ;; Dependencies may have been rebuilt since an earlier freshness check, including
 ;; in this invocation. Always observe the current file and library timestamps.

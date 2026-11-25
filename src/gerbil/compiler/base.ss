@@ -307,21 +307,22 @@ namespace: gxc
 (def (execute-pending-compile-jobs! (cores #f))
   (when (and cores (not (and (fixnum? cores) (> cores 0))))
     (error "invalid native compilation concurrency" cores))
-  (let (pending (pending-compile-jobs))
-    (unless (null? pending)
-      (let ((saved-cores __available-cores) (failure #f))
-        ;; All jobs in the previous batch have been joined before changing slots.
-        (when cores (set! __available-cores cores))
-        (for-each thread-start! pending)
-        ;; Reap every job before restoring the limit or reporting failure.
-        (for-each
-          (lambda (job)
-            (with-catch
-              (lambda (exn) (unless failure (set! failure (list exn))))
-              (cut join! job)))
-          pending)
-        (set! __available-cores saved-cores)
-        (when failure (raise (car failure)))))))
+  (let (saved-cores __available-cores)
+    (when cores (set! __available-cores cores))
+    (unwind-protect
+      (let drain ()
+        (let ((pending (pending-compile-jobs)) (failure #f))
+          (unless (null? pending)
+            (for-each thread-start! pending)
+            (for-each
+              (lambda (job)
+                (with-catch
+                  (lambda (exn) (unless failure (set! failure (list exn))))
+                  (cut join! job)))
+              pending)
+            (if failure (raise (car failure)) (drain)))))
+      (set! __available-cores saved-cores))))
+
 
 (def (make-compile-job thunk name)
   (make-thread
