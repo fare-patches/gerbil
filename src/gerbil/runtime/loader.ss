@@ -8,6 +8,9 @@ namespace: #f
 (export #t)
 (import "gambit" "util" "hash" "thread")
 
+;; Installed by runtime/init; bypass the Gerbil expander for generated Scheme.
+(extern load-scheme)
+
 (def __modules (make-hash-table))
 (def __load-mx (make-mutex 'loader))
 (def __load-cv (make-condition-variable 'loader))
@@ -59,7 +62,7 @@ namespace: #f
                (mutex-unlock! __load-mx)
                (raise exn))
            (lambda ()
-             (let (loaded-path (load path))
+             (let (loaded-path (load-scheme path))
                (mutex-lock! __load-mx)
                (hash-put! __modules modpath loaded-path)
                (unless (hash-get __load-order modpath)
@@ -120,10 +123,13 @@ namespace: #f
   (let lp ((rest (load-path)))
     (match rest
       ([dir . rest]
-       (let ((npath (path-expand modpath (path-expand dir))))
+       (let* ((npath (path-expand modpath (path-expand dir)))
+              (native (find-compiled-file npath))
+              (source (find-source-file npath)))
          (cond
-          ((find-compiled-file npath) => path-normalize)
-          ((find-source-file npath) => path-normalize)
+          ((and source (or (not native) (file-newer? source native)))
+           (path-normalize source))
+          (native (path-normalize native))
           (else (lp rest)))))
       (else #f))))
 

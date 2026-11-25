@@ -48,7 +48,7 @@ namespace: #f
 ;; hook load to be able to load raw gambit code when the expander is hooked
 (def (load-scheme path)
   (parameterize ((__scheme-source path))
-    (##load path (lambda args #f) #t #t #f)))
+    (load path)))
 
 ;; expander stuffs
 (def (__expand-source src)
