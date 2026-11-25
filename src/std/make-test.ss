@@ -71,6 +71,22 @@
             (check (file-exists? unused) => #f)
             (check (file-exists? (path-expand "owner.ssi" directory)) => #f))))
       ;; Query the same path again after changing its imports in this process.
+      (def (select file)
+        (write-source "selector.ss"
+          `((export select-source)
+            (defsyntax (select-source stx)
+              (datum->syntax (stx-car stx) '(import ,(path-expand file directory)))))))
+      (def (selected? id)
+        (and (memq (make-symbol prefix "/" id)
+                   (ModuleDependencies-imports
+                    (module-build-dependencies (path-expand "owner.ss" directory)))) #t))
+      (select "left.ss")
+      (write-source "owner.ss"
+        `((import ,(path-expand "selector.ss" directory)) (select-source)))
+      (check (selected? "left") => #t)
+      (select "right.ss")
+      (check (selected? "right") => #t)
+      (check (selected? "left") => #f)
       (write-source "added.ss" '((export added) (def added 1)))
       (write-source "owner.ss" `((import ,(path-expand "added.ss" directory))))
       (let (info (parameterize ((current-directory directory))
@@ -246,34 +262,6 @@
      directory))
   (void))
 
-;; Expanding the consumer calls native code from its phase-one import.
-(def (test-native-phase-provider policy (cores 2))
-  (call-with-temporary-directory
-   "gerbil-make-ffi-"
-   (lambda (directory)
-     (def saved (load-path))
-     (def libdir (path-expand "lib" directory))
-     (def (write-source name forms)
-       (call-with-output-file (path-expand name directory)
-         (lambda (port) (for-each (lambda (form) (write form port) (newline port)) forms))))
-     (try
-      (write-source "gerbil.pkg" `((package: ,(make-symbol (path-strip-directory directory)))))
-      (write-source "provider.ss"
-        '((import :std/ffi) (export native-number)
-          (def-C-lambda (native-number) => int "___result = 7;")))
-      (write-source "consumer.ss"
-        '((import (for-syntax ./provider))
-          (defsyntax (seven stx)
-            (unless (= (native-number) 7) (error "wrong native value"))
-            (datum->syntax #'seven 7))
-          (def answer (seven))))
-      (make '("consumer" "provider") srcdir: directory libdir: libdir
-            bindir: directory parallelize: cores dependency-processes: policy)
-      (check (file-exists? (path-expand
-                (string-append (path-strip-directory directory) "/consumer.ssi") libdir)) => #t)
-      (finally (set-load-path! saved)))
-     directory)))
-
 ;; A discovery failure must not start compilation or cache a broken expansion in
 ;; the coordinator. A repaired source is visible to the next graph worker.
 (def (test-discovery-failure-retry)
@@ -284,13 +272,14 @@
       (def libdir (path-expand "lib" directory))
       (def prefix (path-strip-directory directory))
       (def saved-load-path (load-path))
+      (def diagnostics (open-output-string))
       (def (write-source name forms)
         (call-with-output-file (path-expand name srcdir)
           (lambda (port)
             (for-each (lambda (form) (write form port) (newline port))
               forms))))
       (def (build)
-        (parameterize ((current-error-port (open-output-string)))
+        (parameterize ((current-error-port diagnostics))
           (with-output-to-string
             (lambda ()
               (make '("leaf" "upstream")
@@ -300,18 +289,28 @@
       (try
        (create-directory srcdir)
        (write-source "gerbil.pkg" `((package: ,(make-symbol prefix))))
-       (write-source "upstream.ss" '((export value) (def)))
-       (write-source "leaf.ss" '((import ./upstream) (export answer) (def answer value)))
-       (check-exception (build)
-         (lambda (exn)
-           (and (error? exn)
-                (equal? (Error-message exn) "source compiler process failed"))))
-       (check (file-exists? (path-expand (string-append prefix "/leaf.ssi") libdir)) => #f)
-       (write-source "upstream.ss" '((export value) (def value 7)))
+       (write-source "upstream.ss"
+         '((import :std/ffi) (export value)
+           (def-C-lambda (value) => int "___result = 7;")))
+       (for-each
+         (lambda (source)
+           (write-source "leaf.ss"
+             `((import (for-syntax ,source))
+               (defsyntax (seven stx) (datum->syntax #'seven (value)))
+               (export answer) (def answer (seven))))
+           (check-exception (build)
+             (lambda (exn)
+               (and (error? exn)
+                    (equal? (Error-message exn) "source compiler process failed"))))
+           (check (string-contains (get-output-string diagnostics) "##c-lambda") ? number?)
+           (check (file-exists? (path-expand (string-append prefix "/upstream.ssi") libdir)) => #f)
+           (check (file-exists? (path-expand (string-append prefix "/leaf.ssi") libdir)) => #f))
+         '(./upstream "upstream.ss"))
+       (write-source "upstream.ss" '((export value) (def (value) 7)))
        (build)
        (check (file-exists? (path-expand (string-append prefix "/leaf.ssi") libdir)) => #t)
        (check (build) => "")
-       (finally (set-load-path! saved-load-path)))
+       (finally (close-port diagnostics) (set-load-path! saved-load-path)))
       directory)))
 
 (def (test-process-failure-retry)
@@ -543,12 +542,6 @@
       (test-process-phased-diamond))
     (test-case "isolated discovery preserves phased dependency ordering"
       (test-process-phased-diamond #t))
-    (test-case "native phase provider on a clean build"
-      (test-native-phase-provider #f))
-    (test-case "serial compilation loads the native phase provider"
-      (test-native-phase-provider #f 0))
-    (test-case "isolated discovery resumes after native compilation"
-      (test-native-phase-provider #t))
     (test-case "source failure cancels a provider's native compiler"
       (test-process-cancellation #f #t))
     (test-case "discovery failure admits a repaired source on retry"

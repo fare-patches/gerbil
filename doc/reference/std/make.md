@@ -26,8 +26,8 @@ The keyword arguments specify some configuration settings, also described below.
 
 With parallel source compilation, each ready Gerbil module runs in a fresh
 compiler process. Make compiles a provider’s native artifacts before releasing any targets
-that import it. Expansion-time code can then call foreign code and use Gambit
-macros supplied through compiler options. Native jobs for independent leaf
+that import it. Gerbil does not support dependencies on foreign code during
+macro expansion. Native jobs for independent leaf
 modules run after the source workers finish. A failed build prints the
 directory containing the worker logs and marks unfinished targets for retry.
 
@@ -225,8 +225,6 @@ the following keyword arguments, that may configure how your project is built.
     The default, `#f`, uses the coordinator. Use `#t` to expand the graph in
     one child, `'module` for one child per module, or `'package` to batch by
     source directory. The last two modes run up to `parallelize:` children.
-    If a macro needs native code during discovery, make builds its providers
-    and retries discovery in a fresh child using their compiled interfaces.
     Source compilation and dependency discovery can be configured independently.
 
 To inspect the graph without compiling, run `gxc -deps file.ss other.ss`.

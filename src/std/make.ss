@@ -395,8 +395,7 @@ TODO:
   (unless (andmap file-exists? outputs)
     (error "source compiler did not finish its outputs" srcpath outputs))
   (call-with-output-file (build-marker id config) (cut write result <>))
-  ;; A dependent macro may execute this module, including native-only FFI
-  ;; and Gambit macros supplied by its gsc options. Publish it only when ready.
+  ;; Finish a provider's outputs before releasing its dependents.
   (if (current-build-provider?)
     (for-each
       (lambda (job)
@@ -408,19 +407,17 @@ TODO:
     (with-lock state.mx
       (lambda () (set! state.jobs (append jobs state.jobs))))))
 
-;; A retry resolves phase imports from the providers completed in the preceding wave.
+;; Each batch uses one compiler process; only the graph packet returns.
 (def (discover-graph-in-process (paths : :list)
                                 (index : :fixnum)
                                 (config : settings)
-                                (state : ProcessBuild)
-                                (retry? #f) (defer? #t))
+                                (state : ProcessBuild))
   => :list
   (def stem (path-expand (string-append "dependency-" (number->string index)) state.directory))
   (def packet
     (run-worker-process (car paths) stem
-      (compiler-process-command
-        (if retry? (cons (path-expand (settings-libdir config)) (load-path)) (load-path))
-        [(if defer? "-deps-for-build" "-deps") "-target" (symbol->string (settings-target config))
+      (compiler-process-command (load-path)
+        ["-deps" "-target" (symbol->string (settings-target config))
          "-o" (string-append stem ".result") paths ...])
       state))
   (let (modules (dependency-graph-modules packet))
@@ -462,7 +459,7 @@ TODO:
     (using (state (start-process-build settings) :- ProcessBuild)
       (parameterize ((current-process-build state))
         (try
-         (make-build (normalize-buildspec buildspec) settings)
+         (make-build buildspec settings)
          ;; Complete independent leaf jobs after the source workers have exited.
          (for-each (if (> (settings-parallelize settings) 1)
                      queue-native-compile-job!
@@ -482,12 +479,11 @@ TODO:
              (displayln "Build diagnostics retained in " state.directory))
            (raise e)))))))
 
-(def (make-build (buildspec : :list)
-                 (config : settings)
-                 (retry? #f))
+(def (make-build (buildspec-in : :list)
+                 (config : settings))
   => :void
   (parameterize ((current-compilation-target (settings-target config)))
-    (def remaining [])
+    (def buildspec (normalize-buildspec buildspec-in))
     ;; detect and report duplicate files in the buildspec up front
     (let (file-counts (make-hash-table))
       (for (spec buildspec)
@@ -573,11 +569,11 @@ TODO:
                (alet (item (next!))
                  (let* ((paths (DependencyJob-paths item))
                         (infos
-                         (if (or policy retry?)
+                         (if policy
                            (discover-graph-in-process paths (DependencyJob-index item)
-                             config (current-process-build) retry?)
-                           (let (seen (make-hash-table))
-                             (map (cut module-build-dependencies <> #t seen) paths)))))
+                             config (current-process-build))
+                           (let (checked (make-hash-table-eq))
+                             (map (cut module-build-dependencies <> checked) paths)))))
                    (with-lock mx
                      (lambda ()
                        (for-each (lambda (path info) (hash-put! modules path info))
@@ -647,7 +643,7 @@ TODO:
                (with-lock state.mx
                  (lambda () (set! state.pending (cons marker state.pending)))))
              (parameterize ((current-build-module-id id)
-                            (current-build-provider? (or (pair? remaining) (hash-get imported id))))
+                            (current-build-provider? (hash-get imported id)))
                (build spec config))
              (complete! id))))
        (catch (e)
@@ -685,41 +681,6 @@ TODO:
                  (- (time->seconds (current-time)) start) "s, processes: "
                  (settings-dependency-processes config))))
 
-    ;; If phase evaluation needs native code, build its known prerequisites
-    ;; first. Rediscover the consumer from the installed interfaces so imports
-    ;; appearing later in its body still participate in scheduling.
-    (let (pending (filter (lambda (spec) (pending-module-dependencies? (module-info spec))) buildspec))
-      (unless (null? pending)
-        (let ((by-id (make-hash-table-eq)) (ready (make-hash-table-eq)))
-          (for-each (lambda (spec) (hash-put! by-id (module-id spec) spec)) buildspec)
-          (def (include-provider! id visiting)
-            (cond
-             ((hash-get ready id))
-             ((memq id visiting) (error "cyclic build dependency" id visiting))
-             ((hash-get by-id id)
-              => (lambda (spec)
-                   (let (info (module-info spec))
-                     (and (not (pending-module-dependencies? info))
-                          (andmap (cut include-provider! <> (cons id visiting))
-                            (ModuleDependencies-imports info))
-                          (begin (hash-put! ready id #t) #t)))))
-             (else #t)))
-          (for-each
-            (lambda (spec)
-              (for-each (cut include-provider! <> [])
-                (ModuleDependencies-imports (module-info spec))))
-            pending)
-          (if (zero? (hash-length ready))
-            ;; External providers may already be installed. Report the original
-            ;; expansion error if their interfaces still cannot satisfy the import.
-            (let (paths (map (cut spec-file <> config) pending))
-              (for-each (cut hash-put! modules <> <>) paths
-                (discover-graph-in-process paths 0 config (current-process-build) #t #f)))
-            (begin
-              (set! remaining (filter (lambda (spec) (not (hash-get ready (module-id spec)))) buildspec))
-              (set! buildspec (filter (lambda (spec) (hash-get ready (module-id spec))) buildspec))
-              (set! build-barrier (make-barrier (length buildspec))))))))
-
     ;; prepare the completion table
     (for (spec buildspec)
       (for-each (cut hash-put! imported <> #t)
@@ -743,10 +704,7 @@ TODO:
       (for-each thread-join! coordinators)
       (for-each thread-join! workers)
       (when failure
-        (raise failure)))
-    (unless (null? remaining)
-      (with-cons-load-path (cut make-build remaining config #t)
-        (path-expand (settings-libdir config))))))
+        (raise failure)))))
 
 ;; Dependencies may have been rebuilt since an earlier freshness check, including
 ;; in this invocation. Always observe the current file and library timestamps.

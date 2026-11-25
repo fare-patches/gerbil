@@ -14,7 +14,7 @@ namespace: gxc
         compile-module-source source-build-outputs source-build-native-jobs
         execute-native-compile-job! queue-native-compile-job!
         compile-dependency-graph dependency-graph-modules
-        (struct-out ModuleDependencies) pending-module-dependencies?
+        (struct-out ModuleDependencies)
         module-build-dependencies module-dependencies->datum datum->module-dependencies
         module-file-id)
 
@@ -50,8 +50,7 @@ namespace: gxc
   (collect-compile-output! path))
 
 ;; Only names cross the process boundary; no expansion contexts survive discovery.
-(defstruct ModuleDependencies ((id :- :symbol) (imports :- :list)))
-(defstruct (pending-module-dependencies ModuleDependencies) () final: #t)
+(defstruct ModuleDependencies ((id :- :symbol) (imports :- :list)) final: #t)
 
 (def (module-file-id (id : :symbol))
   => :symbol
@@ -61,89 +60,97 @@ namespace: gxc
       => (lambda (ix) (make-symbol (substring name 0 ix))))
      (else id))))
 
-;; Expand the actual source, including macro-generated and phased imports. An
-;; import of a constituent depends on its owning file; imports between local
-;; constituents contribute their external dependencies without a self-edge.
-(def (module-build-dependencies (path : :string) (defer? #f) (seen (make-hash-table)))
-  => ModuleDependencies
-  ;; Reload source imports once per discovery batch. Installed interfaces can retain
-  ;; their identities across builds, but edited source must be read again.
-  (let ((import (current-expander-module-import))
-        (evaluate (current-expander-module-eval)) (providers []))
-    (def (fresh-import source reload?)
-      (if (and (string? source)
-               (or (equal? source path) (equal? ".ss" (path-extension source)))
-               (not (hash-get seen source)))
-        (begin0 (import source #t) (hash-put! seen source #t))
-        (import source reload?)))
-    (def (phase-eval mod)
-      (when (and defer? (module-context? mod))
-        (alet (source (module-source-path mod))
-          (when (equal? ".ss" (path-extension source))
-            (let (id (module-file-id (expander-context-id mod)))
-              (unless (memq id providers) (set! providers (cons id providers)))))))
-      (evaluate mod))
-    (with-catch
-      (lambda (exn)
-        (if (null? providers)
-          (raise exn)
-          (let-values (((_ id _ns _body) (core-read-module path)))
-            (make-pending-module-dependencies id (remq id providers)))))
-      (lambda ()
-        (parameterize ((current-expander-module-import fresh-import)
-                       (current-expander-module-eval phase-eval))
-          (expanded-module-dependencies path))))))
+(def dependency-source-contents (make-hash-table-eq weak-keys: #t))
 
-(def (expanded-module-dependencies (path : :string))
+;; Walk a file's imports, including those of its nested and phased modules.
+(def (for-each-module-dependency ctx proc)
+  (let ((id (module-file-id (expander-context-id ctx))) (seen (make-hash-table-eq)))
+    (def (visit-module mod)
+      (unless (hash-get seen mod)
+        (hash-put! seen mod #t)
+        (alet (prelude (core-context-prelude mod))
+          (visit prelude))
+        (for-each visit (module-context-import mod))
+        ;; Find locally defined constituents in binding tables, including higher
+        ;; phases. Dependency edges themselves come from each module's imports.
+        (visit-bindings mod mod)))
+    (def (visit-bindings context owner)
+      (alet (table (expander-context-table context))
+        (hash-for-each
+          (lambda (_ binding)
+            (when (syntax-binding? binding)
+              (let (value (syntax-binding-e binding))
+                (when (and (module-context? value)
+                           (eq? (phi-context-super value) owner))
+                  (visit-module value)))))
+          table))
+      (alet (up (phi-context-up context))
+        (visit-bindings up owner)))
+    (def (visit in)
+      (cond
+       ((or (module-context? in) (prelude-context? in))
+        (alet (dependency (expander-context-id in))
+          (let (owner (module-file-id dependency))
+            (if (eq? owner id)
+              (when (module-context? in)
+                (visit-module in))
+              (proc owner in)))))
+       ((module-import? in) (visit (module-import-source in)))
+       ((module-export? in) (visit (module-export-context in)))
+       ((import-set? in) (visit (import-set-source in)))
+       (else (raise-compile-error "unexpected module import" in))))
+    (visit-module ctx)))
+
+(def (module-build-dependencies (path : :string) (checked (make-hash-table-eq)))
   => ModuleDependencies
   (if (member (path-extension path) '(".ss" ".ssi"))
-    (let* ((ctx (import-module path #f #f))
-           (id (expander-context-id ctx))
-           (seen (make-hash-table-eq))
-           (imports (make-hash-table-eq)))
-      (def (visit-module mod)
-        (unless (hash-get seen mod)
-          (hash-put! seen mod #t)
-          (alet (prelude (core-context-prelude mod))
-            (visit prelude))
-          (for-each visit (module-context-import mod))
-          ;; Find locally defined constituents in binding tables, including higher
-          ;; phases. Dependency edges themselves come from each module's imports.
-          (visit-bindings mod mod)))
-      (def (visit-bindings context owner)
-        (alet (table (expander-context-table context))
-          (hash-for-each
-            (lambda (_ binding)
-              (when (syntax-binding? binding)
-                (let (value (syntax-binding-e binding))
-                  (when (and (module-context? value)
-                             (eq? (phi-context-super value) owner))
-                    (visit-module value)))))
-            table))
-        (alet (up (phi-context-up context))
-          (visit-bindings up owner)))
-      (def (visit in)
-        (cond
-         ((or (module-context? in) (prelude-context? in))
-          (alet (dependency (expander-context-id in))
-            (let (owner (module-file-id dependency))
-              (if (eq? owner id)
-                (when (module-context? in)
-                  (visit-module in))
-                (hash-put! imports owner #t)))))
-         ((module-import? in) (visit (module-import-source in)))
-         ((module-export? in) (visit (module-export-context in)))
-         ((import-set? in) (visit (import-set-source in)))
-         (else (raise-compile-error "unexpected module import" in))))
-      (visit-module ctx)
-      (ModuleDependencies id
-        (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b)))
-          (hash-keys imports))))
+    (let ((import (current-expander-module-import)) (imports (make-hash-table-eq)))
+      ;; Re-expanding an unchanged, already evaluated source can register its
+      ;; methods twice. Check the actual contexts captured by this expansion.
+      (def (stale? ctx)
+        (if (hash-key? checked ctx)
+          (hash-ref checked ctx)
+          (let* ((file (if (prelude-context? ctx) (prelude-context-path ctx) (module-source-path ctx)))
+                 (source? (and (string? file)
+                               (or (equal? file path) (equal? (path-extension file) ".ss")))))
+            (hash-put! checked ctx #f)
+            (when source?
+              ;; Gambit file timestamps can have one-second resolution.
+              (let (text (and (file-exists? file) (call-with-input-source-file file (cut read-line <> #f))))
+                (def changed?
+                  (cond
+                   ((not text) #t)
+                   ((hash-get dependency-source-contents ctx) => (lambda (old) (not (equal? old text))))
+                   (else (hash-put! dependency-source-contents ctx text) #f)))
+                (def (check-import _ dep)
+                  (when (stale? dep) (set! changed? #t)))
+                (unless changed?
+                  (if (prelude-context? ctx)
+                    (check-import #f (import file #f))
+                    (for-each-module-dependency ctx check-import)))
+                (hash-put! checked ctx changed?)))
+            (hash-ref checked ctx))))
+      (def (fresh-import source reload?)
+        (let (ctx (import source reload?))
+          (if (and (string? source) (not reload?) (stale? ctx))
+            (begin
+              ;; Prelude resolution in the expander uses its own import cache.
+              (alet (prelude (core-context-prelude ctx))
+                (when (stale? prelude) (fresh-import (prelude-context-path prelude) #f)))
+              (import source #t))
+            ctx)))
+      (parameterize ((current-expander-module-import fresh-import))
+        (let* ((ctx (import-module path)) (id (expander-context-id ctx)))
+          (stale? ctx)
+          (for-each-module-dependency ctx (lambda (owner _) (hash-put! imports owner #t)))
+          (ModuleDependencies id
+            (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b)))
+              (hash-keys imports))))))
     (ModuleDependencies (make-symbol path) [])))
 
 (def (module-dependencies->datum (dependencies : ModuleDependencies))
   => :list
-  [(if (pending-module-dependencies? dependencies) 'pending-dependencies 'module-dependencies) 1
+  ['module-dependencies 1
    (ModuleDependencies-id dependencies)
    (ModuleDependencies-imports dependencies)])
 
@@ -151,12 +158,10 @@ namespace: gxc
 ;; graph that would allow a consumer to race its provider.
 (def (datum->module-dependencies datum)
   (match datum
-    ([(and tag (or 'module-dependencies 'pending-dependencies)) 1 (? symbol? id) (? list? imports)]
+    (['module-dependencies 1 (? symbol? id) (? list? imports)]
      (unless (andmap symbol? imports)
        (error "invalid module dependencies" datum))
-     (if (eq? tag 'pending-dependencies)
-       (make-pending-module-dependencies id imports)
-       (ModuleDependencies id imports)))
+     (ModuleDependencies id imports))
     (else (error "invalid module dependencies" datum))))
 
 ;; Expand a batch in one compiler process. Its module cache is shared only for
@@ -167,9 +172,8 @@ namespace: gxc
   (parameterize ((current-compilation-target (or (pgetq target: opts) 'C))
                  (current-expander-compiling? #t))
     ['dependency-graph 1
-      (let ((seen (make-hash-table)) (defer? (eq? (pgetq dependencies: opts) 'build)))
-        (map (lambda (path)
-               (module-dependencies->datum (module-build-dependencies path defer? seen)))
+      (let (checked (make-hash-table-eq))
+        (map (lambda (path) (module-dependencies->datum (module-build-dependencies path checked)))
           paths))]))
 
 (def (dependency-graph-modules packet)
