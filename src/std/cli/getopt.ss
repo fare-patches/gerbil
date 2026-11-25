@@ -70,7 +70,7 @@
          (else (error "Illegal specifier; parse: and its alias value: are mutually exclusive" id))))
     (unless (procedure? converter)
       (raise-contract-violation getopt "procedure for parse: or value:" id: id value: converter))
-    converter))
+    (:- converter :procedure)))
 
 (def (getopt help: (help #f) . args)
   (let lp ((rest args) (opts []) (cmds []) (args []))
