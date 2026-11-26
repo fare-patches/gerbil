@@ -48,7 +48,7 @@
         #f => #f
         (Some #f) => #f
         'invalid =>! contract-violation-error?)
-      (check-function option-get/default
+      (check-function option-ref/else
         #f => #f
         #f (lambda () 42) => 42
         (Some 1) => 1

@@ -114,10 +114,10 @@ or supplying `absent-value` raises a `ContextError` from `option-ref`.
 
 Equivalent to `(option-ref opt #f)`.
 
-## option-get/default
+## option-ref/else
 
 ```scheme
-(option-get/default (opt :? Some) (default : :procedure := false)) => :t
+(option-ref/else (opt :? Some) (default : :procedure := false)) => :t
 ```
 
 Returns the payload of a present option, including `#f`. For an absent
@@ -130,7 +130,7 @@ without querying the database.
 
 ```scheme
 (def (read-setting name)
-  (option-get/default (cached-setting name)
+  (option-ref/else (cached-setting name)
     (lambda () (database-fetch-setting name))))
 ```
 

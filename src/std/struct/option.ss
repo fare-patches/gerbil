@@ -2,7 +2,7 @@
 ;;; An optional value is #f when absent and (Some value) when present.
 (import (only-in :std/error raise-context-error))
 (export Some Some::t make-Some Some? Some-value option? value->option
-        option-ref option-get option-get/default option->list
+        option-ref option-get option-ref/else option->list
         option-map option-map/list option-bind option-for-each)
 
 ;; :t documents that Some can hold any Scheme value, including #f.
@@ -28,7 +28,7 @@
   => :t
   (option-ref opt #f))
 
-(def (option-get/default (opt :? Some) (default : :procedure := false))
+(def (option-ref/else (opt :? Some) (default : :procedure := false))
   => :t
   (if opt opt.value (default)))
 
