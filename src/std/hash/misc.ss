@@ -7,7 +7,7 @@
   equal-hash?
   hash=?
   hash-empty?
-  hash-ref/default
+  hash-ref/else
   hash-ensure-ref
   invert-hash
   invert-hash/fold
@@ -101,7 +101,7 @@
 
 ;; Lookup a table. If the key is missing, compute and return a default value.
 ;; : V <- (Table V K) K (V <-)
-(def (hash-ref/default (h : HashTable) key (default : :procedure))
+(def (hash-ref/else (h : HashTable) key (default : :procedure))
   (let (val (h.ref key absent-value))
     (if (eq? val absent-value)
       (default)

@@ -2,13 +2,13 @@
 ## Hash-table utilities
 ::: tip To use the bindings from this module:
 ``` scheme
-(import :std/misc/hash)
+(import :std/hash/misc)
 ```
 :::
 
-### hash-ref/default
+### hash-ref/else
 ``` scheme
-(hash-ensure-ref table key default) -> value
+(hash-ref/else table key default) -> value
 ```
 
 Checks whether the given *key* is present in the *table*.
