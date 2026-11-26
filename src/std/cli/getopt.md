@@ -48,8 +48,8 @@ An option takes a value in one of these forms:
 
 A word that exactly matches a registered name always takes precedence over
 these splits: with `(flag 'cv "-cv")` and `(option 'c "-c")`, `-cv` is the flag.
-Help shows optional-value aliases such as `-color` and `--debug=yes` bare,
-because they accept only an exact match.
+Help shows a multi-character single-dash alias such as `-color` bare.
+Long option names cannot contain `=`, which introduces an attached value.
 An attached value given to a flag (`--verbose=x`, `-v5`) is an error, as is an
 unknown name. Short flags cannot be clustered: `-vc` is an error, not `-v -c`.
 
@@ -396,6 +396,7 @@ Gerbil v0.19 removes the old `:std/getopt` module name. Update imports to `:std/
   `--help` at each level in the high-level entry points.
 - A lone `-` now starts positional arguments. Attached option values such as
   `--count=3` and `-c3` are accepted. An exact registered spelling takes priority.
+  Grammars declaring a long option name containing `=` now raise a contract violation.
 - Flat command grammars still return a command symbol. Introducing nested
   commands changes that result to a list of symbols for every selected command.
 - With `exit-on-error: #t`, a getopt error in `call-with-getopt` now exits
