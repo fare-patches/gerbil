@@ -54,6 +54,37 @@ when required padding is missing). If several rules are violated, length
 and padding validation can report an error before character validation.
 Argument types and boolean options are checked by the declared contracts.
 
+## base32-decode-lenient
+
+```text
+(base32-decode-lenient (str : :string))
+  => :u8vector
+```
+
+Returns a new byte vector decoded from human-entered Base32, such as OTP
+secrets copied from a setup page or an `otpauth://` URI.
+It accepts every canonically encoded key accepted by `oathtool --base32`.
+Both decoders in this module accept either letter case. The lenient
+decoder also ignores spaces, tabs, CR, LF and dashes anywhere in the
+input, including between pad characters. Other whitespace is invalid.
+
+After removing separators, the input must be valid Base32 with either
+canonical padding or no padding. For example, `MY` and `MY= = = = = =`
+both decode to byte 102. `MY==` has too little padding, and `MZ` has
+nonzero unused bits. Empty input and separators alone decode to an empty
+vector. Padding alone is invalid.
+
+Malformed input raises `ContractViolation`. Indexes refer to the original
+string. For incorrect padding, the error reports the first pad index,
+input length and pad count. For nonzero unused bits, it reports the last
+data character, its index and the input length. An invalid character or a
+data character after padding is reported with its character, index and
+input length. An impossible data length reports the input length and the
+number of data characters.
+
+A validating counting pass sizes the result and a second pass decodes it,
+skipping ignored characters in place; no cleaned copy of the input is made.
+
 ## DNS-Safe Labels
 
 ```scheme
@@ -70,7 +101,7 @@ does not enforce DNS label or hostname limits, add DID prefixes, or split
 labels. A single DNS label must be nonempty and at most 63 octets; without
 additional prefixes, at most 39 input bytes fit in one Base32 label.
 
-Both operations run in linear time with a bounded accumulator of at most
+All operations run in linear time with a bounded accumulator of at most
 12 bits and constant auxiliary space besides the result. Decoding validates
 without re-encoding and allocates exactly `floor(5 * d / 8)` bytes for `d`
 data characters. Inputs are not modified. There is no application-specific
