@@ -55,10 +55,14 @@
 
 ;; Keep the public decoder identifier at the error site. The lenient scan has
 ;; already validated every separator before end, just past the last data symbol.
-(defrule (decode-base32-data who str count end residue separators?)
+(defrule (decode-base32-data who input data-count stop remainder separators?)
   ;; Divide before multiplying so the exact allocation fits a fixnum.
-  (let (out (make-u8vector (fx+ (fx* (fxquotient count 8) 5)
-                                (fxquotient (fx* residue 5) 8))))
+  (let* ((str input)
+         (count data-count)
+         (end stop)
+         (residue remainder)
+         (out (make-u8vector (fx+ (fx* (fxquotient count 8) 5)
+                                  (fxquotient (fx* residue 5) 8)))))
     (let loop ((i 0) (j 0) (bits 0) (acc 0))
       (if (fx< i end)
         (let (value (base32-char-value (string-ref str i)))
@@ -69,6 +73,7 @@
               (raise-contract-violation who "Invalid Base32 character"
                                         index: i length: (string-length str) char: (string-ref str i))))
            (else
+            ;; At most seven pending bits plus five, so emit at most one byte.
             (let ((bits (fx+ bits 5))
                   (acc (fxior (fxarithmetic-shift-left acc 5) value)))
               (if (fx< bits 8)
