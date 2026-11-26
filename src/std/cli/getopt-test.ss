@@ -624,6 +624,11 @@
       (check (getopt (multioption 'n "-n") (flag 'n "--none"))
              =>! contract-violation-error?))
 
+    (test-case "a child killed by a signal cannot report success"
+      (check (gxi-exit-code '(import :std/os/pid :std/os/signal)
+                            '(kill (getpid) SIGKILL))
+             => -9))
+
     (test-case "fresh interpreter loads the getopt source with omitted keywords"
       (def source (path-expand "getopt.ss" (path-directory (this-source-file))))
       (check (gxi-exit-code `(import ,source)

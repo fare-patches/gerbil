@@ -10,20 +10,20 @@
         :std/io/tempfile)
 (export gxi-exit-code gxi-exit-output)
 
-;; Run a child `gxi -e form ...` (the gxi on PATH, as set up by run.sh or gxtest);
-;; return its exit code. The child's own stdout and stderr are captured and discarded.
+;; Run forms with this installation's gxi. Return its exit code or, for a
+;; child killed by a signal, the negative signal number.
 (def (gxi-exit-code . forms)
   => :fixnum
   (let (status #f)
-    (run-process (cons "gxi"
+    (run-process (cons (path-expand "~~bin/gxi")
                        (foldr (lambda (form args)
                                 ["-e" (with-output-to-string (cut write form)) . args])
                               [] forms))
                  stderr-redirection: #t
                  check-status: (lambda (st _settings) (set! status st)))
-    ;; Gambit's process-status is a waitpid status word: exit code in bits 8-15.
-    ;; TODO: decode signal terminations distinctly if they ever matter here.
-    (fxand (fxarithmetic-shift-right status 8) 255)))
+    (let (signal (fxand status 127))
+      (if (fxzero? signal) (fxand (fxarithmetic-shift-right status 8) 255)
+        (fx- 0 signal)))))
 
 ;; (make-forms file) returns the forms for the child, which may write to the named file.
 ;; Return (cons exit-code contents), where contents is the file's contents,
