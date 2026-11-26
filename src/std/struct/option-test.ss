@@ -48,12 +48,11 @@
         #f => #f
         (Some #f) => #f
         'invalid =>! contract-violation-error?)
+      (check (apply option-ref/else [#f]) =>! wrong-number-of-arguments-exception?)
       (check-function option-ref/else
-        #f => #f
         #f (lambda () 42) => 42
-        (Some 1) => 1
         (Some #f) (lambda () (error "unexpected fallback")) => #f
-        'invalid =>! contract-violation-error?)
+        'invalid false =>! contract-violation-error?)
       (check-function option->list
         (Some 1) => [1]
         (Some [1 2 3]) => [[1 2 3]]

@@ -117,12 +117,12 @@ Equivalent to `(option-ref opt #f)`.
 ## option-ref/else
 
 ```scheme
-(option-ref/else (opt :? Some) (default : :procedure := false)) => :t
+(option-ref/else (opt :? Some) (fallback : :procedure)) => :t
 ```
 
 Returns the payload of a present option, including `#f`. For an absent
-option, calls the zero-argument procedure `default` and returns its result.
-Omitting the procedure gives a fallback of `#f`.
+option, calls the zero-argument procedure `fallback` and returns its result.
+Use `option-get` for a fallback of `#f`.
 
 Suppose `cached-setting` returns an option. A cache miss (`#f`) triggers
 the database lookup. A cached false setting (`(Some #f)`) returns `#f`

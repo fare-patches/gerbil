@@ -28,9 +28,9 @@
   => :t
   (option-ref opt #f))
 
-(def (option-ref/else (opt :? Some) (default : :procedure := false))
+(def (option-ref/else (opt :? Some) (fallback : :procedure))
   => :t
-  (if opt opt.value (default)))
+  (if opt opt.value (fallback)))
 
 (def (option->list (opt :? Some))
   => :list
