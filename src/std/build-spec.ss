@@ -171,6 +171,7 @@
     "cli/shell"
 
     "text/pregexp"
+    "text/glob"
     "text/parser/char-set"
     "text/parser/base"
     "text/parser/ll1"
