@@ -64,7 +64,8 @@
          (out (make-u8vector (fx+ (fx* (fxquotient count 8) 5)
                                   (fxquotient (fx* residue 5) 8)))))
     (let loop ((i 0) (j 0) (bits 0) (acc 0))
-      (if (fx< i end)
+      (cond
+       ((fx< i end)
         (let (value (base32-char-value (string-ref str i)))
           (cond
            ((fx< value 0)
@@ -81,13 +82,12 @@
                 (let (rest (fx- bits 8))
                   (u8vector-set! out j (fxarithmetic-shift-right acc rest))
                   (loop (fx1+ i) (fx1+ j) rest
-                        (fxand acc (fx1- (fxarithmetic-shift-left 1 rest))))))))))
-        (begin
-          (unless (fxzero? acc)
-            (raise-contract-violation who "Nonzero Base32 unused pad bits"
-                                      index: (fx1- end) length: (string-length str)
-                                      char: (string-ref str (fx1- end))))
-          out)))))
+                        (fxand acc (fx1- (fxarithmetic-shift-left 1 rest)))))))))))
+       ((fxzero? acc) out)
+       (else
+        (raise-contract-violation who "Nonzero Base32 unused pad bits"
+                                  index: (fx1- end) length: (string-length str)
+                                  char: (string-ref str (fx1- end))))))))
 
 ;; Decode either letter case, enforcing canonical lengths, padding and pad bits.
 (def (base32-decode (str : :string)
