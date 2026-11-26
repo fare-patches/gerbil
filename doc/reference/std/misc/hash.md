@@ -8,12 +8,17 @@
 
 ### hash-ref/else
 ``` scheme
-(hash-ref/else table key default) -> value
+(hash-ref/else table key fallback) -> value
 ```
 
 Checks whether the given *key* is present in the *table*.
 If it is, return the associated value.
-If it is not, call the *default* thunk and return its value.
+If it is not, call the *fallback* thunk and return its value.
+
+In v0.19 this procedure was renamed from `hash-ref/default`. Callers migrating
+from `:std/misc/hash` to `:std/hash/misc` should update the name. SRFIs 69 and 125 use
+`hash-table-ref/default` for an eagerly evaluated default. Gerbil’s
+`/else` names the thunk that runs only when the key is missing.
 
 ### hash-ensure-ref
 ``` scheme

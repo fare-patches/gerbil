@@ -101,10 +101,10 @@
 
 ;; Lookup a table. If the key is missing, compute and return a default value.
 ;; : V <- (Table V K) K (V <-)
-(def (hash-ref/else (h : HashTable) key (default : :procedure))
+(def (hash-ref/else (h : HashTable) key (fallback : :procedure))
   (let (val (h.ref key absent-value))
     (if (eq? val absent-value)
-      (default)
+      (fallback)
       val)))
 
 ;; Lookup a table. If the key is missing, compute a default value *and* put it in the table.
