@@ -834,4 +834,4 @@
                                             program: "prog"
                                             (flag 'verbose "-v")))])))
         (check (car result) => 2)
-        (check (and (cdr result) (string-contains (cdr result) "Unknown option")) ? fixnum?)))))
+        (check (and (cdr result) (contains? (cdr result) "Unknown option")) => #t)))))
