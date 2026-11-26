@@ -524,7 +524,13 @@
   (string-append (or short "") (if long " " "") (or long "") value))
 
 (def (optional-value-label name arg)
-  (and name (string-append name (if (string-prefix? "--" name) "[=" "[") arg "]")))
+  (cond
+   ((not name) #f)
+   ((string-prefix? "--" name)
+    (if (string-index name #\=) name (string-append name "[=" arg "]")))
+   ((and (fx= (string-length name) 2) (string-prefix? "-" name))
+    (string-append name "[" arg "]"))
+   (else name)))
 
 (def (display-option-help opts port)
   (display-help-rows

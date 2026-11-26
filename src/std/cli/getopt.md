@@ -48,6 +48,8 @@ An option takes a value in one of these forms:
 
 A word that exactly matches a registered name always takes precedence over
 these splits: with `(flag 'cv "-cv")` and `(option 'c "-c")`, `-cv` is the flag.
+Help shows optional-value aliases such as `-color` and `--debug=yes` bare,
+because they accept only an exact match.
 An attached value given to a flag (`--verbose=x`, `-v5`) is an error, as is an
 unknown name. Short flags cannot be clustered: `-vc` is an error, not `-v -c`.
 

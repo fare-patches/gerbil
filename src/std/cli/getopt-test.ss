@@ -728,6 +728,22 @@
         "--color=red" => ["red"]
         "-cblue" => ["blue"]))
 
+    (test-case "help shows exact-only aliases bare"
+      (def g (getopt (option 'colour "-color" "--color" optional-value: 'auto)
+                     (option 'c "-c" optional-value: 'auto)
+                     (option 'dbg "--debug=yes" optional-value: 'enabled)))
+      (def out (help-string g))
+      (check-function contains?
+        out "-color --color[=<colour>]" => #t
+        out "-c[<c>]" => #t
+        out "--debug=yes " => #t)
+      (check-function (parser g 'colour 'c 'dbg)
+        "-color" => ['auto #f #f]
+        "-colorred" => [#f "olorred" #f]
+        "--color=red" => ["red" #f #f]
+        "--debug=yes" => [#f #f 'enabled]
+        "--debug=yes=on" =>! getopt-error?))
+
     (test-case "help shows optional values"
       (let (out (help-string (oath-getopt)))
         (check-function contains?
