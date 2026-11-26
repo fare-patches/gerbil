@@ -43,7 +43,7 @@
   (raise (GetOptError msg args (current-getopt-parser))))
 (def getopt-error-e GetOptError-getopt)
 
-(defstruct !getopt (opts cmds args help))
+(defstruct !getopt (opts cmds args help names))
 (defstruct !top (key help))
 (defstruct (!command !top) ((parser : !getopt))
   final: #t)
@@ -103,8 +103,7 @@
          (error "Illegal argument; must be a getopt-object" hd))))
       (else
        (let (opts (reverse opts))
-         (check-option-specs! opts)
-         (make-!getopt opts (reverse cmds) (reverse args) help))))))
+         (make-!getopt opts (reverse cmds) (reverse args) help (option-name-table opts)))))))
 
 ;; Return the options followed by the commands or positional arguments.
 (def (getopt->specifiers gopt)
@@ -113,7 +112,7 @@
 
 ;; Option spellings are unique within each command. Scalar aliases may share
 ;; one default. A list-valued id can only be shared by other multioptions.
-(def (check-option-specs! opts)
+(def (option-name-table opts)
   (def names (make-hash-table))
   (def ids (make-hash-table-eq))
   (for-each
@@ -124,9 +123,9 @@
          (when name
            (when (hash-key? names name)
              (raise-contract-violation getopt "unique option name within a command"
-                                       name: name first-id: (hash-get names name)
+                                       name: name first-id: (!top-key (hash-get names name))
                                        second-id: id))
-           (hash-put! names name id)))
+           (hash-put! names name opt)))
        (claim-name! short)
        (claim-name! long)
        (when previous
@@ -137,7 +136,8 @@
            (raise-contract-violation getopt "one default per option id" id: id)))
        (when (or default (not previous))
          (hash-put! ids id opt))))
-   opts))
+   opts)
+  names)
 
 (def (make-flag-spec id (short :? :string) (long :? :string := #f)
            help: (help :? :string := #f)
@@ -252,7 +252,7 @@
     (let parse ((node gopt) (path []) (rest args))
       (parameterize ((current-getopt-parser (cons node path)))
         (with ((!getopt opts cmds args) node)
-          (getopt-parse-opts! ht collected opts rest
+          (getopt-parse-opts! ht collected opts (!getopt-names node) rest
             (lambda () (show-help (reverse path)))
             (lambda (rest)
               (cond
@@ -284,13 +284,7 @@
 ;; to the two-character short name -c. Both forms are errors for flags.
 ;; TODO: short-flag clustering (-bv as -b -v), at least for flags.
 ;; TODO: opt-in GNU-style permutation, allowing options after positional arguments.
-(def (getopt-parse-opts! ht collected opts rest show-help K)
-  (def names (make-hash-table))
-  (for-each (lambda (opt)
-              (when (!opt-short opt) (hash-put! names (!opt-short opt) opt))
-              (when (!opt-long opt) (hash-put! names (!opt-long opt) opt)))
-            opts)
-
+(def (getopt-parse-opts! ht collected opts names rest show-help K)
   (def (store! opt value)
     (let (id (!top-key opt))
       (if (!multioption? opt)
@@ -575,7 +569,6 @@
   => !getopt
   (with ((!getopt opts cmds args help) parser)
     (let (opts (append opts [help-flag]))
-      (check-option-specs! opts)
       (make-!getopt
         opts
         (if (null? cmds) []
@@ -584,7 +577,7 @@
                                         (with-automatic-help (!command-parser cmd))))
                        cmds)
                   [help-command]))
-        args help))))
+        args help (option-name-table opts)))))
 
 (def (call-with-getopt proc args
                        program: program
