@@ -715,6 +715,14 @@
           out "--base32" => #t
           out "--hex" => #t)))
 
+    (test-case "optional value syntax follows each spelling"
+      (def g (getopt (option 'color "--color" "-c" optional-value: #f)))
+      (check (contains? (help-string g) "--color[=<color>] -c[<color>]") => #t)
+      (check-function (parser g 'color)
+        "--color" => [#f]
+        "--color=red" => ["red"]
+        "-cblue" => ["blue"]))
+
     (test-case "help shows optional values"
       (let (out (help-string (oath-getopt)))
         (check-function contains?

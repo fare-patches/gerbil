@@ -529,6 +529,9 @@
 (def (option-label short long value)
   (string-append (or short "") (if long " " "") (or long "") value))
 
+(def (optional-value-label name arg)
+  (and name (string-append name (if (string-prefix? "--" name) "[=" "[") arg "]")))
+
 (def (display-option-help opts port)
   (display-help-rows
    (map (match <>
@@ -536,8 +539,8 @@
            (let (arg (string-append "<" (as-string id) ">"))
              [(if optional
                 (string-join
-                 (filter values [(and short (string-append short "[" arg "]"))
-                                 (and long (string-append long "[=" arg "]"))]) " ")
+                 (filter values [(optional-value-label short arg)
+                                 (optional-value-label long arg)]) " ")
                 (option-label short long (string-append " " arg)))
               (or help "?")
               (maybe-help-part "if no value" optional)
