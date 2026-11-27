@@ -1,12 +1,10 @@
+# Hash-table utilities
 
-## Hash-table utilities
-::: tip To use the bindings from this module:
-``` scheme
+```scheme
 (import :std/hash/misc)
 ```
-:::
 
-### hash-ref/else
+## hash-ref/else
 ``` scheme
 (hash-ref/else table key fallback) -> value
 ```
@@ -18,7 +16,7 @@ or its stored value is the runtime sentinel `absent-value`, calls
 When porting from v0.18, replace the `:std/misc/hash` import with
 `:std/hash/misc` and rename calls to `hash-ref/default` to `hash-ref/else`.
 
-### hash-ensure-ref
+## hash-ensure-ref
 ``` scheme
 (hash-ensure-ref table key default) -> value
 ```
@@ -29,7 +27,7 @@ If it is not, call the *default* thunk,
 associate its return value to the key in the table,
 and then return the value.
 
-### invert-hash
+## invert-hash
 ``` scheme
 (invert-hash hash to: (to (hash))) -> hash-1
 ```
@@ -44,7 +42,7 @@ with those inverse keys, instead of a new equal-hash-table.
 This feature can notably be used to provide a hash-table with different equality predicate,
 or a weak hash-table, or one that is already populated for other reasons.
 
-### invert-hash/fold
+## invert-hash/fold
 ``` scheme
 (invert-hash/fold hash to: (to (hash)) nil: (nil '()) cons: (cons cons)) -> hash-1
 ```
@@ -60,7 +58,7 @@ with those inverse keys, instead of a new equal-hash-table.
 This feature can notably be used to provide a hash-table with different equality predicate,
 or a weak hash-table, or one that is already populated for other reasons.
 
-### invert-hash<-vector
+## invert-hash<-vector
 ``` scheme
 (invert-hash<-vector vector
     start: (start 0) end: (end (vector-length from))
@@ -79,7 +77,7 @@ with those inverse keys, instead of a new equal-hash-table.
 This feature can notably be used to provide a hash-table with different equality predicate,
 or a weak hash-table, or one that is already populated for other reasons.
 
-### invert-hash<-vector/fold
+## invert-hash<-vector/fold
 ``` scheme
 (invert-hash<-vector/fold
       from start: (start 0) end: (end (vector-length from))
@@ -101,7 +99,7 @@ or a weak hash-table, or one that is already populated for other reasons.
 
 
 
-### hash-restrict-keys
+## hash-restrict-keys
 ``` scheme
 (hash-restrict-keys hash key-list) -> hash-1
 ```
@@ -112,14 +110,14 @@ The key restriction is specified as a list *key-list* of acceptable keys;
 if the key in the list is present, the key-value pair is copied to the new table;
 if it is not present, it is ignored.
 
-### hash-value-map
+## hash-value-map
 ``` scheme
 (hash-value-map hash fun) -> hash-1
 ```
 Return a new hash-table that has the same keys as the original *hash*,
 but whose values have been transformed by calling the function *fun*.
 
-### hash-key-value-map
+## hash-key-value-map
 ``` scheme
 (hash-key-value-map fun from (to (hash)) -> to
 ```
@@ -140,7 +138,7 @@ only that one of them will.
 ```
 :::
 
-### hash-filter
+## hash-filter
 ```scheme
 (hash-filter hash pred (to (hash))) -> hash-1
 ```
@@ -151,7 +149,7 @@ If the *to* argument is provided, it is used instead of a new hash-table,
 which allows to pre-populate it, use a different equality predicate than `equal?`,
 or to specify weakness.
 
-### hash-remove
+## hash-remove
 ```scheme
 (hash-remove hash fun (to (hash))) -> hash-1
 ```
@@ -162,7 +160,7 @@ If the *to* argument is provided, it is used instead of a new hash-table,
 which allows to pre-populate it, use a different equality predicate than `equal?`,
 or to specify weakness.
 
-### hash-remove-value
+## hash-remove-value
 ```scheme
 (hash-remove-value from val (to (hash))) -> hash-1
 ```
@@ -175,7 +173,7 @@ to use a different equality predicate than `equal?`
 (beware though that comparison is still with `equal?` ---
 for a different one, use `hash-remove` instead with a suitable predicate).
 
-### hash-ensure-removed!
+## hash-ensure-removed!
 ``` scheme
 (hash-ensure-removed! hash key) -> hash
 ```
@@ -183,7 +181,7 @@ Remove from the *hash* any entry with the given *key*, and return two values:
 (a) the value that was removed, if any, or `#f` if none was found, and
 (b) a boolean that tells if there was a value.
 
-### hash-ensure-modify
+## hash-ensure-modify
 ``` scheme
 (hash-ensure-modify! hash key default function) -> value
 ```
@@ -191,13 +189,13 @@ Modify entry for *key* in *hash*.
 If no entry exists yet, call the provided thunk to compute a *default* value.
 Return the new value, after modification.
 
-### hash-empty?
+## hash-empty?
 ``` scheme
 (hash-empty? hash) -> bool
 ```
 Return true if *hash* is empty.
 
-### hash-merge/override
+## hash-merge/override
 ``` scheme
 (hash-merge/override hash ...) -> hash
 ```
@@ -205,7 +203,7 @@ Similar to `hash-merge`, creates a new hash-table with the contents of all the a
 but in case a same key is present in multiple arguments, choose the value in the rightmost argument
 (instead of the leftmost as with `hash-merge`).
 
-### hash-merge/override!
+## hash-merge/override!
 ``` scheme
 (hash-merge/override! hash hash1 ...) -> hash
 ```
@@ -214,7 +212,7 @@ of all the other arguments provided; however, as with `hash-merge/override`,
 in case a same key is present in multiple arguments, choose the value in the rightmost argument
 (instead of the leftmost as with `hash-merge`).
 
-### hash->list/sort
+## hash->list/sort
 ``` scheme
 (hash->list/sort hash pred) -> list
 ```
@@ -229,7 +227,7 @@ but also sorts this list by keys according to the provided predicate *pred*.
 ```
 :::
 
-### hash-get-set!
+## hash-get-set!
 ``` scheme
 (hash-get-set! h k v) -> (void)
 ```
@@ -249,7 +247,7 @@ but also sorts this list by keys according to the provided predicate *pred*.
 ```
 :::
 
-### hash-ref-set!
+## hash-ref-set!
 ``` scheme
 (hash-ref-set! h k v) -> (void)
 (hash-ref-set! h k d v) -> (void)

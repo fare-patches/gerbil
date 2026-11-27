@@ -8,7 +8,7 @@ We can conceptually (and roughly) organize them in related group of modules:
   - [:std/misc/alist](alist.md)
   - [:std/misc/plist](plist.md)
 - Mapping Utilities:
-  - [:std/hash/misc](hash.md)
+  - [:std/hash/misc](https://git.cons.io/mighty-gerbils/gerbil/src/branch/v0.19-staging/src/std/hash/misc.md)
   - [:std/misc/sync](sync.md)
   - [:std/misc/rbtree](rbtree.md)
   - [:std/misc/lru](lru.md)

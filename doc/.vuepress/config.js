@@ -195,7 +195,6 @@ module.exports = {
                             'misc/evector',
                             'misc/deque',
                             'misc/func',
-                            'misc/hash',
                             'misc/list',
                             'misc/list-builder',
                             'misc/lru',
