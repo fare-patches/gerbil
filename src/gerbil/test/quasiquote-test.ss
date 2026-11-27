@@ -149,6 +149,15 @@
        ("``(a ,b)" ``(a ,b) (qq-quote (qq-list (qq-quote a) b)) (qq-list (qq-quote a) b))
        ("``(, @c)" ``(, @c) `(qq-list @c) (qq-list @c))
        ("``(,.c)" ``(,.c) `(qq-list .c) (qq-list .c)))) ;; no nconc in Scheme
+    (test-case "vector splice and literal elements"
+      (let ((xs '(a b)) (calls 0))
+        (check `#(,@xs) => '#(a b))
+        (check `#(,@(begin (set! calls (+ calls 1)) xs)) => '#(a b))
+        (check calls => 1)
+        (check `#(,@(list)) => '#())
+        (check `#(before ,@xs after) => '#(before a b after))
+        (check `#(unquote xs) => '#(unquote xs))
+        (check `#(,calls unquote-splicing xs) => '#(1 unquote-splicing xs))))
     (test-case "test quasiquote extras"
       (check `(x ,b ,@a ,@c ,@d) => '(x 11 vector 0 22 33 44 55))
       (unless using-eval?
@@ -270,7 +279,7 @@
            "`#()"
            "`#(,bar)"
            "`#(,(bar))"
-           ;; "`#(,@bar)" ; invalid
+           "`#(,@bar)"
            "`#(,@(bar))"
            "`#(a ,b c)"
            "`#(,@a ,b c)"

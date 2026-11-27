@@ -1131,48 +1131,20 @@ package: gerbil/core
       ((quasiquote x)
        (quasiquote-expand-0 (quasiquote-expand #'x)))
       ((ax . dx)
-       (let-values (((atop a) (quasiquote-expand-0 #'ax))
-                    ((dtop d) (quasiquote-expand-0 #'dx)))
-         (when (eq? dtop 'unquote-splicing)
-           (raise-syntax-error #f ",@ after dot" e))
-         (with-syntax* ((aa a) (dd d))
-           (if (eq? atop 'unquote-splicing)
-             (if (eq? dtop 'qq-null)
-               (syntax-case a (unquote-splicing)
-                 ((unquote-splicing _) (values 'qq-append #'(aa)))
-                 (_ (unquote-expand a)))
-               (values 'qq-append
-                       (if (eq? dtop 'qq-append)
-                         #'(aa . dd)
-                         (with-syntax ((d1 (quasiquote-expand-1 dtop d)))
-                           #'(aa d1)))))
-             (let ((default (lambda ()
-                              (with-syntax ((a1 (quasiquote-expand-1 atop a))
-                                            (d1 (quasiquote-expand-1 dtop d)))
-                                (values 'qq-list* #'(a1 d1))))))
-               (case dtop
-                 ((qq-quote qq-literal qq-null)
-                  (cond
-                   ((member atop '(qq-quote qq-literal qq-null))
-                    (values 'qq-quote #'(aa . dd)))
-                   ((eq? dtop 'qq-null)
-                    (with-syntax ((a1 (quasiquote-expand-1 atop a)))
-                      (values 'qq-list #'(a1))))
-                   (else ;; atop: qq-list qq-list* qq-append unquote
-                    (default))))
-                 ((qq-list qq-list*)
-                  (with-syntax ((a1 (quasiquote-expand-1 atop a)))
-                    (values dtop #'(a1 . dd))))
-                 (else ;; dtop: qq-append unquote
-                  (default))))))))
+       (quasiquote-expand-pair e #'ax #'dx quasiquote-expand-0))
       (#(r ...)
-       (let-values (((top r1) (quasiquote-expand-0 #'(r ...))))
-         (with-syntax (((r1 ...) r1))
-           (case top
-             ((qq-quote qq-literal qq-null) (values 'qq-quote #'#(r1 ...)))
-             ((qq-list) (values 'unquote #'(vector r1 ...)))
-             ((qq-list*) (values 'unquote #'(list->vector (qq-list* r1 ...))))
-             ((qq-append) (values 'unquote #'(list->vector (qq-append r1 ...))))))))
+       (let-values (((top r1) (quasiquote-expand-vector-elements #'(r ...))))
+         (case top
+           ((qq-null qq-quote)
+            (syntax-case r1 ()
+              ((elt ...) (values 'qq-quote #'#(elt ...)))
+              (_ (with-syntax ((xs (quasiquote-expand-1 top r1)))
+                   (values 'unquote #'(list->vector xs))))))
+           ((qq-list)
+            (with-syntax ((args r1)) (values 'unquote #'(vector . args))))
+           (else
+            (with-syntax ((xs (quasiquote-expand-1 top r1)))
+              (values 'unquote #'(list->vector xs)))))))
       (#&x
        (let-values (((top x1) (quasiquote-expand-0 #'x)))
          (case top
@@ -1184,6 +1156,50 @@ package: gerbil/core
             (raise-syntax-error #f ",@ after #&" #'x)))))
       ;; Else: it's a literal
       (_ (values 'qq-literal e)))) ;; or 'quote e
+
+  ;; A vector has elements, never a dotted tail. Recognize comma forms
+  ;; inside each element, but not across adjacent vector elements.
+  (def (quasiquote-expand-vector-elements e)
+    (syntax-case e ()
+      (() (values 'qq-null '()))
+      ((ax . dx)
+       (quasiquote-expand-pair e #'ax #'dx quasiquote-expand-vector-elements))))
+
+  (def (quasiquote-expand-pair e ax dx expand-tail)
+    (let-values (((atop a) (quasiquote-expand-0 ax))
+                 ((dtop d) (expand-tail dx)))
+      (when (eq? dtop 'unquote-splicing)
+        (raise-syntax-error #f ",@ after dot" e))
+      (with-syntax* ((aa a) (dd d))
+        (if (eq? atop 'unquote-splicing)
+          (if (eq? dtop 'qq-null)
+            (syntax-case a (unquote-splicing)
+              ((unquote-splicing _) (values 'qq-append #'(aa)))
+              (_ (unquote-expand a)))
+            (values 'qq-append
+                    (if (eq? dtop 'qq-append)
+                      #'(aa . dd)
+                      (with-syntax ((d1 (quasiquote-expand-1 dtop d)))
+                        #'(aa d1)))))
+          (let ((default (lambda ()
+                           (with-syntax ((a1 (quasiquote-expand-1 atop a))
+                                         (d1 (quasiquote-expand-1 dtop d)))
+                             (values 'qq-list* #'(a1 d1))))))
+            (case dtop
+              ((qq-quote qq-literal qq-null)
+               (cond
+                ((member atop '(qq-quote qq-literal qq-null))
+                 (values 'qq-quote #'(aa . dd)))
+                ((eq? dtop 'qq-null)
+                 (with-syntax ((a1 (quasiquote-expand-1 atop a)))
+                   (values 'qq-list #'(a1))))
+                (else ;; atop: qq-list qq-list* qq-append unquote
+                 (default))))
+              ((qq-list qq-list*)
+               (with-syntax ((a1 (quasiquote-expand-1 atop a)))
+                 (values dtop #'(a1 . dd))))
+              (else ;; dtop: qq-append unquote
+               (default))))))))
 
   (def (unquote-expand e)
     (syntax-case e (unquote unquote-splicing qq-quote qq-list qq-list* qq-append)

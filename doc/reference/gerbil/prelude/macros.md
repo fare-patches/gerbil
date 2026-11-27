@@ -279,6 +279,14 @@ This is the reader macro for `[...]`.
 (quasiquote expr)
 ```
 
+Inside a vector template, `,x` supplies one element and `,@xs` splices the
+elements of a list. A splice may occupy the entire vector.
+
+```scheme
+> (let (xs '(a b)) `#(,@xs))
+#(a b)
+```
+
 ### delay
 ``` scheme
 (delay expr)
