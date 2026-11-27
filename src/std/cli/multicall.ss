@@ -7,6 +7,7 @@
   :std/cli/getopt
   :std/cli/print-exit
   :std/cli/shell
+  :std/error
   :std/format
   :std/hash/misc
   :std/iter
@@ -126,10 +127,11 @@
     (let (handler (current-exception-handler))
       (with-exception-handler
        (lambda (e)
-         (if (getopt-error? e)
+         (if (and (exit-on-error?) (getopt-error? e))
            (begin
              (getopt-display-help e (current-program-string) (current-error-port))
-             (force-output (current-error-port))
+             (ignore-errors (force-output (current-output-port)))
+             (ignore-errors (force-output (current-error-port)))
              (exit 2))
            (handler e)))
        (lambda () (apply dispatch-entry-point args))))))

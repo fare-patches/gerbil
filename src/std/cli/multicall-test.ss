@@ -1,7 +1,7 @@
 ;;; -*- Gerbil -*-
 ;;; © Gerbil contributors
 ;;; :std/cli/multicall tests
-(import :std/test :std/source :std/misc/process
+(import :std/error :std/test :std/source :std/misc/process
         :std/cli/getopt
         ./multicall
         (only-in "./multicall-test-support" main)
@@ -232,6 +232,20 @@
       (let (result (run '("-fast") 'current-output-port))
         (check (car result) => 0)
         (check (and (string-contains (cdr result) "Usage: demo -fast") #t) => #t)))
+
+    (test-case "call-entry-point propagates getopt errors when exit is disabled"
+      (with-saved-multicall-settings
+       (parameterize ((exit-on-error? #f))
+         (check (call-entry-point "version" "--bad") =>! getopt-error?))))
+
+    (test-case "a getopt error flushes pending stdout before exiting"
+      (check (gxi-exit-output
+              (lambda (file)
+                ['(import :std/cli/multicall)
+                 `(parameterize ((current-output-port (open-output-file ,file)))
+                    (display "pending stdout")
+                    (call-entry-point "version" "--bad"))]))
+             => (cons 2 "pending stdout")))
 
     (test-case "gxi script names its invocation in help and errors"
       (def script (path-expand "multicall-test-script.ss" (path-directory (this-source-file))))
