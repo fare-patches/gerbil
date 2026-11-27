@@ -130,12 +130,18 @@
   (assert! (not (equal? {separator} {quote})))
   (assert! (boolean? {unquoted-quotequote?}))
   (assert! (boolean? {loose-quote?}))
-  (assert! (boolean? {skip-whitespace?}))
+  (assert! (boolean? {allow-binary?}))
   (assert! (valid-eol? {eol}))
   (assert! (not (member (string-ref {eol} 0) [{separator} {quote}])))
   (assert! (boolean? {accept-lf?}))
   (assert! (boolean? {accept-cr?}))
   (assert! (boolean? {accept-crlf?}))
+  (assert! (or {accept-cr?} {accept-lf?} {accept-crlf?}))
+  (let (delimiters [{separator} {quote}])
+    (when (or {accept-cr?} {accept-crlf?})
+      (assert! (not (memv #\return delimiters))))
+    (when (or {accept-lf?} {accept-crlf?})
+      (assert! (not (memv #\newline delimiters)))))
   (assert! (boolean? {skip-whitespace?})))
 
 ; -----------------------------------------------------------------------------
@@ -155,35 +161,39 @@
 (def (accept-eof (reader :- BufferedReader))
   (eof-object? (reader.peek-char-utf8)))
 
+(def/opt (char-csv-space? c)
+  (and (or (eqv? c #\space) (eqv? c #\tab))
+       (not (eqv? c {separator})) (not (eqv? c {quote}))))
+
 ;; Read one line from SOURCE in CSV format, using the current syntax parameters.
 ;; SOURCE is anything with-buffered-reader accepts.
 ;; Return a list of strings, one for each field in the line.
 ;; Entries are read as strings;
 ;; it is up to you to interpret the strings as whatever you want.
 (def/opt (read-csv-line source)
+  (w/opt validate-csv-options)
+  (w/opt read-csv-record source))
+
+(def/opt (read-csv-record source)
   (with-buffered-reader (reader source)
     (def ss (open-output-string))
     (def fields '())
-    (def had-quotes? #f)
-    (def (accept-eol reader)
-      (or (and {accept-lf?} (accept= #\newline reader) #t)
+    (def (accept-eol (reader :- BufferedReader))
+      (or (and (eqv? (reader.peek-char-utf8) #\newline)
+               (cond ({accept-lf?} (reader.read-char-utf8) #t)
+                     ((and {accept-crlf?} (not {accept-cr?}))
+                      (raise-io-error accept-eol "Linefeed without Carriage-Return!"))
+                     (else #f)))
           (and (or {accept-cr?} {accept-crlf?})
                (and (accept= #\return reader)
                     (or (and {accept-crlf?} (accept= #\newline reader))
                         {accept-cr?}
                         (raise-io-error accept-eol "Carriage-Return without Linefeed!"))))))
-    ;; Is character c some kind of white space?
-    ;; NB: this only handles a tiny subset of whitespace characters, even if restricted to ASCII.
-    ;; However, it's rather portable, and it is what the creativyst document specifies.
-    ;; Be careful to not skip a separator, as it could be e.g. a tab!
-    (def (char-csv-space? c)
-      (and (or (eqv? c #\space) (eqv? c #\tab)) (not (eqv? c {separator}))))
     (def (accept-space reader)
-      (accept char-csv-space? reader))
+      (accept (lambda (c) (w/opt char-csv-space? c)) reader))
     (def (accept-spaces reader)
       (with-list-builder (c) (let loop () (let ((x (accept-space reader))) (when x (c x) (loop))))))
     (def (accept-fields)
-      (set! had-quotes? #f)
       (when {skip-whitespace?} (accept-spaces reader))
       (if (and (null? fields) (or (accept-eol reader) (accept-eof reader)))
         (done)
@@ -202,7 +212,6 @@
        (else
         (accept-field-unquoted))))
     (def (accept-field-quoted)
-      (set! had-quotes? #t)
       (cond
        ((accept-eof reader)
         (raise-io-error read-csv-line "unexpected eof in quotes"))
@@ -278,14 +287,14 @@
 ;; SOURCE is anything with-buffered-reader accepts.
 ;; Return a list of list of strings, one entry per line, one string per field.
 ;; with-buffered-reader passes an already-open BufferedReader through without re-allocating,
-;; so (w/opt read-csv-line reader) below incurs no extra allocation.
+;; so (w/opt read-csv-record reader) below incurs no extra allocation.
 (def/opt (read-csv source)
   (w/opt validate-csv-options)
   (with-buffered-reader (reader source)
     (call-with-list-builder
       (lambda (c _)
         (until (accept-eof reader)
-          (c (w/opt read-csv-line reader)))))))
+          (c (w/opt read-csv-record reader)))))))
 
 ; -----------------------------------------------------------------------------
 ;;; The writer
@@ -297,13 +306,6 @@
       (eqv? x #\return)
       (not (char-ascii-text? x))))
 
-;; Is character c some kind of white space?
-;; NB: this only handles a tiny subset of whitespace characters, even if restricted to ASCII.
-;; However, it's rather portable, and it is what the creativyst document specifies.
-;; Be careful to not skip a separator, as it could be e.g. a tab!
-(def/opt (char-csv-space? c)
-  (and (or (eqv? c #\space) (eqv? c #\tab)) (not (eqv? c {separator}))))
-
 (def/opt (string-needs-quoting? x)
   (and (not (string-null? x))
        (or (w/opt char-csv-space? (string-ref x 0))
@@ -314,43 +316,67 @@
 ;; Write one line of FIELDS to WRITER in CSV format, using the current syntax parameters.
 ;; WRITER is anything with-buffered-writer accepts.
 (def/opt (write-csv-line writer fields)
+  (w/opt validate-csv-options)
   (with-buffered-writer (wr writer)
-    (let loop ((fields fields))
-      (match fields
-        ([first . rest]
-         (w/opt write-csv-field wr first)
-         (unless (null? rest)
-           (wr.write-char-utf8 {separator}))
-         (loop rest))
-        ([] (wr.write-string-utf8 {eol}))))))
+    (w/opt write-csv-record wr fields)))
+
+(def/opt (write-csv-record (wr :- BufferedWriter) fields)
+  (let loop ((fields fields) (first? #t))
+    (match fields
+      ([first . rest]
+       (w/opt write-csv-field wr first (and first? (null? rest)))
+       (unless (null? rest)
+         (wr.write-char-utf8 {separator}))
+       (loop rest #f))
+      ([] (wr.write-string-utf8 {eol})))))
 
 ;; Write all LINES to WRITER in CSV format, using the current syntax parameters.
 ;; WRITER is anything with-buffered-writer accepts.
-;; with-buffered-writer passes an already-open BufferedWriter through without re-allocating,
-;; so (w/opt write-csv-line writer ...) below incurs no extra allocation.
 (def/opt (write-csv writer lines)
+  (w/opt validate-csv-options)
   (with-buffered-writer (wr writer)
-    (for-each (lambda (fields) (w/opt write-csv-line wr fields)) lines)))
+    (for-each (lambda (fields) (w/opt write-csv-record wr fields)) lines)))
 
-(def/opt (write-csv-field (writer :- BufferedWriter) field)
-  (match field
-    ((? not) (void))
-    ((? number?) (writer.write-string-utf8 (number->string field)))
-    ((? string?) (w/opt write-csv-string-safely writer field))
-    ((? symbol?) (w/opt write-csv-string-safely writer (symbol->string field)))
-    (else (error "invalid CSV field" field))))
+(def/opt (write-csv-field (writer :- BufferedWriter) field singleton?)
+  (def text
+    (match field
+      ((? not) "")
+      ((? number?) (number->string field))
+      ((? string?) field)
+      ((? symbol?) (symbol->string field))
+      (else (error "invalid CSV field" field))))
+  (unless (or {allow-binary?} (string-every char-ascii-text? text))
+    (raise-io-error write-csv-line "binary data not allowed" text))
+  (cond
+   ((string-null? text)
+    (when singleton?
+      (when {unquoted-quotequote?}
+        (raise-io-error write-csv-line "singleton empty field has no spelling in this CSV syntax"))
+      (w/opt write-quoted-string writer text)))
+   ((and {unquoted-quotequote?} (char=? (string-ref text 0) {quote}))
+    ;; The reader consumes initial quote pairs before it can enter a quoted field.
+    (if (and {loose-quote?} (not (string-every {quote} text)))
+      (w/opt write-quoted-string writer text)
+      (begin
+        (when (or (string-any {separator} text)
+                  (and {skip-whitespace?}
+                       (w/opt char-csv-space? (string-ref text (1- (string-length text)))))
+                  (and (string-any #\return text) (or {accept-cr?} {accept-crlf?}))
+                  (and (string-any #\newline text)
+                       (or {accept-lf?} (and {accept-crlf?} (not {accept-cr?})))))
+          (raise-io-error write-csv-line "field has no spelling in this CSV syntax" text))
+        (w/opt write-escaped-string writer text))))
+   ((w/opt string-needs-quoting? text) (w/opt write-quoted-string writer text))
+   (else (writer.write-string-utf8 text))))
 
-(def/opt (write-csv-string-safely (writer :- BufferedWriter) string)
-  (if (w/opt string-needs-quoting? string)
-    (w/opt write-quoted-string writer string)
-    (writer.write-string-utf8 string)))
+(def/opt (write-escaped-string (writer :- BufferedWriter) string)
+  (string-for-each
+   (lambda (c)
+     (when (char=? c {quote}) (writer.write-char-utf8 c))
+     (writer.write-char-utf8 c))
+   string))
 
 (def/opt (write-quoted-string (writer :- BufferedWriter) string)
   (writer.write-char-utf8 {quote})
-  (string-for-each
-   (lambda (c)
-     (when (char=? c {quote})
-       (writer.write-char-utf8 c))
-     (writer.write-char-utf8 c))
-   string)
+  (w/opt write-escaped-string writer string)
   (writer.write-char-utf8 {quote}))

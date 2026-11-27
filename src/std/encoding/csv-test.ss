@@ -5,6 +5,9 @@
 (export csv-test)
 
 (import
+  :std/interface
+  :std/io
+  :std/error
   :std/misc/ports
   :std/string/misc
   :std/test
@@ -41,6 +44,17 @@
   ((_ csv lists)
    (begin (test-read csv lists) (test-write lists (string-append csv +lf+)))))
 
+(defstruct counting-writer (writes))
+
+(defmethod {write counting-writer}
+  (lambda (self bytes start end)
+    (set! (counting-writer-writes self) (1+ (counting-writer-writes self)))
+    (fx- end start))
+  interface: Writer)
+
+(defmethod {close counting-writer} void interface: Closer)
+(@implement Writer counting-writer)
+
 (def csv-test
   (test-suite "test :std/encoding/csv"
     (test-case "test-empty-fields"
@@ -70,6 +84,75 @@
       (test-both
        ""
        '()))
+    (test-case "writer dialects"
+      (def qq (struct-copy creativyst-csv-options))
+      (def slash (struct-copy creativyst-csv-options))
+      (csv-options-unquoted-quotequote?-set! qq #t)
+      (csv-options-separator-set! slash #\/)
+      (def (emit row opts) (write-csv 'string (list row) opts))
+      (def (round-trip row opts) (read-csv (emit row opts) opts))
+      (check-equal? (write-csv 'string '(() ("") (#f) ("" ""))) "\r\n\"\"\r\n\"\"\r\n,\r\n")
+      (check-equal? (round-trip '(1/2 "x/y") slash) '(("1/2" "x/y")))
+      (check-equal? (emit '("\"") qq) "\"\"\r\n")
+      (check-equal? (round-trip '("\"\"x" "") qq) '(("\"\"x" "")))
+      (check-exception (emit '("") qq) IOError?)
+      (check-exception (emit '("\",x") qq) IOError?)
+      (check-exception (emit '("\" ") qq) IOError?)
+      (csv-options-loose-quote?-set! qq #t)
+      (check-equal? (emit '("\"\"") qq) "\"\"\"\"\r\n")
+      (check-equal? (emit '("\"\"a\", ") qq) "\"\"\"\"\"a\"\", \"\r\n")
+      (check-equal? (round-trip '("\",x" "\" ") qq) '(("\",x" "\" ")))
+      (check-exception (emit '("Faré") strict-rfc4180-csv-options) IOError?)
+      (check-exception (emit '("\t") strict-rfc4180-csv-options) IOError?)
+      (check-exception (read-csv "a\nb" strict-rfc4180-csv-options) IOError?)
+      (check-equal? (round-trip '("a\nb") strict-rfc4180-csv-options) '(("a\nb"))))
+    (test-case "bulk writer buffers across records"
+      (def sink (make-counting-writer 0))
+      (write-csv sink (make-list 100 '("a")))
+      (check-equal? (counting-writer-writes sink) 1))
+    (test-case "record endings cannot delimit fields"
+      (def (check-collision preset set-delimiter! delimiter row)
+        (def opts (struct-copy preset))
+        (def sink (open-output-u8vector))
+        (def (invalid? e) (string-prefix? "Assertion failed" (error-message e)))
+        (set-delimiter! opts delimiter)
+        (check-exception (write-csv-line sink row opts) invalid?)
+        (check-exception (write-csv sink (list row) opts) invalid?)
+        (check-equal? (get-output-u8vector sink) #u8())
+        (check-exception (read-csv "" opts) invalid?)
+        (check-exception (read-csv-line "" opts) invalid?))
+      (for-each
+       (lambda (opts)
+         (check-collision opts csv-options-separator-set! #\newline '("" "b"))
+         (check-collision opts csv-options-quote-set! #\newline '("a,b")))
+       (list creativyst-csv-options strict-rfc4180-csv-options))
+      (check-collision rfc4180-csv-options csv-options-separator-set! #\return '("" "b"))
+      (check-collision rfc4180-csv-options csv-options-quote-set! #\return '("a,b")))
+    (test-case "option validation"
+      (def opts (struct-copy creativyst-csv-options))
+      (def (invalid? e) (string-prefix? "Assertion failed" (error-message e)))
+      (def (check-invalid)
+        (check-exception (read-csv-line "" opts) invalid?)
+        (check-exception (read-csv "" opts) invalid?)
+        (check-exception (write-csv-line 'string [] opts) invalid?)
+        (check-exception (write-csv 'string [] opts) invalid?))
+      (csv-options-allow-binary?-set! opts 'invalid)
+      (check-invalid)
+      (csv-options-allow-binary?-set! opts #t)
+      (csv-options-quote-set! opts #\,)
+      (check-invalid)
+      (csv-options-quote-set! opts #\")
+      (csv-options-accept-cr?-set! opts #f)
+      (csv-options-accept-lf?-set! opts #f)
+      (csv-options-accept-crlf?-set! opts #f)
+      (check-invalid))
+    (test-case "space or tab as quote"
+      (def opts (struct-copy creativyst-csv-options))
+      (def rows '(("") ("a,b" "c")))
+      (for-each (lambda (q)
+                  (csv-options-quote-set! opts q)
+                  (check-equal? (read-csv (write-csv 'string rows opts) opts) rows))
+                '(#\space #\tab)))
     (test-case "parameters"
       (def setters
         (hash (separator csv-options-separator-set!)
