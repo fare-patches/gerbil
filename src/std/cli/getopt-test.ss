@@ -740,9 +740,15 @@
         "-colorred" => [#f "olorred"]
         "--color=red" => ["red" #f]))
 
-    (test-case "long option names cannot contain an equals sign"
-      (check (getopt (option 'debug "--debug=yes"))
-             =>! contract-violation-error?))
+    (test-case "exact long aliases take precedence over attached values"
+      (def g (getopt (option 'mode "--mode")
+                     (flag 'plain "--mode=plain")
+                     (option 'dbg "--debug=yes" optional-value: 'enabled)))
+      (check-function (parser g 'mode 'plain 'dbg)
+        "--mode=plain" => [#f #t #f]
+        "--mode=other" => ["other" #f #f]
+        "--debug=yes" => [#f #f 'enabled])
+      (check (contains? (help-string g) "--debug=yes ") => #t))
 
     (test-case "help shows optional values"
       (let (out (help-string (oath-getopt)))

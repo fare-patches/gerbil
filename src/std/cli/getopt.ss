@@ -121,9 +121,6 @@
        (def previous (hash-get ids id))
        (def (claim-name! name)
          (when name
-           (when (and (string-prefix? "--" name) (string-index name #\=))
-             (raise-contract-violation getopt "long option names cannot contain '='"
-                                       name: name id: id))
            (when (hash-key? names name)
              (raise-contract-violation getopt "unique option name within a command"
                                        name: name first-id: (!top-key (hash-get names name))
@@ -530,7 +527,7 @@
   (cond
    ((not name) #f)
    ((string-prefix? "--" name)
-    (string-append name "[=" arg "]"))
+    (if (string-index name #\=) name (string-append name "[=" arg "]")))
    ((and (fx= (string-length name) 2) (string-prefix? "-" name))
     (string-append name "[" arg "]"))
    (else name)))
