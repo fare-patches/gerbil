@@ -750,6 +750,17 @@
         "--debug=yes" => [#f #f 'enabled])
       (check (contains? (help-string g) "--debug=yes ") => #t))
 
+    (test-case "automatic help leaves the help result id available"
+      (def topics (multioption 'help "--topic"))
+      (check (call-with-getopt (lambda (opts) (hash-ref opts 'help))
+                               '("--topic" "io") program: "demo" topics)
+             => ["io"])
+      (def out (with-output-to-string
+                 (lambda ()
+                   (call-with-getopt (lambda (_) (error "help dispatched"))
+                                     '("--help") program: "demo" topics))))
+      (check (contains? out "Usage: demo") => #t))
+
     (test-case "help shows optional values"
       (let (out (help-string (oath-getopt)))
         (check-function contains?

@@ -565,7 +565,7 @@
         args)
    port))
 
-(def help-flag (flag 'help "-h" "--help" help: "display help"))
+(def help-flag (flag (gensym 'help) "-h" "--help" help: "display help"))
 (def help-command
   (command 'help help: "display help for a command path"
     (rest-arguments 'command value: string->symbol)))
