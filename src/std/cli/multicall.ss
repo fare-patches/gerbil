@@ -121,7 +121,18 @@
 ;; Dispatch as dispatch-entry-point, then print the result and exit accordingly
 ;; (see begin-print-exit in :std/cli/print-exit).
 (def (call-entry-point . args)
-  (begin-print-exit (apply dispatch-entry-point args)))
+  (begin-print-exit
+    ;; Render before unwinding the selected entry's current-program binding.
+    (let (handler (current-exception-handler))
+      (with-exception-handler
+       (lambda (e)
+         (if (getopt-error? e)
+           (begin
+             (getopt-display-help e (current-program-string) (current-error-port))
+             (force-output (current-error-port))
+             (exit 2))
+           (handler e)))
+       (lambda () (apply dispatch-entry-point args))))))
 
 (defrules define-multicall-main ()
   ((_ ctx) (with-id ((main ctx "main"))

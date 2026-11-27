@@ -243,7 +243,8 @@
         (check status => (fxarithmetic-shift-left code 8))
         (check (and (string-contains out (string-append script fragment)) #t) => #t))
       (run '("help" "tree") 0 " tree <command>")
-      (run '("help" "tree" "group" "missing") 1 " tree group: Unknown command missing."))
+      (run '("help" "tree" "group" "missing") 1 " tree group: Unknown command missing.")
+      (run '("tree" "group" "missing") 2 " tree group: Error: Unknown command"))
 
     ;; Without getopt:, the function gets the arguments as given, options included.
     (test-case "entry point without getopt: gets its arguments unparsed"
