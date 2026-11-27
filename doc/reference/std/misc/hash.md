@@ -17,7 +17,6 @@ If it is not, call the *fallback* thunk and return its value.
 
 When porting from v0.18, replace the `:std/misc/hash` import with
 `:std/hash/misc` and rename calls to `hash-ref/default` to `hash-ref/else`.
-Both versions call the supplied thunk only when the key is missing.
 
 ### hash-ensure-ref
 ``` scheme
