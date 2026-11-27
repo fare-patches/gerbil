@@ -63,6 +63,13 @@
     "os/sockopt"
     "os/hostname"
     "os/pid"
+    (gxc: "os/pty" (extra-inputs: ("os/pty-native.h"))
+          "-cc-options" "-D_GNU_SOURCE"
+          "-ld-options" ,(cond-expand (darwin "") (else "-lutil")))
+    (gxc: "os/process-native" (extra-inputs: ("os/pty-native.h" "os/process-native.h"))
+          "-cc-options" "-D_GNU_SOURCE"
+          "-ld-options" ,(cond-expand (darwin "") (else "-lutil")))
+    "os/process"
     "os/signal"
     (gxc: "os/signal-test-support" (extra-inputs: ("os/signal.ss")))
     ,@(cond-expand

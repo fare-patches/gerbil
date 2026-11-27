@@ -38,7 +38,7 @@ install_src() {
 install_src_files() {
     local src="${1}"
     local dest="${2}"
-    for f in $(find "${src}" -name \*.ss -o -name \*.ssi -o -name \*.scm -o -name \*.c | egrep -v "/[.]gerbil" | grep -v build.ss); do
+    for f in $(find "${src}" -name \*.ss -o -name \*.ssi -o -name \*.scm -o -name \*.c -o -name \*.h | egrep -v "/[.]gerbil" | grep -v build.ss); do
         mkdir -p $(dirname "${dest}/${f}") || die
         cp -v "${f}" "${dest}/${f}" || die
     done

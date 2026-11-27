@@ -296,6 +296,8 @@ build_srfi() {
 build_tools () {
   feedback_low "Building gerbil tools"
   (cd tools && gxi ./build.ss) || die
+  ${CC:-cc} -std=c11 -O2 -Wall -Wextra tools/gxexec.c -o "${GERBIL_BUILD_PREFIX}/bin/gxexec.tmp" || die
+  mv -f "${GERBIL_BUILD_PREFIX}/bin/gxexec.tmp" "${GERBIL_BUILD_PREFIX}/bin/gxexec" || die
   for tool in tools/gx*.ss; do
       # Test modules are run by gxtest, not installed as commands.
       case "${tool}" in *-test.ss) continue ;; esac

@@ -99,6 +99,20 @@ END-C
                          (string-append prev "\n" "#include " (stx-e path))))))))
      #'(begin-foreign (c-declare include-string)))))
 
+;; Embed local files so generated C can compile outside the source tree.
+(defsyntax (C-include-file stx)
+  (syntax-case stx ()
+    ((_ path)
+     (stx-string? #'path)
+     (let* ((name (stx-e #'path))
+            (len (string-length name)))
+       (if (and (fx>= len 2)
+                (char=? (string-ref name 0) #\<)
+                (char=? (string-ref name (fx1- len)) #\>))
+         #'(C-include path)
+         (with-syntax ((code (read-file-string (core-resolve-path #'path (stx-source stx)))))
+           #'(C-declare code)))))))
+
 (defsyntax-case C-declare ()
   ((_ code rest ...)
    (andmap stx-string? #'(code rest ...))
