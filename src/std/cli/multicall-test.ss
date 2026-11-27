@@ -1,7 +1,7 @@
 ;;; -*- Gerbil -*-
 ;;; © Gerbil contributors
 ;;; :std/cli/multicall tests
-(import :std/test
+(import :std/test :std/source :std/misc/process
         :std/cli/getopt
         ./multicall
         (only-in "./multicall-test-support" main)
@@ -232,6 +232,18 @@
       (let (result (run '("-fast") 'current-output-port))
         (check (car result) => 0)
         (check (and (string-contains (cdr result) "Usage: demo -fast") #t) => #t)))
+
+    (test-case "gxi script names its invocation in help and errors"
+      (def script (path-expand "multicall-test-script.ss" (path-directory (this-source-file))))
+      (def (run args code fragment)
+        (def status #f)
+        (def out (run-process [(path-expand "~~bin/gxi") script . args]
+                              stderr-redirection: #t
+                              check-status: (lambda (st _) (set! status st))))
+        (check status => (fxarithmetic-shift-left code 8))
+        (check (and (string-contains out (string-append script fragment)) #t) => #t))
+      (run '("help" "tree") 0 " tree <command>")
+      (run '("help" "tree" "group" "missing") 1 " tree group: Unknown command missing."))
 
     ;; Without getopt:, the function gets the arguments as given, options included.
     (test-case "entry point without getopt: gets its arguments unparsed"

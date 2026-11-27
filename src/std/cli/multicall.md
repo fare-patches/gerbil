@@ -148,6 +148,15 @@ exiting with status 2 (see `:std/cli/print-exit`).
 Defines `main` as `call-entry-point`. An optional context identifier `ctx`
 supplies the lexical context for the generated name.
 
+For a script invoked as `gxi demo.ss`, set the display name before defining
+`main` so help and diagnostics include the script that defines the commands:
+
+```scheme
+(import :std/cli/multicall :std/source)
+(current-program [(this-source-file) (car (command-line))])
+(define-multicall-main)
+```
+
 With `default:`, module initialization calls `set-default-entry-point!` with
 the given name. An omitted `fallback:` then defaults to `#f`. The bare form
 preserves the current dispatch settings.
