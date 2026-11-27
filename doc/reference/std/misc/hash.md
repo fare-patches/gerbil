@@ -11,9 +11,9 @@
 (hash-ref/else table key fallback) -> value
 ```
 
-Checks whether the given *key* is present in the *table*.
-If it is, return the associated value.
-If it is not, call the *fallback* thunk and return its value.
+Returns the value stored at `key`, including `#f`. If the key is missing
+or its stored value is the runtime sentinel `absent-value`, calls
+`(fallback)` and returns its result without inserting it into the table.
 
 When porting from v0.18, replace the `:std/misc/hash` import with
 `:std/hash/misc` and rename calls to `hash-ref/default` to `hash-ref/else`.

@@ -8,7 +8,7 @@ We can conceptually (and roughly) organize them in related group of modules:
   - [:std/misc/alist](alist.md)
   - [:std/misc/plist](plist.md)
 - Mapping Utilities:
-  - [:std/misc/hash](hash.md)
+  - [:std/hash/misc](hash.md)
   - [:std/misc/sync](sync.md)
   - [:std/misc/rbtree](rbtree.md)
   - [:std/misc/lru](lru.md)
