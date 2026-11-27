@@ -56,7 +56,6 @@ module.exports = {
                       'stxutil',
                       'assert',
                       'errors',
-                      'getopt',
                       'make',
                       'test',
                       'debug',
@@ -138,7 +137,6 @@ module.exports = {
                         path: "/reference/std/cli/",
                         children: [
                             "cli/",
-                            "cli/getopt",
                             "cli/shell",
                             "cli/print-exit",
                             "cli/multicall",

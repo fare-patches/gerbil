@@ -164,7 +164,7 @@
       ((version)
        (displayln "gxpkg " (gerbil-version-string)))
       ((new)
-       (pkg-new .package .name .link))
+       (pkg-new .?package .?name .?link))
       ((build)
        (build-pkgs .pkg .?build-dependencies .?build-dependents .?build-release
                    .?build-optimized .?build-debug .?global))
@@ -187,7 +187,7 @@
       ((retag)
        (retag-pkgs .?global))
       ((search)
-       (search-pkgs .keywords .directory .?as-list))
+       (search-pkgs .keywords .?directory .?as-list))
       ((dir)
        (manage-dirs .directories .?add .?remove .?global))
       ((env)
