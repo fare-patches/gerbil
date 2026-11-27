@@ -217,7 +217,7 @@
          (lambda (file)
            ['(import :std/cli/multicall)
             '(define-multicall-main)
-            '(register-entry-point void name: "-fast" getopt: [])
+            '(register-entry-point void name: "-fast" getopt: '())
             `(parameterize ((current-program '("demo"))
                             (,stream (open-output-file ,file)))
                (main "help" ,@topics))])))

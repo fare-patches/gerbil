@@ -52,4 +52,4 @@
       ;; The error message on current-error-port.
       (let (result (exit-with-error-output 'current-error-port))
         (check (car result) => 2)
-        (check (and (cdr result) (string-contains (cdr result) "boom")) ? fixnum?)))))
+        (check (and (cdr result) (string-contains (cdr result) "boom") #t) => #t)))))
