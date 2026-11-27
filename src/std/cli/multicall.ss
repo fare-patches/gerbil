@@ -69,8 +69,7 @@
  (lambda topics
    (parameterize ((current-program (cdr (current-program))))
      (apply help topics)))
- id: 'help help: "Print help about available commands"
- getopt: [(rest-arguments 'topics help: "subcommand path for which to display help")])
+ id: 'help help: "Print help about available commands")
 
 ;; TODO: also handle getopt specifications?
 (define-entry-point (meta)

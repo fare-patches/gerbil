@@ -217,14 +217,21 @@
          (lambda (file)
            ['(import :std/cli/multicall)
             '(define-multicall-main)
+            '(register-entry-point void name: "-fast" getopt: [])
             `(parameterize ((current-program '("demo"))
                             (,stream (open-output-file ,file)))
                (main "help" ,@topics))])))
       (check-function run
+        '("") 'current-output-port => (cons 1 "")
+        '("") 'current-error-port => (cons 1 "demo: Unknown command .\n")
+        '("-fast") 'current-error-port => (cons 0 "")
         '("bad") 'current-output-port => (cons 1 "")
         '("bad") 'current-error-port => (cons 1 "demo: Unknown command bad.\n")
         '("version" "bad") 'current-output-port => (cons 1 "")
-        '("version" "bad") 'current-error-port => (cons 1 "demo version: Unknown command bad.\n")))
+        '("version" "bad") 'current-error-port => (cons 1 "demo version: Unknown command bad.\n"))
+      (let (result (run '("-fast") 'current-output-port))
+        (check (car result) => 0)
+        (check (and (string-contains (cdr result) "Usage: demo -fast") #t) => #t)))
 
     ;; Without getopt:, the function gets the arguments as given, options included.
     (test-case "entry point without getopt: gets its arguments unparsed"
